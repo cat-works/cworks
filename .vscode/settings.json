@@ -1,1 +1,9 @@
-{}
+{
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "Cargo.toml": "Cargo.lock",
+    "firebase.json": "firestore.indexes.json, firestore.rules, .firebaserc, storage.rules",
+    "package.json": "package-lock.json, yarn.lock",
+    "tsconfig.json": "tsconfig.node.json"
+  }
+}
