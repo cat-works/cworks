@@ -29,12 +29,15 @@ pub mod cworks_mod {
             SyscallData::None => {
                 r.set_item("kind", vm.ctx.none(), vm)?;
             }
-            SyscallData::Lock(None) => {
-                r.set_item("kind", vm.ctx.new_str("Failed").into(), vm)?;
+            SyscallData::Handle(Err(e)) => {
+                r.set_item("kind", vm.ctx.new_str("Handle").into(), vm)?;
+                r.set_item("status", vm.ctx.new_str("Failed").into(), vm)?;
+                r.set_item("error", vm.ctx.new_str(e.to_string()).into(), vm)?;
             }
-            SyscallData::Lock(Some(l)) => {
-                r.set_item("kind", vm.ctx.new_str("Successed").into(), vm)?;
-                r.set_item("lock_id", vm.ctx.new_int(l.id).into(), vm)?;
+            SyscallData::Handle(Ok(h)) => {
+                r.set_item("kind", vm.ctx.new_str("Handle").into(), vm)?;
+                r.set_item("status", vm.ctx.new_str("Successed").into(), vm)?;
+                r.set_item("handle", vm.ctx.new_int(h.id).into(), vm)?;
             }
         }
 

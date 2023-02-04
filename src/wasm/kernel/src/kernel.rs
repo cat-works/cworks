@@ -1,4 +1,4 @@
-use crate::process::{Lock, Syscall, SyscallData};
+use crate::process::{Handle, Syscall, SyscallData, SyscallError};
 
 use super::{
     automap::AutoMap,
@@ -45,18 +45,30 @@ impl Kernel {
                     PollResult::Syscall(s) => {
                         match s {
                             Syscall::Lock(ref path) => {
+                                // Lock Check
                                 for lock in self.locks.map.values() {
                                     let KernelResource::Object(ref path2) = lock.get_resource();
                                     if path.starts_with(path2) {
-                                        p.system_call_returns = SyscallData::Lock(None);
+                                        p.system_call_returns =
+                                            SyscallData::Handle(Err(SyscallError::AlreadyExists));
                                         break;
                                     }
                                 }
+
                                 let res =
                                     LockedResource::new(KernelResource::Object(path.to_string()));
                                 let key = self.locks.add_value(res);
+                                p.system_call_returns = SyscallData::Handle(Ok(Handle::new(key)));
+                            }
+                            Syscall::IPC_Create(ref name) => {
+                                // TODO: IPC Create
                                 p.system_call_returns =
-                                    SyscallData::Lock(Option::Some(Lock::new(key)));
+                                    SyscallData::Handle(Err(SyscallError::NotImplemented));
+                            }
+                            Syscall::IPC_Connect(ref name) => {
+                                // TODO: IPC Connect
+                                p.system_call_returns =
+                                    SyscallData::Handle(Err(SyscallError::NotImplemented));
                             }
                         }
                         println!("{pid}: {s:?}");

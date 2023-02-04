@@ -1,37 +1,52 @@
+use kernel::{PollResult, Process, Syscall, SyscallData};
+
 extern crate kernel;
 extern crate python;
 
-const PYTHON_CODE: &str = r#"async def proc():
-    while True:
-        code = input("> ")
-        if not code:
-            continue
-        elif code == ".exit":
-            break
-        else:
-            try:
-                r = eval(code)
-            except Exception as e1:
-                try:
-                    exec(code)
-                except Exception as e2:
-                    print("Unexpected error:")
-                    print("Eval: ")
-                    print(e1)
-                    print("Exec: ")
-                    print(e2)
+mod processes;
 
-            try:
-                r = await r
-            except Exception as e:
-                pass
+const IPC_NAME: &str = "0syoch/test-ipc";
 
-            print(repr(r))
-"#;
+struct IPC_master {
+    state: i32,
+    ipc_handle: u128,
+}
+
+impl Process for IPC_master {
+    fn poll(&mut self, data: &SyscallData) -> PollResult<i64> {
+        match self.state {
+            0 => {
+                self.state = 1;
+                PollResult::Syscall(Syscall::IPC_Create(IPC_NAME.to_string()))
+            }
+
+            1 => {
+                if let SyscallData::Handle(Ok(handle)) = data {
+                    self.ipc_handle = handle.id;
+                    self.state = 2;
+                    println!("IPC created: {}", self.ipc_handle);
+                    PollResult::Pending
+                } else if let SyscallData::Handle(Err(e)) = data {
+                    println!("IPC create error: {:?}", e);
+                    PollResult::Done(-1)
+                } else {
+                    panic!("Invalid state");
+                }
+            }
+
+            _ => {
+                panic!("Invalid state");
+            }
+        }
+    }
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut k = kernel::Kernel::default();
-    let p = python::PythonProcess::new(PYTHON_CODE.to_string()).unwrap();
+    let p = IPC_master {
+        state: 0,
+        ipc_handle: 0,
+    };
     k.register_process(Box::new(p));
     k.start();
     Ok(())
