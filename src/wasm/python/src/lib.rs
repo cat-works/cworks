@@ -17,7 +17,7 @@ pub struct PythonProcess {
 impl PythonProcess {
     pub fn new(source: String) -> PyResult<PythonProcess> {
         Ok(PythonProcess {
-            generator: GeneratorWrapepr::new(source)?,
+            generator: GeneratorWrapepr::new(source + "\nwrapper()")?,
         })
     }
 }
