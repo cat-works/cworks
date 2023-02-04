@@ -6,6 +6,7 @@ mod resources;
 mod uri;
 
 pub use kernel::Kernel;
+pub use process::Handle;
 pub use process::PollResult;
 pub use process::Process;
 pub use process::{Syscall, SyscallData};
