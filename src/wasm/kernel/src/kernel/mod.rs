@@ -5,11 +5,11 @@ use std::collections::HashMap;
 
 use crate::{
     fs::RefOrVal,
+    libs::{timestamp, AutoMap},
     process::{Handle, ProcessStatus, Syscall, SyscallData, SyscallError},
 };
 
 use super::{
-    automap::AutoMap,
     fs::FSObj,
     process::{KernelProcess, PollResult, Process},
 };
@@ -31,10 +31,6 @@ impl Default for Kernel {
             fs_root: FSObj::Dist(RefOrVal::Val(HashMap::new())),
         }
     }
-}
-
-fn timestamp() -> f32 {
-    (chrono::Utc::now().timestamp_millis() - 1672498800000) as f32 / 1000.0
 }
 
 impl Kernel {
