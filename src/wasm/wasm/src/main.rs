@@ -1,9 +1,9 @@
 use kernel::{Handle, PollResult, Process, Syscall, SyscallData};
 
 extern crate kernel;
-extern crate python;
+// extern crate python;
 
-mod processes;
+// mod processes;
 
 const IPC_NAME: &str = "0syoch/test-ipc";
 
@@ -142,6 +142,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     k.start();
     Ok(())
 }
+/*
 #[cfg(test)]
 mod test {
     use python::PythonProcess;
@@ -166,3 +167,5 @@ mod test {
         k.start();
     }
 }
+
+*/

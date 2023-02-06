@@ -1,6 +1,6 @@
 mod ipc;
+mod lock;
 mod pid;
-mod resources;
 use std::collections::HashMap;
 
 use crate::{
@@ -14,7 +14,6 @@ use super::{
     process::{KernelProcess, PollResult, Process},
 };
 use ipc::IPC;
-use resources::{KernelResource, LockedResource};
 
 trait FromFSObj {
     fn from(obj: &FSObj) -> Self;
