@@ -2,7 +2,6 @@ mod automap;
 mod fs;
 mod kernel;
 mod process;
-mod resources;
 mod uri;
 
 pub use kernel::Kernel;

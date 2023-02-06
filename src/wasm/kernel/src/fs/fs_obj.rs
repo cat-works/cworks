@@ -1,18 +1,63 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+};
 
 use crate::{process::SyscallError, Syscall};
 
+#[derive(Clone)]
+pub enum RefOrVal<T> {
+    Val(T),
+    Ref(Box<T>),
+}
+
+impl<T: std::fmt::Display> std::fmt::Display for RefOrVal<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RefOrVal::Val(x) => write!(f, "{x}"),
+            RefOrVal::Ref(x) => write!(f, "&{}", *x),
+        }
+    }
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for RefOrVal<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RefOrVal::Val(x) => write!(f, "{x:?}"),
+            RefOrVal::Ref(x) => write!(f, "&{:?}", *x),
+        }
+    }
+}
+
+impl<T> Deref for RefOrVal<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            RefOrVal::Val(x) => x,
+            RefOrVal::Ref(x) => (*x).as_ref(),
+        }
+    }
+}
+impl<T> DerefMut for RefOrVal<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        match self {
+            RefOrVal::Val(x) => x,
+            RefOrVal::Ref(x) => (*x).as_mut(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum FSObj {
-    Int(i128),
-    String(String),
-    Boolean(bool),
-    Float(f32),
-    Double(f64),
-    Bytes(Vec<u8>),
-    List(Vec<FSObj>),
-    Dist(HashMap<String, FSObj>),
-    Handle(u128),
+    Int(RefOrVal<i128>),
+    String(RefOrVal<String>),
+    Boolean(RefOrVal<bool>),
+    Float(RefOrVal<f32>),
+    Double(RefOrVal<f64>),
+    Bytes(RefOrVal<Vec<u8>>),
+    List(RefOrVal<Vec<FSObj>>),
+    Dist(RefOrVal<HashMap<String, FSObj>>),
+    Handle(RefOrVal<u128>),
     Null,
 }
 
@@ -59,7 +104,10 @@ impl FSObj {
                 FSObj::Dist(map) => {
                     if !map.contains_key(part) {
                         if allow_auto_digging {
-                            map.insert(part.to_string(), FSObj::Dist(HashMap::new()));
+                            map.insert(
+                                part.to_string(),
+                                FSObj::Dist(RefOrVal::Val(HashMap::new())),
+                            );
                         } else {
                             return Err(SyscallError::NoSuchEntry);
                         }

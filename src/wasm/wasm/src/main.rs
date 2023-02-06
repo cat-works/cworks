@@ -71,7 +71,7 @@ impl Process for IPC_slave {
             0 => {
                 self.state = 1;
                 println!("s: sleep 1.0secs");
-                PollResult::Sleep(1.0)
+                PollResult::Sleep(0.5)
             }
 
             1 => {
