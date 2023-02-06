@@ -1,4 +1,4 @@
-use crate::kernel::pid::Pid;
+use crate::pid::Pid;
 
 #[derive(Debug, Hash)]
 pub struct Lock {

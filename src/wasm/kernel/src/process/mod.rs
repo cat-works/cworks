@@ -2,22 +2,8 @@ mod kernel_process;
 pub use kernel_process::KernelProcess;
 pub use kernel_process::ProcessStatus;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Handle {
-    pub id: u128,
-}
+use crate::Handle;
 
-impl std::fmt::Display for Handle {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Handle[{}]", self.id)
-    }
-}
-
-impl Handle {
-    pub fn new(id: u128) -> Handle {
-        Handle { id }
-    }
-}
 #[derive(Debug, Clone)]
 pub enum SyscallError {
     NoSuchEntry,   // no such entry(like file, socket or ipc)
@@ -37,7 +23,6 @@ impl std::fmt::Display for SyscallError {
 
 #[derive(Clone, Debug)]
 pub enum Syscall {
-    Lock(String),
     IPC_Create(String),
     IPC_Connect(String),
     Send(Handle, String),

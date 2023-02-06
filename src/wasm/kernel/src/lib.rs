@@ -1,13 +1,14 @@
 mod fs;
+mod handle;
+mod ipc;
 mod kernel;
 mod libs;
+mod lock;
+mod pid;
 mod process;
 mod uri;
 
-use crate::libs::AutoMap;
+pub use handle::{Handle, HandleIssuer};
 pub use kernel::Kernel;
-pub use process::Handle;
-pub use process::PollResult;
-pub use process::Process;
-pub use process::{Syscall, SyscallData};
+pub use process::{PollResult, Process, Syscall, SyscallData};
 pub use uri::Uri;

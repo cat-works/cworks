@@ -1,10 +1,9 @@
-mod ipc;
-mod lock;
-mod pid;
 use std::collections::HashMap;
 
 use crate::{
     fs::RefOrVal,
+    handle::HandleIssuer,
+    ipc::Ipc,
     libs::{timestamp, AutoMap},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
 };
@@ -13,15 +12,12 @@ use super::{
     fs::FSObj,
     process::{KernelProcess, PollResult, Process},
 };
-use ipc::Ipc;
-
-trait FromFSObj {
-    fn from(obj: &FSObj) -> Self;
-}
 
 pub struct Kernel {
     processes: AutoMap<KernelProcess>,
     fs_root: FSObj,
+    ipc_instances: HashMap<String, Ipc>,
+    handle_issuer: HandleIssuer,
 }
 
 impl Default for Kernel {
@@ -29,6 +25,8 @@ impl Default for Kernel {
         Kernel {
             processes: AutoMap::new(),
             fs_root: FSObj::Dist(RefOrVal::Val(HashMap::new())),
+            ipc_instances: HashMap::new(),
+            handle_issuer: HandleIssuer::default(),
         }
     }
 }
@@ -60,40 +58,22 @@ impl Kernel {
                     }
                     PollResult::Syscall(s) => {
                         match s {
-                            Syscall::Lock(ref path) => {
-                                // Lock Check
-                                // for lock in self.locks.map.values() {
-                                //     let KernelResource::Object(ref path2) = lock.get_resource();
-                                //     if path.starts_with(path2) {
-                                //         p.system_call_returns =
-                                //             SyscallData::Handle(Err(SyscallError::AlreadyExists));
-                                //         break;
-                                //     }
-                                // }
-
-                                // let res =
-                                //     LockedResource::new(KernelResource::Object(path.to_string()));
-                                // let key = self.locks.add_value(res);
-                                // p.system_call_returns = SyscallData::Handle(Ok(Handle::new(key)));
-                            }
                             Syscall::IPC_Create(ref name) => {
-                                //let name = format!("/sys/ipc/{name}");
-                                //let handle_id = {
-                                // if self.locks.map.contains_key(&name) {
-                                //     p.system_call_returns =
-                                //         SyscallData::Handle(Err(SyscallError::AlreadyExists));
-                                //     break;
-                                // }
+                                if self.ipc_instances.contains_key(name) {
+                                    p.system_call_returns =
+                                        SyscallData::Handle(Err(SyscallError::AlreadyExists));
+                                    break;
+                                }
 
-                                //    let obj = KernelResource::Object(name.to_string());
-                                // self.locks.add_value(LockedResource::new(obj))
-                                //};
+                                let name = format!("/sys/ipc/{name}");
+                                let handle = self.handle_issuer.next().unwrap();
 
-                                // let ipc = IPC::new(Handle::new(handle_id));
-                                //
-                                // p.system_call_returns =
-                                //     SyscallData::Handle(Ok(Handle { id: handle_id }));
-                                // break;
+                                let ipc = Ipc::new(handle.clone());
+                                self.ipc_instances.insert(name.clone(), ipc);
+
+                                *self.fs_root.get_obj_mut(name, true).unwrap() = FSObj::from(ipc);
+                                p.system_call_returns = SyscallData::Handle(Ok(handle));
+                                break;
                             }
                             Syscall::IPC_Connect(ref name) => {
                                 //let name = format!("/sys/ipc/{name}");
