@@ -7,13 +7,13 @@ extern crate kernel;
 
 const IPC_NAME: &str = "0syoch/test-ipc";
 
-struct IPC_master {
+struct IPCMaster {
     state: i32,
     ipc_handle: Handle,
     client_handle: Handle,
 }
 
-impl Process for IPC_master {
+impl Process for IPCMaster {
     fn poll(&mut self, data: &SyscallData) -> PollResult<i64> {
         match self.state {
             0 => {
@@ -37,11 +37,7 @@ impl Process for IPC_master {
 
             2 => {
                 let s = &self.ipc_handle;
-                if let SyscallData::Connection {
-                    client: client,
-                    server: server,
-                } = data
-                {
+                if let SyscallData::Connection { client, server } = data {
                     if server != s {
                         panic!("Invalid server handle");
                     }
@@ -60,12 +56,12 @@ impl Process for IPC_master {
     }
 }
 
-struct IPC_slave {
+struct IPCSlave {
     state: i32,
     ipc_handle: Handle,
 }
 
-impl Process for IPC_slave {
+impl Process for IPCSlave {
     fn poll(&mut self, data: &SyscallData) -> PollResult<i64> {
         match self.state {
             0 => {
@@ -103,11 +99,7 @@ impl Process for IPC_slave {
             }
 
             4 => {
-                if let SyscallData::ReceivingData {
-                    client: client,
-                    data: data,
-                } = data
-                {
+                if let SyscallData::ReceivingData { client, data } = data {
                     if client != &self.ipc_handle {
                         panic!("Invalid client handle");
                     }
@@ -127,14 +119,14 @@ impl Process for IPC_slave {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut k = kernel::Kernel::default();
-    let p = IPC_master {
+    let p = IPCMaster {
         state: 0,
         ipc_handle: Handle::new(0),
         client_handle: Handle::new(0),
     };
     k.register_process(Box::new(p));
 
-    let p = IPC_slave {
+    let p = IPCSlave {
         state: 0,
         ipc_handle: Handle::new(0),
     };

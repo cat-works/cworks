@@ -1,5 +1,5 @@
 #[derive(Debug, Hash)]
-pub enum PID {
+pub enum Pid {
     UserProcess(u128),
     KernelProcess(u128),
 }

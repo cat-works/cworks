@@ -6,14 +6,14 @@ use std::collections::HashMap;
 use crate::{
     fs::RefOrVal,
     libs::{timestamp, AutoMap},
-    process::{Handle, ProcessStatus, Syscall, SyscallData, SyscallError},
+    process::{ProcessStatus, Syscall, SyscallData, SyscallError},
 };
 
 use super::{
     fs::FSObj,
     process::{KernelProcess, PollResult, Process},
 };
-use ipc::IPC;
+use ipc::Ipc;
 
 trait FromFSObj {
     fn from(obj: &FSObj) -> Self;

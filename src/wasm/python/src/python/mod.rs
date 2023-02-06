@@ -81,7 +81,8 @@ def wrapper():
     if let Err(e) = r {
         panic_py_except(e, vm);
     }
-    return Ok(scope);
+
+    Ok(scope)
 }
 
 static PYTHON: Lazy<Mutex<Python>> = Lazy::new(|| {

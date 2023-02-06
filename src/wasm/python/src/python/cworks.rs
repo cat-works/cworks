@@ -57,7 +57,7 @@ pub mod cworks_mod {
     #[pyfunction]
     fn pending(vm: &VirtualMachine) -> PyResult<PyObjectRef> {
         STATE.lock().unwrap().poll_result = PollResult::Pending;
-        return Ok(vm.ctx.none());
+        Ok(vm.ctx.none())
     }
 
     #[pyfunction]
@@ -66,7 +66,7 @@ pub mod cworks_mod {
 
         STATE.lock().unwrap().poll_result =
             PollResult::Done(r.try_to_primitive::<i128>(vm)?.try_into().unwrap());
-        return Ok(vm.ctx.none());
+        Ok(vm.ctx.none())
     }
 
     #[pyfunction]

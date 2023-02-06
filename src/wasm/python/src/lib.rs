@@ -35,7 +35,7 @@ impl Process for PythonProcess {
             });
         }
         let a = python::cworks::STATE.lock().unwrap();
-        return a.poll_result.clone();
+        a.poll_result.clone()
     }
 }
 

@@ -1,15 +1,15 @@
-use crate::kernel::pid::PID;
+use crate::kernel::pid::Pid;
 
 #[derive(Debug, Hash)]
 pub struct Lock {
     resource_path: String,
     kernel_side_lock_id: u128,
-    managed_by: PID,
-    referenced_by: Vec<PID>,
+    managed_by: Pid,
+    referenced_by: Vec<Pid>,
 }
 
 impl Lock {
-    pub fn new(resource_path: String, managed_by: PID) -> Lock {
+    pub fn new(resource_path: String, managed_by: Pid) -> Lock {
         Lock {
             managed_by,
             resource_path,
@@ -25,11 +25,11 @@ impl Lock {
         self.kernel_side_lock_id
     }
 
-    pub fn get_managed_by(&self) -> &PID {
+    pub fn get_managed_by(&self) -> &Pid {
         &self.managed_by
     }
 
-    pub fn get_referenced_by(&self) -> &Vec<PID> {
+    pub fn get_referenced_by(&self) -> &Vec<Pid> {
         &self.referenced_by
     }
 }
