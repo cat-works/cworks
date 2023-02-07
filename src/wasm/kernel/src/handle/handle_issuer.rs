@@ -1,5 +1,10 @@
 use crate::Handle;
 
+pub enum HandleRef {
+    IpcServer(String),
+    IpcClient(String),
+}
+
 pub struct HandleIssuer {
     last_handle: u128,
     free_handles: Vec<u128>,
