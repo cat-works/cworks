@@ -9,7 +9,7 @@ pub enum ProcessStatus {
 pub struct KernelProcess {
     pub parent_pid: u128,
     pub process: Box<dyn Process>,
-    pub system_call_returns: SyscallData,
+    pub outgoing_data_buffer: Vec<SyscallData>,
     pub status: ProcessStatus,
 }
 
@@ -18,7 +18,7 @@ impl From<Box<dyn Process>> for KernelProcess {
         KernelProcess {
             parent_pid: 0,
             process: p,
-            system_call_returns: SyscallData::None,
+            outgoing_data_buffer: vec![],
             status: ProcessStatus::Running,
         }
     }

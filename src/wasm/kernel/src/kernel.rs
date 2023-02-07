@@ -47,7 +47,10 @@ impl Kernel {
                         p.status = ProcessStatus::Running;
                     }
                 }
-                match p.process.poll(&p.system_call_returns) {
+
+                let data = p.outgoing_data_buffer.pop().unwrap_or(SyscallData::None);
+
+                match p.process.poll(&data) {
                     PollResult::Pending => (),
                     PollResult::Done(n) => {
                         println!("Process<{pid}> Returns {n}");
@@ -60,8 +63,9 @@ impl Kernel {
                         match s {
                             Syscall::IPC_Create(ref name) => {
                                 if self.ipc_instances.contains_key(name) {
-                                    p.system_call_returns =
-                                        SyscallData::Handle(Err(SyscallError::AlreadyExists));
+                                    p.outgoing_data_buffer.push(SyscallData::Handle(Err(
+                                        SyscallError::AlreadyExists,
+                                    )));
                                     break;
                                 }
 
@@ -72,13 +76,13 @@ impl Kernel {
                                 let ipc = Ipc::new(handle.clone());
                                 self.ipc_instances.insert(name.clone(), ipc);
 
-                                p.system_call_returns = SyscallData::Handle(Ok(handle));
+                                p.outgoing_data_buffer.push(SyscallData::Handle(Ok(handle)));
                                 break;
                             }
                             Syscall::IPC_Connect(ref name) => {
                                 if !self.ipc_instances.contains_key(name) {
-                                    p.system_call_returns =
-                                        SyscallData::Handle(Err(SyscallError::NoSuchEntry));
+                                    p.outgoing_data_buffer
+                                        .push(SyscallData::Handle(Err(SyscallError::NoSuchEntry)));
                                     break;
                                 }
 
@@ -89,13 +93,15 @@ impl Kernel {
                                 let ipc = self.ipc_instances.get_mut(name).unwrap();
                                 ipc.connect(handle.clone());
 
-                                p.system_call_returns = SyscallData::Handle(Ok(handle));
+                                let server = ipc.get_server_handle();
+
+                                p.outgoing_data_buffer.push(SyscallData::Handle(Ok(handle)));
                                 break;
                             }
                             Syscall::Send(ref handle, ref data) => {
                                 // TODO: IPC Send
-                                p.system_call_returns =
-                                    SyscallData::Handle(Err(SyscallError::NotImplemented));
+                                p.outgoing_data_buffer
+                                    .push(SyscallData::Handle(Err(SyscallError::NotImplemented)));
                             }
                         }
                         println!("{pid}: {s:?}");
