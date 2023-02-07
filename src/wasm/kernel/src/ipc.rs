@@ -39,6 +39,9 @@ impl Ipc {
             server,
         }
     }
+    pub fn connect(&mut self, client: Handle) {
+        self.clients.push(client);
+    }
 }
 
 impl From<Ipc> for FSObj {

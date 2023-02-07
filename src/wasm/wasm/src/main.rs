@@ -25,10 +25,10 @@ impl Process for IPCMaster {
                 if let SyscallData::Handle(Ok(handle)) = data {
                     self.ipc_handle = handle.clone();
                     self.state = 2;
-                    println!("IPC created: {}", self.ipc_handle);
+                    println!("m: IPC created: {}", self.ipc_handle);
                     PollResult::Pending
                 } else if let SyscallData::Handle(Err(e)) = data {
-                    println!("IPC create error: {:?}", e);
+                    println!("m: IPC create error: {:?}", e);
                     PollResult::Done(-1)
                 } else {
                     panic!("Invalid state");
@@ -41,7 +41,7 @@ impl Process for IPCMaster {
                     if server != s {
                         panic!("Invalid server handle");
                     }
-                    println!("IPC connection coming: {}", client);
+                    println!("m: IPC connection coming: {}", client);
                     self.state = 3;
                     PollResult::Pending
                 } else {

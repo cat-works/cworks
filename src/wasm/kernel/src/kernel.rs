@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     fs::RefOrVal,
-    handle::HandleIssuer,
+    handle::{HandleData, HandleIssuer},
     ipc::Ipc,
     libs::{timestamp, AutoMap},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
@@ -65,7 +65,9 @@ impl Kernel {
                                     break;
                                 }
 
-                                let handle = self.handle_issuer.next().unwrap();
+                                let handle = self
+                                    .handle_issuer
+                                    .get_new_handle(HandleData::IpcServer(name.to_string()));
 
                                 let ipc = Ipc::new(handle.clone());
                                 self.ipc_instances.insert(name.clone(), ipc);
@@ -80,10 +82,15 @@ impl Kernel {
                                     break;
                                 }
 
-                                let handle = self.handle_issuer.next().unwrap();
+                                let handle = self
+                                    .handle_issuer
+                                    .get_new_handle(HandleData::IpcClient(name.to_string()));
 
                                 let ipc = self.ipc_instances.get_mut(name).unwrap();
                                 ipc.connect(handle.clone());
+
+                                p.system_call_returns = SyscallData::Handle(Ok(handle));
+                                break;
                             }
                             Syscall::Send(ref handle, ref data) => {
                                 // TODO: IPC Send
