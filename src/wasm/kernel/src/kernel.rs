@@ -65,52 +65,25 @@ impl Kernel {
                                     break;
                                 }
 
-                                let name = format!("/sys/ipc/{name}");
                                 let handle = self.handle_issuer.next().unwrap();
 
                                 let ipc = Ipc::new(handle.clone());
                                 self.ipc_instances.insert(name.clone(), ipc);
 
-                                *self.fs_root.get_obj_mut(name, true).unwrap() = FSObj::from(ipc);
                                 p.system_call_returns = SyscallData::Handle(Ok(handle));
                                 break;
                             }
                             Syscall::IPC_Connect(ref name) => {
-                                //let name = format!("/sys/ipc/{name}");
-                                //let handle_id = match self.locks.map.get(name) {
-                                //    None => {
-                                //        p.system_call_returns =
-                                //            SyscallData::Handle(Err(SyscallError::NoSuchEntry));
-                                //        break;
-                                //    }
-                                //    Some(x) => match *x.get_resource() {
-                                //        KernelResource::Object(x) => x,
-                                //    },
-                                //};
-                                //
-                                //let ipc = IPC::new(Handle::new(handle_id));
-                                //
-                                //p.system_call_returns =
-                                //    SyscallData::Handle(Ok(Handle { id: handle_id }));
-                                //break;
-                                //
-                                //let obj =
-                                //    self.fs_root.get_obj_mut(format!("/sys/ipc/{name}"), false);
-                                //if let Err(_) = obj {
-                                //    p.system_call_returns =
-                                //        SyscallData::Handle(Err(SyscallError::UnreachableEntry));
-                                //    break;
-                                //}
-                                //let fsobj = obj.unwrap();
-                                //
-                                //if let FSObj::Handle(handle_id) = fsobj {
-                                //    p.system_call_returns =
-                                //        SyscallData::Handle(Ok(Handle { id: *handle_id }));
-                                //} else {
-                                //    p.system_call_returns =
-                                //        SyscallData::Handle(Err(SyscallError::NoSuchEntry));
-                                //}
-                                //break;
+                                if !self.ipc_instances.contains_key(name) {
+                                    p.system_call_returns =
+                                        SyscallData::Handle(Err(SyscallError::NoSuchEntry));
+                                    break;
+                                }
+
+                                let handle = self.handle_issuer.next().unwrap();
+
+                                let ipc = self.ipc_instances.get_mut(name).unwrap();
+                                ipc.connect(handle.clone());
                             }
                             Syscall::Send(ref handle, ref data) => {
                                 // TODO: IPC Send
