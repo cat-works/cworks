@@ -4,7 +4,13 @@ use crate::{process::SyscallError, Handle};
 
 use super::RefOrVal;
 
-#[derive(Debug, Clone)]
+trait DynamicFSObj: std::fmt::Debug {
+    fn hash(&self) -> u64;
+    fn get_obj(&self, path: String) -> Result<&FSObj, SyscallError>;
+    fn set_obj(&mut self, path: String, obj: FSObj) -> Result<(), SyscallError>;
+}
+
+#[derive(Debug)]
 pub enum FSObj {
     Int(RefOrVal<i128>),
     String(RefOrVal<String>),
@@ -15,6 +21,7 @@ pub enum FSObj {
     List(RefOrVal<Vec<FSObj>>),
     Dist(RefOrVal<HashMap<String, FSObj>>),
     Handle(RefOrVal<Handle>),
+    Dynamic(Box<dyn DynamicFSObj>),
     Null,
 }
 
@@ -44,6 +51,7 @@ impl From<&FSObj> for String {
                     + "}"
             }
             FSObj::Handle(h) => format!("Handle({h})"),
+            FSObj::Dynamic(d) => format!("{d:?}"),
             FSObj::Null => String::new(),
         }
     }
