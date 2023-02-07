@@ -42,6 +42,10 @@ impl Ipc {
     pub fn connect(&mut self, client: Handle) {
         self.clients.push(client);
     }
+
+    pub fn get_server_handle(&self) -> Handle {
+        self.server.clone()
+    }
 }
 
 impl From<Ipc> for FSObj {
