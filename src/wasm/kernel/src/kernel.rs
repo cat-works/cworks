@@ -61,9 +61,8 @@ impl Kernel {
     }
 
     pub fn start(&mut self) {
-        let mut actions = vec![];
-
         while !self.processes.map.is_empty() {
+            let mut actions = vec![];
             for (pid, p) in &mut self.processes.map {
                 if let ProcessStatus::Sleeping(t) = p.status {
                     if t > timestamp() {
