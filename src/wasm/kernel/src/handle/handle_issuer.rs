@@ -25,12 +25,12 @@ impl Default for HandleIssuer {
 }
 
 impl HandleIssuer {
-    pub fn get_new_handle(&mut self, data: HandleData) -> Handle {
+    pub fn get_new_handle(&mut self, pid: u128, data: HandleData) -> Handle {
         let handle = if let Some(handle) = self.free_handles.pop() {
-            Handle::new(handle)
+            Handle::new(pid, handle)
         } else {
             self.last_handle += 1;
-            Handle::new(self.last_handle)
+            Handle::new(pid, self.last_handle)
         };
         println!("New handle: {}, purpose: {:?}", handle.id, data);
 
