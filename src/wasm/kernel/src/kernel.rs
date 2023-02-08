@@ -13,6 +13,30 @@ use super::{
     process::{KernelProcess, PollResult, Process},
 };
 
+enum KernelAction {
+    ProcessKill(u128),
+    SendSyscallData(u128, SyscallData),
+}
+
+impl KernelAction {
+    fn do_action(&self, kernel: &mut Kernel) {
+        match self {
+            Self::ProcessKill(pid) => {
+                kernel.processes.map.remove(pid);
+            }
+            Self::SendSyscallData(pid, data) => {
+                kernel
+                    .processes
+                    .map
+                    .get_mut(pid)
+                    .unwrap()
+                    .outgoing_data_buffer
+                    .push(data.clone());
+            }
+        }
+    }
+}
+
 pub struct Kernel {
     processes: AutoMap<KernelProcess>,
     fs_root: FSObj,
@@ -37,8 +61,9 @@ impl Kernel {
     }
 
     pub fn start(&mut self) {
+        let mut actions = vec![];
+
         while !self.processes.map.is_empty() {
-            let mut process_to_kill = vec![];
             for (pid, p) in &mut self.processes.map {
                 if let ProcessStatus::Sleeping(t) = p.status {
                     if t > timestamp() {
@@ -54,7 +79,7 @@ impl Kernel {
                     PollResult::Pending => (),
                     PollResult::Done(n) => {
                         println!("Process<{pid}> Returns {n}");
-                        process_to_kill.push(*pid);
+                        actions.push(KernelAction::ProcessKill(*pid));
                     }
                     PollResult::Sleep(n) => {
                         p.status = ProcessStatus::Sleeping(timestamp() + n);
@@ -71,7 +96,7 @@ impl Kernel {
 
                                 let handle = self
                                     .handle_issuer
-                                    .get_new_handle(HandleData::IpcServer(name.to_string()));
+                                    .get_new_handle(*pid, HandleData::IpcServer(name.to_string()));
 
                                 let ipc = Ipc::new(handle.clone());
                                 self.ipc_instances.insert(name.clone(), ipc);
@@ -88,12 +113,19 @@ impl Kernel {
 
                                 let handle = self
                                     .handle_issuer
-                                    .get_new_handle(HandleData::IpcClient(name.to_string()));
+                                    .get_new_handle(*pid, HandleData::IpcClient(name.to_string()));
 
                                 let ipc = self.ipc_instances.get_mut(name).unwrap();
                                 ipc.connect(handle.clone());
 
                                 let server = ipc.get_server_handle();
+                                actions.push(KernelAction::SendSyscallData(
+                                    server.pid,
+                                    SyscallData::Connection {
+                                        client: handle.clone(),
+                                        server: server.clone(),
+                                    },
+                                ));
 
                                 p.outgoing_data_buffer.push(SyscallData::Handle(Ok(handle)));
                                 break;
@@ -109,8 +141,8 @@ impl Kernel {
                 }
             }
 
-            for pid in process_to_kill {
-                self.processes.map.remove(&pid);
+            for act in &actions {
+                act.do_action(self);
             }
         }
     }
