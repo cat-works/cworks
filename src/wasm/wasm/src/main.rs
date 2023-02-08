@@ -121,14 +121,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut k = kernel::Kernel::default();
     let p = IPCMaster {
         state: 0,
-        ipc_handle: Handle::new(0, 0),
-        client_handle: Handle::new(0, 0),
+        ipc_handle: Handle::default(),
+        client_handle: Handle::default(),
     };
     k.register_process(Box::new(p));
 
     let p = IPCSlave {
         state: 0,
-        ipc_handle: Handle::new(0, 0),
+        ipc_handle: Handle::default(),
     };
     k.register_process(Box::new(p));
     k.start();

@@ -4,7 +4,7 @@ use crate::{process::SyscallError, Handle};
 
 use super::RefOrVal;
 
-trait DynamicFSObj: std::fmt::Debug {
+pub trait DynamicFSObj: std::fmt::Debug {
     fn hash(&self) -> u64;
     fn get_obj(&self, path: String) -> Result<&FSObj, SyscallError>;
     fn set_obj(&mut self, path: String, obj: FSObj) -> Result<(), SyscallError>;
