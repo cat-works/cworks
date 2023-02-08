@@ -32,7 +32,6 @@ impl HandleIssuer {
             self.last_handle += 1;
             Handle::new(pid, self.last_handle)
         };
-        println!("New handle: {}, purpose: {:?}", handle.id, data);
 
         self.handle_map.insert(handle.clone(), data);
         handle
