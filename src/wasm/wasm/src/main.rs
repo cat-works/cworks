@@ -49,7 +49,20 @@ impl Process for IPCMaster {
                 }
             }
 
+            3 => {
+                if let SyscallData::ReceivingData { client, data } = data {
+                    if client != &self.client_handle {
+                        panic!("Invalid client handle");
+                    }
+                    println!("m: Received: {}", data);
+                    PollResult::Done(0)
+                } else {
+                    PollResult::Pending
+                }
+            }
+
             _ => {
+                println!("m: Invalid state: {:?} {}", data, self.state);
                 panic!("Invalid state");
             }
         }
@@ -58,7 +71,7 @@ impl Process for IPCMaster {
 
 struct IPCSlave {
     state: i32,
-    ipc_handle: Handle,
+    dest: Handle,
 }
 
 impl Process for IPCSlave {
@@ -66,20 +79,18 @@ impl Process for IPCSlave {
         match self.state {
             0 => {
                 self.state = 1;
-                println!("s: sleep 1.0secs");
                 PollResult::Sleep(0.5)
             }
 
             1 => {
                 self.state = 2;
-                println!("s: wake?");
                 PollResult::Syscall(Syscall::IPC_Connect(IPC_NAME.to_string()))
             }
             2 => {
+                self.state = 3;
                 if let SyscallData::Handle(Ok(handle)) = data {
-                    self.ipc_handle = handle.clone();
-                    self.state = 3;
-                    println!("s: IPC Connected: {}", self.ipc_handle);
+                    self.dest = handle.clone();
+                    println!("s: IPC Connected: {}", self.dest);
                     PollResult::Pending
                 } else if let SyscallData::Handle(Err(e)) = data {
                     println!("s: IPC Connect error: {:?}", e);
@@ -93,14 +104,15 @@ impl Process for IPCSlave {
             3 => {
                 self.state = 4;
                 PollResult::Syscall(Syscall::Send(
-                    self.ipc_handle.clone(),
+                    None,
+                    self.dest.clone(),
                     "Hello, world!".to_string(),
                 ))
             }
 
             4 => {
                 if let SyscallData::ReceivingData { client, data } = data {
-                    if client != &self.ipc_handle {
+                    if client != &self.dest {
                         panic!("Invalid client handle");
                     }
                     println!("s: Received: {}", data);
@@ -128,7 +140,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let p = IPCSlave {
         state: 0,
-        ipc_handle: Handle::default(),
+        dest: Handle::default(),
     };
     k.register_process(Box::new(p));
     k.start();
