@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 use crate::{process::SyscallError, Handle};
 
@@ -20,7 +20,7 @@ pub enum FSObj {
     Bytes(RefOrVal<Vec<u8>>),
     List(RefOrVal<Vec<FSObj>>),
     Dist(RefOrVal<HashMap<String, FSObj>>),
-    Handle(RefOrVal<Handle>),
+    Handle(RefOrVal<Arc<Handle>>),
     Dynamic(Box<dyn DynamicFSObj>),
     Null,
 }

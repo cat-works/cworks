@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use kernel::{Handle, PollResult, Process, Syscall, SyscallData};
 
 extern crate kernel;
@@ -9,8 +11,8 @@ const IPC_NAME: &str = "0syoch/test-ipc";
 
 struct IPCMaster {
     state: i32,
-    ipc_handle: Handle,
-    client_handle: Handle,
+    ipc_handle: Arc<Handle>,
+    client_handle: Arc<Handle>,
 }
 
 impl Process for IPCMaster {
@@ -18,6 +20,7 @@ impl Process for IPCMaster {
         match self.state {
             0 => {
                 self.state = 1;
+                println!("[Master] Creating...");
                 PollResult::Syscall(Syscall::IPC_Create(IPC_NAME.to_string()))
             }
 
@@ -71,7 +74,7 @@ impl Process for IPCMaster {
 
 struct IPCSlave {
     state: i32,
-    dest: Handle,
+    dest: Arc<Handle>,
 }
 
 impl Process for IPCSlave {
@@ -84,6 +87,7 @@ impl Process for IPCSlave {
 
             1 => {
                 self.state = 2;
+                println!("[slave ] Connecting..");
                 PollResult::Syscall(Syscall::IPC_Connect(IPC_NAME.to_string()))
             }
             2 => {
@@ -104,7 +108,6 @@ impl Process for IPCSlave {
             3 => {
                 self.state = 4;
                 PollResult::Syscall(Syscall::Send(
-                    None,
                     self.dest.clone(),
                     "Hello, world!".to_string(),
                 ))
@@ -133,14 +136,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut k = kernel::Kernel::default();
     let p = IPCMaster {
         state: 0,
-        ipc_handle: Handle::default(),
-        client_handle: Handle::default(),
+        ipc_handle: Handle::default().into(),
+        client_handle: Handle::default().into(),
     };
     k.register_process(Box::new(p));
 
     let p = IPCSlave {
         state: 0,
-        dest: Handle::default(),
+        dest: Handle::default().into(),
     };
     k.register_process(Box::new(p));
     k.start();

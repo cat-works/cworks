@@ -1,22 +1,21 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     fs::{FSObj, RefOrVal},
+    handle::HandleData,
     Handle,
 };
 
+#[derive(Debug)]
 pub struct IpcMessage {
-    pub from: Handle,
+    pub from: Option<Arc<Handle>>,
     pub message: String,
 }
 
 impl From<IpcMessage> for FSObj {
     fn from(x: IpcMessage) -> FSObj {
         let mut message = HashMap::new();
-        message.insert(
-            "handle".to_string(),
-            FSObj::Handle(RefOrVal::Ref(Box::new(x.from))),
-        );
+        message.insert("handle".to_string(), x.from.into());
         message.insert(
             "message".to_string(),
             FSObj::String(RefOrVal::Ref(Box::new(x.message))),
@@ -25,36 +24,45 @@ impl From<IpcMessage> for FSObj {
     }
 }
 
+#[derive(Debug)]
 pub struct Ipc {
     buffer: Vec<IpcMessage>,
-    server: Handle,
-    clients: Vec<Handle>,
+    server: Option<Arc<Handle>>,
+    clients: Vec<Arc<Handle>>,
 }
 
 impl Ipc {
-    pub fn new(server: Handle) -> Ipc {
+    pub fn new() -> Ipc {
         Ipc {
             buffer: vec![],
             clients: vec![],
-            server,
+            server: None,
         }
     }
-    pub fn connect(&mut self, client: Handle) {
+    pub fn connect(&mut self, client: Arc<Handle>) {
         self.clients.push(client);
     }
 
-    pub fn get_server_handle(&self) -> Handle {
-        self.server.clone()
+    pub fn set_server_handle(&mut self, server: Arc<Handle>) {
+        self.server = Some(server);
+    }
+
+    pub fn get_server_handle(&self) -> &Option<Arc<Handle>> {
+        &self.server
+    }
+
+    pub fn send(&mut self, data: String, client: Option<Arc<Handle>>) {
+        self.buffer.push(IpcMessage {
+            from: client,
+            message: data,
+        })
     }
 }
 
 impl From<Ipc> for FSObj {
     fn from(x: Ipc) -> FSObj {
         let mut root = HashMap::new();
-        root.insert(
-            "server".to_string(),
-            FSObj::Handle(RefOrVal::Ref(Box::new(x.server))),
-        );
+        root.insert("server".to_string(), x.server.into());
 
         let mut clients = vec![];
         for client in x.clients {

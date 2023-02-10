@@ -1,10 +1,30 @@
+use std::{rc::Rc, sync::Arc};
+
+use crate::fs::FSObj;
+
 use super::HandleData;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct Handle {
     pub id: u128,
     pub pid: u128,
     pub(crate) data: HandleData,
+}
+
+impl PartialEq for Handle {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.pid == other.pid
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        self.id != other.id || self.pid != other.pid
+    }
+}
+
+impl From<Arc<Handle>> for FSObj {
+    fn from(x: Arc<Handle>) -> FSObj {
+        FSObj::Handle(crate::fs::RefOrVal::Val(x))
+    }
 }
 
 impl std::fmt::Display for Handle {
