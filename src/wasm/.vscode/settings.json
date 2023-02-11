@@ -3,7 +3,7 @@
     "commands": [
       {
         // "cmd": "cargo test kernel::test::kernel -- --nocapture   "
-        "cmd": "cargo clippy"
+        "cmd": "cargo run"
       }
     ]
   }
