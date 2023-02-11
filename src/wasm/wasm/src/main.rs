@@ -72,10 +72,7 @@ impl Process for IPCMaster {
                     PollResult::Pending
                 }
             }
-            4 => {
-                println!("[Master] {:?}", data);
-                PollResult::Done(0)
-            }
+            4 => PollResult::Done(0),
 
             _ => {
                 println!("[Master] Invalid state: {:?} {}", data, self.state);
@@ -141,7 +138,6 @@ impl Process for IPCSlave {
                     println!("[Slave ] Received: {}", data);
                     PollResult::Done(0)
                 } else {
-                    // println!("[Slave ] {:?}", data);
                     PollResult::Pending
                 }
             }

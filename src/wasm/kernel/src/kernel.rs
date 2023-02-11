@@ -165,7 +165,6 @@ impl Kernel {
                                     server: _,
                                     ref client,
                                 } => {
-                                    println!("Sending to {:?}", client.pid);
                                     let act = KernelAction::SendSyscallData(
                                         client.pid,
                                         SyscallData::ReceivingData {

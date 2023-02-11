@@ -46,7 +46,7 @@ pub mod cworks_mod {
             }
             SyscallData::ReceivingData { focus, data } => {
                 r.set_item("kind", vm.ctx.new_str("ReceivingData").into(), vm)?;
-                r.set_item("handle", vm.ctx.new_int(client.id).into(), vm)?;
+                r.set_item("handle", vm.ctx.new_int(focus.id).into(), vm)?;
                 r.set_item("data", vm.ctx.new_str(data.clone()).into(), vm)?;
             }
         }
