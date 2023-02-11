@@ -3,6 +3,8 @@ mod poll_result;
 mod syscall_data;
 mod syscall_error;
 
+use std::sync::Arc;
+
 use crate::Handle;
 pub use kernel_process::KernelProcess;
 pub use kernel_process::ProcessStatus;
@@ -12,9 +14,9 @@ pub use syscall_error::SyscallError;
 
 #[derive(Clone, Debug)]
 pub enum Syscall {
-    IPC_Create(String),
-    IPC_Connect(String),
-    Send(Option<Handle>, Handle, String),
+    IpcCreate(String),
+    IpcConnect(String),
+    Send(Arc<Handle>, String),
 }
 
 pub trait Process: Sync + Send {
