@@ -16,3 +16,33 @@ pub enum HandleData {
     },
     None,
 }
+
+impl std::fmt::Display for HandleData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HandleData::IpcClient { server } => {
+                let lock = server.try_lock();
+                match lock {
+                    Ok(x) => write!(f, "IpcClient({})", x)?,
+                    Err(e) => write!(f, "IpcClient")?,
+                }
+            }
+            HandleData::IpcServer { ipc } => {
+                let lock = ipc.try_lock();
+                match lock {
+                    Ok(x) => write!(f, "IpcServer({})", x)?,
+                    Err(e) => write!(f, "IpcServer")?,
+                }
+            }
+            HandleData::IpcServerClient { server, client } => {
+                let lock = server.try_lock();
+                match lock {
+                    Ok(x) => write!(f, "IpcServerClient({}:{client})", x)?,
+                    Err(e) => write!(f, "IpcServerClient(<Server>:{client})")?,
+                }
+            }
+            HandleData::None => write!(f, "None")?,
+        };
+        Ok(())
+    }
+}

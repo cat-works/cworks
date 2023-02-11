@@ -29,7 +29,7 @@ impl From<Arc<Handle>> for FSObj {
 
 impl std::fmt::Display for Handle {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "H<{}>@P{}", self.id, self.pid)
+        write!(f, "Handle<{}>@P{} {{{}}}", self.id, self.pid, self.data)
     }
 }
 

@@ -12,7 +12,7 @@ pub enum SyscallData {
         server: Arc<Handle>,
     },
     ReceivingData {
-        client: Arc<Handle>,
+        focus: Arc<Handle>,
         data: String,
     },
     None,

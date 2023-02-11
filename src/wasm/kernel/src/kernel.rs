@@ -53,6 +53,7 @@ impl Kernel {
 
     fn step_all_processes(&mut self) {
         for (pid, p) in &mut self.processes.map {
+            // println!("Polling {pid} {:?}", p.status);
             if let ProcessStatus::Sleeping(t) = p.status {
                 if t > timestamp() {
                     continue;
@@ -63,7 +64,9 @@ impl Kernel {
 
             let data = p.outgoing_data_buffer.pop().unwrap_or(SyscallData::None);
 
-            match p.process.poll(&data) {
+            let res = p.process.poll(&data);
+            // println!("{pid}: {res:?}");
+            match res {
                 PollResult::Pending => (),
                 PollResult::Done(n) => {
                     println!("Process<{pid}> Returns {n}");
@@ -102,47 +105,77 @@ impl Kernel {
 
                             let ipc = self.ipc_instances.get(name).unwrap();
 
-                            let handle = self.handle_issuer.get_new_handle(
+                            let client_handle = self.handle_issuer.get_new_handle(
                                 *pid,
                                 HandleData::IpcClient {
                                     server: ipc.clone(),
                                 },
                             );
 
-                            ipc.lock().unwrap().connect(handle.clone());
+                            let server_client_handle = self.handle_issuer.get_new_handle(
+                                *pid,
+                                HandleData::IpcServerClient {
+                                    server: ipc.clone(),
+                                    client: client_handle.clone(),
+                                },
+                            );
 
                             {
-                                let ipc = ipc.lock().unwrap();
+                                let mut ipc = ipc.lock().unwrap();
 
+                                ipc.connect(server_client_handle.clone());
                                 let server = ipc.get_server_handle().as_ref().unwrap();
                                 self.actions.push(KernelAction::SendSyscallData(
                                     server.pid,
                                     SyscallData::Connection {
-                                        client: handle.clone(),
+                                        client: server_client_handle.clone(),
                                         server: server.clone(),
                                     },
                                 ));
                             }
 
-                            p.outgoing_data_buffer.push(SyscallData::Handle(Ok(handle)));
+                            p.outgoing_data_buffer
+                                .push(SyscallData::Handle(Ok(client_handle)));
                             continue;
                         }
                         Syscall::Send(ref handle, ref data) => {
                             match handle.data {
-                                HandleData::IpcServer { ref ipc } => {
-                                    ipc.lock().unwrap().send(data.clone(), None);
+                                HandleData::IpcServer { ipc: _ } => {
+                                    p.outgoing_data_buffer.push(SyscallData::Handle(Err(
+                                        SyscallError::UnknownHandle,
+                                    )));
+                                    continue;
                                 }
                                 HandleData::IpcClient { ref server } => {
-                                    server.lock().unwrap().send(data.clone(), None);
+                                    let mut ipc = server.lock().unwrap();
+                                    let (pid, _) = ipc.send(data.clone(), Some(handle.clone()));
+
+                                    let handle = ipc.get_server_side_handle(handle.clone());
+                                    let act = KernelAction::SendSyscallData(
+                                        pid,
+                                        SyscallData::ReceivingData {
+                                            focus: handle.unwrap(),
+                                            data: data.to_string(),
+                                        },
+                                    );
+
+                                    self.actions.push(act);
                                 }
                                 HandleData::IpcServerClient {
-                                    ref server,
+                                    server: _,
                                     ref client,
                                 } => {
-                                    server
-                                        .lock()
-                                        .unwrap()
-                                        .send(data.clone(), Some(client.clone()));
+                                    println!("Sending to {:?}", client.pid);
+                                    let act = KernelAction::SendSyscallData(
+                                        client.pid,
+                                        SyscallData::ReceivingData {
+                                            focus: client.clone(),
+                                            data: data.to_string(),
+                                        },
+                                    );
+
+                                    self.actions.push(act);
+                                    continue;
                                 }
                                 _ => {
                                     p.outgoing_data_buffer.push(SyscallData::Handle(Err(
@@ -156,7 +189,6 @@ impl Kernel {
                                 .push(SyscallData::Handle(Err(SyscallError::NotImplemented)));
                         }
                     }
-                    println!("{pid}: {s:?}");
                 }
             }
         }

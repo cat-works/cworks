@@ -28,10 +28,10 @@ impl Process for IPCMaster {
                 if let SyscallData::Handle(Ok(handle)) = data {
                     self.ipc_handle = handle.clone();
                     self.state = 2;
-                    println!("m: IPC created: {}", self.ipc_handle);
+                    println!("[Master] IPC created: {}", self.ipc_handle);
                     PollResult::Pending
                 } else if let SyscallData::Handle(Err(e)) = data {
-                    println!("m: IPC create error: {:?}", e);
+                    println!("[Master] IPC create error: {:?}", e);
                     PollResult::Done(-1)
                 } else {
                     panic!("Invalid state");
@@ -44,7 +44,8 @@ impl Process for IPCMaster {
                     if server != s {
                         panic!("Invalid server handle");
                     }
-                    println!("m: IPC connection coming: {}", client);
+                    self.client_handle = client.clone();
+                    println!("[Master] IPC connection coming: {}", client);
                     self.state = 3;
                     PollResult::Pending
                 } else {
@@ -53,19 +54,31 @@ impl Process for IPCMaster {
             }
 
             3 => {
-                if let SyscallData::ReceivingData { client, data } = data {
+                if let SyscallData::ReceivingData {
+                    focus: client,
+                    data,
+                } = data
+                {
                     if client != &self.client_handle {
                         panic!("Invalid client handle");
                     }
-                    println!("m: Received: {}", data);
-                    PollResult::Done(0)
+                    println!("[Master] Received: {}", data);
+                    self.state = 4;
+                    PollResult::Syscall(Syscall::Send(
+                        self.client_handle.clone(),
+                        "Hello, world!".to_string(),
+                    ))
                 } else {
                     PollResult::Pending
                 }
             }
+            4 => {
+                println!("[Master] {:?}", data);
+                PollResult::Done(0)
+            }
 
             _ => {
-                println!("m: Invalid state: {:?} {}", data, self.state);
+                println!("[Master] Invalid state: {:?} {}", data, self.state);
                 panic!("Invalid state");
             }
         }
@@ -87,20 +100,20 @@ impl Process for IPCSlave {
 
             1 => {
                 self.state = 2;
-                println!("[slave ] Connecting..");
+                println!("[Slave ] Connecting..");
                 PollResult::Syscall(Syscall::IPC_Connect(IPC_NAME.to_string()))
             }
             2 => {
                 self.state = 3;
                 if let SyscallData::Handle(Ok(handle)) = data {
                     self.dest = handle.clone();
-                    println!("s: IPC Connected: {}", self.dest);
+                    println!("[Slave ] IPC Connected: {}", self.dest);
                     PollResult::Pending
                 } else if let SyscallData::Handle(Err(e)) = data {
-                    println!("s: IPC Connect error: {:?}", e);
+                    println!("[Slave ] IPC Connect error: {:?}", e);
                     PollResult::Done(-1)
                 } else {
-                    println!("s: Invalid state: {:?}", data);
+                    println!("[Slave ] Invalid state: {:?}", data);
                     panic!("Invalid state");
                 }
             }
@@ -114,13 +127,21 @@ impl Process for IPCSlave {
             }
 
             4 => {
-                if let SyscallData::ReceivingData { client, data } = data {
+                if let SyscallData::ReceivingData {
+                    focus: client,
+                    data,
+                } = data
+                {
                     if client != &self.dest {
+                        println!("Invalid client handle");
+                        println!("  Required: {}", self.dest);
+                        println!("  Actual: {}", client);
                         panic!("Invalid client handle");
                     }
-                    println!("s: Received: {}", data);
+                    println!("[Slave ] Received: {}", data);
                     PollResult::Done(0)
                 } else {
+                    // println!("[Slave ] {:?}", data);
                     PollResult::Pending
                 }
             }

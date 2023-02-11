@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::{
     fs::{FSObj, RefOrVal},
     handle::HandleData,
-    Handle,
+    Handle, Kernel,
 };
 
 #[derive(Debug)]
@@ -26,21 +26,49 @@ impl From<IpcMessage> for FSObj {
 
 #[derive(Debug)]
 pub struct Ipc {
-    buffer: Vec<IpcMessage>,
     server: Option<Arc<Handle>>,
     clients: Vec<Arc<Handle>>,
+}
+impl std::fmt::Display for Ipc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "IPC({} < [{}])",
+            self.server.as_ref().unwrap(),
+            self.clients
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    }
 }
 
 impl Ipc {
     pub fn new() -> Ipc {
         Ipc {
-            buffer: vec![],
             clients: vec![],
             server: None,
         }
     }
+
     pub fn connect(&mut self, client: Arc<Handle>) {
         self.clients.push(client);
+    }
+
+    pub fn get_server_side_handle(&self, required_client: Arc<Handle>) -> Option<Arc<Handle>> {
+        for client in &self.clients {
+            match &client.data {
+                HandleData::IpcServerClient {
+                    server: _,
+                    client: c,
+                } if c.id == required_client.id => {
+                    return Some(client.clone());
+                }
+                _ => (),
+            }
+        }
+        None
     }
 
     pub fn set_server_handle(&mut self, server: Arc<Handle>) {
@@ -51,11 +79,14 @@ impl Ipc {
         &self.server
     }
 
-    pub fn send(&mut self, data: String, client: Option<Arc<Handle>>) {
-        self.buffer.push(IpcMessage {
-            from: client,
-            message: data,
-        })
+    pub fn send(&mut self, data: String, client: Option<Arc<Handle>>) -> (u128, IpcMessage) {
+        (
+            self.server.clone().unwrap().pid,
+            IpcMessage {
+                from: client,
+                message: data,
+            },
+        )
     }
 }
 
@@ -69,12 +100,6 @@ impl From<Ipc> for FSObj {
             clients.push(FSObj::Handle(RefOrVal::Ref(Box::new(client))));
         }
         root.insert("clients".to_string(), FSObj::List(RefOrVal::Val(clients)));
-
-        let mut buffer = vec![];
-        for x in x.buffer {
-            buffer.push(x.into());
-        }
-        root.insert("buffer".to_string(), FSObj::List(RefOrVal::Val(buffer)));
 
         FSObj::Dist(RefOrVal::Val(root))
     }

@@ -1,6 +1,6 @@
 use crate::Syscall;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PollResult<Ret> {
     Pending,
     Done(Ret),
