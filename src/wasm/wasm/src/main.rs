@@ -21,7 +21,7 @@ impl Process for IPCMaster {
             0 => {
                 self.state = 1;
                 println!("[Master] Creating...");
-                PollResult::Syscall(Syscall::IPC_Create(IPC_NAME.to_string()))
+                PollResult::Syscall(Syscall::IpcCreate(IPC_NAME.to_string()))
             }
 
             1 => {
@@ -98,7 +98,7 @@ impl Process for IPCSlave {
             1 => {
                 self.state = 2;
                 println!("[Slave ] Connecting..");
-                PollResult::Syscall(Syscall::IPC_Connect(IPC_NAME.to_string()))
+                PollResult::Syscall(Syscall::IpcConnect(IPC_NAME.to_string()))
             }
             2 => {
                 self.state = 3;

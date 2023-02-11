@@ -4,18 +4,10 @@ use crate::Handle;
 
 use super::HandleData;
 
+#[derive(Default)]
 pub struct HandleIssuer {
     last_handle: u128,
     free_handles: Vec<u128>,
-}
-
-impl Default for HandleIssuer {
-    fn default() -> Self {
-        HandleIssuer {
-            last_handle: 0,
-            free_handles: vec![],
-        }
-    }
 }
 
 impl HandleIssuer {

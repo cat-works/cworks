@@ -14,8 +14,8 @@ pub use syscall_error::SyscallError;
 
 #[derive(Clone, Debug)]
 pub enum Syscall {
-    IPC_Create(String),
-    IPC_Connect(String),
+    IpcCreate(String),
+    IpcConnect(String),
     Send(Arc<Handle>, String),
 }
 

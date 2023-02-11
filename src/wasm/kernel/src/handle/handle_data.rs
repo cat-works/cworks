@@ -24,21 +24,21 @@ impl std::fmt::Display for HandleData {
                 let lock = server.try_lock();
                 match lock {
                     Ok(x) => write!(f, "IpcClient({})", x)?,
-                    Err(e) => write!(f, "IpcClient")?,
+                    Err(_) => write!(f, "IpcClient")?,
                 }
             }
             HandleData::IpcServer { ipc } => {
                 let lock = ipc.try_lock();
                 match lock {
                     Ok(x) => write!(f, "IpcServer({})", x)?,
-                    Err(e) => write!(f, "IpcServer")?,
+                    Err(_) => write!(f, "IpcServer")?,
                 }
             }
             HandleData::IpcServerClient { server, client } => {
                 let lock = server.try_lock();
                 match lock {
                     Ok(x) => write!(f, "IpcServerClient({}:{client})", x)?,
-                    Err(e) => write!(f, "IpcServerClient(<Server>:{client})")?,
+                    Err(_) => write!(f, "IpcServerClient(<Server>:{client})")?,
                 }
             }
             HandleData::None => write!(f, "None")?,

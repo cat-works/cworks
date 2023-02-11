@@ -1,8 +1,5 @@
 use std::{
-    borrow::{Borrow, BorrowMut},
-    cell::RefCell,
     collections::HashMap,
-    rc::Rc,
     sync::{Arc, Mutex},
 };
 
@@ -49,8 +46,6 @@ impl Kernel {
         self.processes.add_value(p.into());
     }
 
-    fn syscall(&mut self, pid: u128) {}
-
     fn step_all_processes(&mut self) {
         for (pid, p) in &mut self.processes.map {
             // println!("Polling {pid} {:?}", p.status);
@@ -77,14 +72,14 @@ impl Kernel {
                 }
                 PollResult::Syscall(s) => {
                     match s {
-                        Syscall::IPC_Create(ref name) => {
+                        Syscall::IpcCreate(ref name) => {
                             if self.ipc_instances.contains_key(name) {
                                 p.outgoing_data_buffer
                                     .push(SyscallData::Handle(Err(SyscallError::AlreadyExists)));
                                 continue;
                             }
 
-                            let ipc = Arc::new(Mutex::new(Ipc::new()));
+                            let ipc = Arc::new(Mutex::new(Ipc::default()));
 
                             let handle = self
                                 .handle_issuer
@@ -96,7 +91,7 @@ impl Kernel {
                             p.outgoing_data_buffer.push(SyscallData::Handle(Ok(handle)));
                             continue;
                         }
-                        Syscall::IPC_Connect(ref name) => {
+                        Syscall::IpcConnect(ref name) => {
                             if !self.ipc_instances.contains_key(name) {
                                 p.outgoing_data_buffer
                                     .push(SyscallData::Handle(Err(SyscallError::NoSuchEntry)));

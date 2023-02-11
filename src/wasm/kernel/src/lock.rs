@@ -17,19 +17,4 @@ impl Lock {
             referenced_by: vec![],
         }
     }
-    pub fn get_resource_path(&self) -> &String {
-        &self.resource_path
-    }
-
-    pub fn get_kernel_side_lock_id(&self) -> u128 {
-        self.kernel_side_lock_id
-    }
-
-    pub fn get_managed_by(&self) -> &Pid {
-        &self.managed_by
-    }
-
-    pub fn get_referenced_by(&self) -> &Vec<Pid> {
-        &self.referenced_by
-    }
 }

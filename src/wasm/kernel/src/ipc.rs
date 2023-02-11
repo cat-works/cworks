@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::{
     fs::{FSObj, RefOrVal},
     handle::HandleData,
-    Handle, Kernel,
+    Handle,
 };
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ impl From<IpcMessage> for FSObj {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Ipc {
     server: Option<Arc<Handle>>,
     clients: Vec<Arc<Handle>>,
@@ -45,13 +45,6 @@ impl std::fmt::Display for Ipc {
 }
 
 impl Ipc {
-    pub fn new() -> Ipc {
-        Ipc {
-            clients: vec![],
-            server: None,
-        }
-    }
-
     pub fn connect(&mut self, client: Arc<Handle>) {
         self.clients.push(client);
     }

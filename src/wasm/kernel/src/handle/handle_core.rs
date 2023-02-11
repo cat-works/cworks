@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use crate::fs::FSObj;
 
@@ -14,10 +14,6 @@ pub struct Handle {
 impl PartialEq for Handle {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id && self.pid == other.pid
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        self.id != other.id || self.pid != other.pid
     }
 }
 
