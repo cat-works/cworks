@@ -10,5 +10,5 @@ mod uri;
 
 pub use handle::{Handle, HandleIssuer};
 pub use kernel::Kernel;
-pub use process::{PollResult, Process, Syscall, SyscallData};
+pub use process::*;
 pub use uri::Uri;
