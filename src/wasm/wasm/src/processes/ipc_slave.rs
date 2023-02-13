@@ -12,7 +12,7 @@ impl Process for IPCSlave {
         match self.state {
             0 => {
                 self.state = 1;
-                PollResult::Sleep(0.1)
+                PollResult::Syscall(Syscall::Sleep(0.1))
             }
 
             1 => {
