@@ -5,7 +5,6 @@ pub enum PollResult<Ret> {
     Pending,
     Done(Ret),
     Syscall(Syscall),
-    Sleep(f32),
 }
 
 impl<T> Default for PollResult<T> {

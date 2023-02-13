@@ -67,10 +67,10 @@ impl Kernel {
                     println!("Process<{pid}> Returns {n}");
                     self.actions.push(KernelAction::ProcessKill(*pid));
                 }
-                PollResult::Sleep(n) => {
-                    p.status = ProcessStatus::Sleeping(timestamp() + n);
-                }
                 PollResult::Syscall(s) => match s {
+                    Syscall::Sleep(seconds) => {
+                        p.status = ProcessStatus::Sleeping(timestamp() + seconds);
+                    }
                     Syscall::IpcCreate(ref name) => {
                         if self.ipc_instances.contains_key(name) {
                             p.outgoing_data_buffer
