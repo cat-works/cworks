@@ -70,120 +70,111 @@ impl Kernel {
                 PollResult::Sleep(n) => {
                     p.status = ProcessStatus::Sleeping(timestamp() + n);
                 }
-                PollResult::Syscall(s) => {
-                    match s {
-                        Syscall::IpcCreate(ref name) => {
-                            if self.ipc_instances.contains_key(name) {
-                                p.outgoing_data_buffer
-                                    .push(SyscallData::Handle(Err(SyscallError::AlreadyExists)));
-                                continue;
-                            }
-
-                            let ipc = Arc::new(Mutex::new(Ipc::default()));
-
-                            let handle = self
-                                .handle_issuer
-                                .get_new_handle(*pid, HandleData::IpcServer { ipc: ipc.clone() });
-                            ipc.lock().unwrap().set_server_handle(handle.clone());
-
-                            self.ipc_instances.insert(name.clone(), ipc.clone());
-
-                            p.outgoing_data_buffer.push(SyscallData::Handle(Ok(handle)));
+                PollResult::Syscall(s) => match s {
+                    Syscall::IpcCreate(ref name) => {
+                        if self.ipc_instances.contains_key(name) {
+                            p.outgoing_data_buffer
+                                .push(SyscallData::Handle(Err(SyscallError::AlreadyExists)));
                             continue;
                         }
-                        Syscall::IpcConnect(ref name) => {
-                            if !self.ipc_instances.contains_key(name) {
-                                p.outgoing_data_buffer
-                                    .push(SyscallData::Handle(Err(SyscallError::NoSuchEntry)));
-                                continue;
-                            }
 
-                            let ipc = self.ipc_instances.get(name).unwrap();
+                        let ipc = Arc::new(Mutex::new(Ipc::default()));
 
-                            let client_handle = self.handle_issuer.get_new_handle(
-                                *pid,
-                                HandleData::IpcClient {
-                                    server: ipc.clone(),
-                                },
-                            );
+                        let handle = self
+                            .handle_issuer
+                            .get_new_handle(*pid, HandleData::IpcServer { ipc: ipc.clone() });
+                        ipc.lock().unwrap().set_server_handle(handle.clone());
 
-                            let server_client_handle = self.handle_issuer.get_new_handle(
-                                *pid,
-                                HandleData::IpcServerClient {
-                                    server: ipc.clone(),
-                                    client: client_handle.clone(),
-                                },
-                            );
+                        self.ipc_instances.insert(name.clone(), ipc.clone());
 
-                            {
-                                let mut ipc = ipc.lock().unwrap();
-
-                                ipc.connect(server_client_handle.clone());
-                                let server = ipc.get_server_handle().as_ref().unwrap();
-                                self.actions.push(KernelAction::SendSyscallData(
-                                    server.pid,
-                                    SyscallData::Connection {
-                                        client: server_client_handle.clone(),
-                                        server: server.clone(),
-                                    },
-                                ));
-                            }
-
-                            p.outgoing_data_buffer
-                                .push(SyscallData::Handle(Ok(client_handle)));
-                            continue;
-                        }
-                        Syscall::Send(ref handle, ref data) => {
-                            match handle.data {
-                                HandleData::IpcServer { ipc: _ } => {
-                                    p.outgoing_data_buffer.push(SyscallData::Handle(Err(
-                                        SyscallError::UnknownHandle,
-                                    )));
-                                    continue;
-                                }
-                                HandleData::IpcClient { ref server } => {
-                                    let mut ipc = server.lock().unwrap();
-                                    let (pid, _) = ipc.send(data.clone(), Some(handle.clone()));
-
-                                    let handle = ipc.get_server_side_handle(handle.clone());
-                                    let act = KernelAction::SendSyscallData(
-                                        pid,
-                                        SyscallData::ReceivingData {
-                                            focus: handle.unwrap(),
-                                            data: data.to_string(),
-                                        },
-                                    );
-
-                                    self.actions.push(act);
-                                }
-                                HandleData::IpcServerClient {
-                                    server: _,
-                                    ref client,
-                                } => {
-                                    let act = KernelAction::SendSyscallData(
-                                        client.pid,
-                                        SyscallData::ReceivingData {
-                                            focus: client.clone(),
-                                            data: data.to_string(),
-                                        },
-                                    );
-
-                                    self.actions.push(act);
-                                    continue;
-                                }
-                                _ => {
-                                    p.outgoing_data_buffer.push(SyscallData::Handle(Err(
-                                        SyscallError::UnknownHandle,
-                                    )));
-                                    continue;
-                                }
-                            }
-                            // TODO: IPC Send
-                            p.outgoing_data_buffer
-                                .push(SyscallData::Handle(Err(SyscallError::NotImplemented)));
-                        }
+                        p.outgoing_data_buffer.push(SyscallData::Handle(Ok(handle)));
+                        continue;
                     }
-                }
+                    Syscall::IpcConnect(ref name) => {
+                        if !self.ipc_instances.contains_key(name) {
+                            p.outgoing_data_buffer
+                                .push(SyscallData::Handle(Err(SyscallError::NoSuchEntry)));
+                            continue;
+                        }
+
+                        let ipc = self.ipc_instances.get(name).unwrap();
+
+                        let client_handle = self.handle_issuer.get_new_handle(
+                            *pid,
+                            HandleData::IpcClient {
+                                server: ipc.clone(),
+                            },
+                        );
+
+                        let server_client_handle = self.handle_issuer.get_new_handle(
+                            *pid,
+                            HandleData::IpcServerClient {
+                                server: ipc.clone(),
+                                client: client_handle.clone(),
+                            },
+                        );
+
+                        {
+                            let mut ipc = ipc.lock().unwrap();
+
+                            ipc.connect(server_client_handle.clone());
+                            let server = ipc.get_server_handle().as_ref().unwrap();
+                            self.actions.push(KernelAction::SendSyscallData(
+                                server.pid,
+                                SyscallData::Connection {
+                                    client: server_client_handle.clone(),
+                                    server: server.clone(),
+                                },
+                            ));
+                        }
+
+                        p.outgoing_data_buffer
+                            .push(SyscallData::Handle(Ok(client_handle)));
+                        continue;
+                    }
+                    Syscall::Send(ref handle, ref data) => match handle.data {
+                        HandleData::IpcServer { ipc: _ } => {
+                            p.outgoing_data_buffer
+                                .push(SyscallData::Handle(Err(SyscallError::UnknownHandle)));
+                            continue;
+                        }
+                        HandleData::IpcClient { ref server } => {
+                            let mut ipc = server.lock().unwrap();
+                            let (pid, _) = ipc.send(data.clone(), Some(handle.clone()));
+
+                            let handle = ipc.get_server_side_handle(handle.clone());
+                            let act = KernelAction::SendSyscallData(
+                                pid,
+                                SyscallData::ReceivingData {
+                                    focus: handle.unwrap(),
+                                    data: data.to_string(),
+                                },
+                            );
+
+                            self.actions.push(act);
+                        }
+                        HandleData::IpcServerClient {
+                            server: _,
+                            ref client,
+                        } => {
+                            let act = KernelAction::SendSyscallData(
+                                client.pid,
+                                SyscallData::ReceivingData {
+                                    focus: client.clone(),
+                                    data: data.to_string(),
+                                },
+                            );
+
+                            self.actions.push(act);
+                            continue;
+                        }
+                        _ => {
+                            p.outgoing_data_buffer
+                                .push(SyscallData::Handle(Err(SyscallError::UnknownHandle)));
+                            continue;
+                        }
+                    },
+                },
             }
         }
     }
