@@ -3,7 +3,9 @@
     "commands": [
       {
         // "cmd": "cargo test kernel::test::kernel -- --nocapture   "
-        "cmd": "wasm-pack build --target web wasm -d ../pkg"
+        // "cmd": "wasm-pack build --target web wasm -d ../pkg" /*
+        "cmd": "cargo run"
+        // */
       }
     ]
   }

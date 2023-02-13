@@ -13,4 +13,5 @@ wasm-bindgen = "0.2.83"
 chrono = "0.4.22"
 python = { path = "../python" }
 kernel = { path = "../kernel" }
+rust_process = { path = "../rust_process" }
 ghs_demangle = {git = "https://github.com/syoch/ghs_demangle"}
