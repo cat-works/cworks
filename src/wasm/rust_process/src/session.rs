@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use kernel::{Handle, Syscall, SyscallData};
+use kernel::{Handle, Syscall, SyscallData, SyscallError};
 
 use crate::dummy_future::DummyFuture;
 
@@ -21,23 +21,49 @@ impl Default for Session {
 }
 
 impl Session {
-    pub async fn ipc_create(&self, name: String) -> Arc<Handle> {
-        self.syscall
-            .lock()
-            .unwrap()
-            .replace(Syscall::IpcCreate(name));
-        DummyFuture::Started.await;
-
+    fn set_syscall(&self, syscall: Syscall) {
+        *self.syscall.lock().unwrap() = Some(syscall);
+    }
+    fn return_handle(&self) -> Result<Arc<Handle>, SyscallError> {
         let m = self.syscall_data.lock().unwrap();
         match &(*m) {
-            SyscallData::Handle(Ok(h)) => {
-                return h.clone();
+            SyscallData::Handle(r) => {
+                return r.clone();
             }
             _ => {
                 panic!("unexpected syscall data");
             }
         }
     }
+
+    pub async fn ipc_create(&self, name: String) -> Result<Arc<Handle>, SyscallError> {
+        self.set_syscall(Syscall::IpcCreate(name));
+        DummyFuture::Started.await;
+        self.return_handle()
+    }
+    pub async fn ipc_send(&self, handle: Arc<Handle>, data: String) -> Result<(), SyscallError> {
+        self.set_syscall(Syscall::Send(handle, data));
+        DummyFuture::Started.await;
+
+        let m = self.syscall_data.lock().unwrap();
+        match &(*m) {
+            SyscallData::None => {
+                return Ok(());
+            }
+            SyscallData::Handle(Err(e)) => {
+                return Err(e.clone());
+            }
+            _ => {
+                panic!("unexpected syscall data");
+            }
+        }
+    }
+    pub async fn ipc_connect(&self, name: String) -> Result<Arc<Handle>, SyscallError> {
+        self.set_syscall(Syscall::IpcConnect(name));
+        DummyFuture::Started.await;
+        self.return_handle()
+    }
+
     pub(crate) fn set_syscall_data(&self, data: &SyscallData) {
         *self.syscall_data.lock().unwrap() = data.clone();
     }
