@@ -31,9 +31,14 @@ impl Session {
                 return r.clone();
             }
             _ => {
+                println!("{:?}", m);
                 panic!("unexpected syscall data");
             }
         }
+    }
+
+    pub fn get_syscall_data(&self) -> SyscallData {
+        self.syscall_data.lock().unwrap().clone()
     }
 
     pub async fn ipc_create(&self, name: String) -> Result<Arc<Handle>, SyscallError> {
