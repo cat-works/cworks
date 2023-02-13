@@ -11,7 +11,8 @@ async fn server(session: Arc<Session>) -> Result<i64, SyscallError> {
     println!("Server: {}", s);
     let mut sc: Option<Arc<Handle>> = None; // ServerClient
 
-    while let data = session.get_syscall_data().await {
+    loop {
+        let data = session.get_syscall_data().await;
         match data {
             kernel::SyscallData::Connection { client, server } => {
                 println!("Connection");
@@ -51,7 +52,8 @@ async fn client(session: Arc<Session>) -> Result<i64, SyscallError> {
 
     println!("Client: {}", c);
 
-    while let data = session.get_syscall_data().await {
+    loop {
+        let data = session.get_syscall_data().await;
         match data {
             kernel::SyscallData::ReceivingData { focus, data } if focus == c => {
                 println!("Received: {} [Client -> Server]", data);

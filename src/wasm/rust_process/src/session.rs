@@ -19,7 +19,7 @@ impl Default for Session {
         let syscall = Arc::new(Mutex::new(Option::None));
         let data = Arc::new(Mutex::new(SyscallData::default()));
         Self {
-            syscall: syscall,
+            syscall,
             syscall_data: data,
             data_buffer: VecDeque::new().into(),
         }
@@ -48,14 +48,14 @@ impl Session {
         loop {
             {
                 let mut buffer = self.data_buffer.lock().unwrap();
-                match buffer.pop_front() {
-                    Some(x) => match *x {
+
+                if let Some(x) = buffer.pop_front() {
+                    match *x {
                         SyscallData::Handle(ref e) => return e.clone(),
                         _ => {
                             buffer.push_back(x);
                         }
-                    },
-                    None => {}
+                    }
                 }
             }
 
@@ -99,7 +99,7 @@ impl Session {
         match *(self.syscall_data.lock().unwrap()) {
             SyscallData::Handle(Err(ref e)) => {
                 self.set_syscall_data(&SyscallData::None);
-                return Err(e.clone());
+                Err(e.clone())
             }
             _ => Ok(()),
         }

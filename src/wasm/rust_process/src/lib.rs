@@ -53,9 +53,9 @@ where
         }
 
         match r {
-            Poll::Ready(Ok(v)) => return kernel::PollResult::Done(v),
-            Poll::Ready(Err(e)) => return kernel::PollResult::Done(e.into()),
-            Poll::Pending => return kernel::PollResult::Pending,
+            Poll::Ready(Ok(v)) => kernel::PollResult::Done(v),
+            Poll::Ready(Err(e)) => kernel::PollResult::Done(e.into()),
+            Poll::Pending => kernel::PollResult::Pending,
         }
     }
 }

@@ -10,9 +10,9 @@ pub enum SyscallError {
     UnreachableEntry,
 }
 
-impl Into<i64> for SyscallError {
-    fn into(self) -> i64 {
-        match self {
+impl From<SyscallError> for i64 {
+    fn from(x: SyscallError) -> i64 {
+        match x {
             SyscallError::NoSuchEntry => -1,
             SyscallError::AlreadyExists => -2,
             SyscallError::UnknownHandle => -3,

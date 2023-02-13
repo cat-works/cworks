@@ -4,4 +4,4 @@ mod python_interpreter;
 
 pub use ipc_master::IPCMaster;
 pub use ipc_slave::IPCSlave;
-pub use python_interpreter::PythonInterpreter;
+pub use python_interpreter::python_interpreter;
