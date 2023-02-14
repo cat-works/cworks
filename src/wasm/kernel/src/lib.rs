@@ -6,7 +6,7 @@ mod libs;
 mod process;
 mod uri;
 
-pub use handle::{Handle, HandleIssuer};
+pub use handle::{Handle, HandleData, HandleIssuer};
 pub use kernel::Kernel;
 pub use process::*;
 pub use uri::Uri;

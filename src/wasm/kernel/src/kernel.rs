@@ -178,28 +178,30 @@ impl Kernel {
             }
         }
     }
+    pub fn step(&mut self) {
+        self.actions = vec![];
 
-    pub fn start(&mut self) {
-        while !self.processes.map.is_empty() {
-            self.actions = vec![];
+        self.step_all_processes();
 
-            self.step_all_processes();
-
-            while let Some(act) = self.actions.pop() {
-                match act {
-                    KernelAction::ProcessKill(pid) => {
-                        self.processes.map.remove(&pid);
-                    }
-                    KernelAction::SendSyscallData(pid, data) => {
-                        self.processes
-                            .map
-                            .get_mut(&pid)
-                            .unwrap()
-                            .outgoing_data_buffer
-                            .push(data);
-                    }
+        while let Some(act) = self.actions.pop() {
+            match act {
+                KernelAction::ProcessKill(pid) => {
+                    self.processes.map.remove(&pid);
+                }
+                KernelAction::SendSyscallData(pid, data) => {
+                    self.processes
+                        .map
+                        .get_mut(&pid)
+                        .unwrap()
+                        .outgoing_data_buffer
+                        .push(data);
                 }
             }
+        }
+    }
+    pub fn start(&mut self) {
+        while !self.processes.map.is_empty() {
+            self.step();
         }
     }
 }
