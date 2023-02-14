@@ -74,7 +74,7 @@ impl Kernel {
                     Syscall::IpcCreate(ref name) => {
                         if self.ipc_instances.contains_key(name) {
                             p.outgoing_data_buffer
-                                .push(SyscallData::Handle(Err(SyscallError::AlreadyExists)));
+                                .push(SyscallData::Fail(SyscallError::AlreadyExists));
                             continue;
                         }
 
@@ -87,13 +87,13 @@ impl Kernel {
 
                         self.ipc_instances.insert(name.clone(), ipc.clone());
 
-                        p.outgoing_data_buffer.push(SyscallData::Handle(Ok(handle)));
+                        p.outgoing_data_buffer.push(SyscallData::Handle(handle));
                         continue;
                     }
                     Syscall::IpcConnect(ref name) => {
                         if !self.ipc_instances.contains_key(name) {
                             p.outgoing_data_buffer
-                                .push(SyscallData::Handle(Err(SyscallError::NoSuchEntry)));
+                                .push(SyscallData::Fail(SyscallError::NoSuchEntry));
                             continue;
                         }
 
@@ -129,13 +129,13 @@ impl Kernel {
                         }
 
                         p.outgoing_data_buffer
-                            .push(SyscallData::Handle(Ok(client_handle)));
+                            .push(SyscallData::Handle(client_handle));
                         continue;
                     }
                     Syscall::Send(ref handle, ref data) => match handle.data {
                         HandleData::IpcServer { ipc: _ } => {
                             p.outgoing_data_buffer
-                                .push(SyscallData::Handle(Err(SyscallError::UnknownHandle)));
+                                .push(SyscallData::Fail(SyscallError::UnknownHandle));
                             continue;
                         }
                         HandleData::IpcClient { ref server } => {
@@ -170,7 +170,7 @@ impl Kernel {
                         }
                         _ => {
                             p.outgoing_data_buffer
-                                .push(SyscallData::Handle(Err(SyscallError::UnknownHandle)));
+                                .push(SyscallData::Fail(SyscallError::UnknownHandle));
                             continue;
                         }
                     },

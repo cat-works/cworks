@@ -6,8 +6,14 @@ use crate::fs::FSObj;
 
 use super::{handle_core::HandleCore, HandleData};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Handle(Arc<HandleCore>);
+
+impl Clone for Handle {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
 
 impl Deref for Handle {
     type Target = HandleCore;

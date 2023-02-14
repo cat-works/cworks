@@ -29,14 +29,12 @@ pub mod cworks_mod {
             SyscallData::None => {
                 r.set_item("kind", vm.ctx.none(), vm)?;
             }
-            SyscallData::Handle(Err(e)) => {
-                r.set_item("kind", vm.ctx.new_str("Handle").into(), vm)?;
-                r.set_item("status", vm.ctx.new_str("Failed").into(), vm)?;
+            SyscallData::Fail(e) => {
+                r.set_item("kind", vm.ctx.new_str("Failed").into(), vm)?;
                 r.set_item("error", vm.ctx.new_str(e.to_string()).into(), vm)?;
             }
-            SyscallData::Handle(Ok(h)) => {
+            SyscallData::Handle(h) => {
                 r.set_item("kind", vm.ctx.new_str("Handle").into(), vm)?;
-                r.set_item("status", vm.ctx.new_str("Successed").into(), vm)?;
                 r.set_item("handle", vm.ctx.new_int(h.id).into(), vm)?;
             }
             SyscallData::Connection { client, server } => {

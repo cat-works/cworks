@@ -44,14 +44,14 @@ impl Session {
         *self.syscall.lock().unwrap() = Some(syscall);
     }
 
-    async fn return_handle(&self) -> Result<Arc<Handle>, SyscallError> {
+    async fn return_handle(&self) -> Result<Handle, SyscallError> {
         loop {
             {
                 let mut buffer = self.data_buffer.lock().unwrap();
 
                 if let Some(x) = buffer.pop_front() {
                     match *x {
-                        SyscallData::Handle(ref e) => return e.clone(),
+                        SyscallData::Handle(ref e) => return Ok(e.clone()),
                         _ => {
                             buffer.push_back(x);
                         }
@@ -86,25 +86,25 @@ impl Session {
         DummyFuture::Started.await;
     }
 
-    pub async fn ipc_create(&self, name: String) -> Result<Arc<Handle>, SyscallError> {
+    pub async fn ipc_create(&self, name: String) -> Result<Handle, SyscallError> {
         self.set_syscall(Syscall::IpcCreate(name));
         DummyFuture::Started.await;
         self.return_handle().await
     }
 
-    pub async fn ipc_send(&self, handle: Arc<Handle>, data: String) -> Result<(), SyscallError> {
+    pub async fn ipc_send(&self, handle: Handle, data: String) -> Result<(), SyscallError> {
         self.set_syscall(Syscall::Send(handle, data));
         DummyFuture::Started.await;
 
         match *(self.syscall_data.lock().unwrap()) {
-            SyscallData::Handle(Err(ref e)) => {
+            SyscallData::Fail(ref e) => {
                 self.set_syscall_data(&SyscallData::None);
                 Err(e.clone())
             }
             _ => Ok(()),
         }
     }
-    pub async fn ipc_connect(&self, name: String) -> Result<Arc<Handle>, SyscallError> {
+    pub async fn ipc_connect(&self, name: String) -> Result<Handle, SyscallError> {
         self.set_syscall(Syscall::IpcConnect(name));
         DummyFuture::Started.await;
         self.return_handle().await

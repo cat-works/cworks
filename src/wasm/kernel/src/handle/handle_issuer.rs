@@ -11,7 +11,7 @@ pub struct HandleIssuer {
 }
 
 impl HandleIssuer {
-    pub fn get_new_handle(&mut self, pid: u128, data: HandleData) -> Arc<Handle> {
+    pub fn get_new_handle(&mut self, pid: u128, data: HandleData) -> Handle {
         let handle = if let Some(handle) = self.free_handles.pop() {
             Handle::new(pid, handle, data)
         } else {
@@ -19,6 +19,6 @@ impl HandleIssuer {
             Handle::new(pid, self.last_handle, data)
         };
 
-        Arc::new(handle)
+        handle
     }
 }

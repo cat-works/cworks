@@ -9,7 +9,7 @@ pub enum HandleData {
     },
     IpcServerClient {
         server: Arc<Mutex<Ipc>>,
-        client: Arc<Handle>,
+        client: Handle,
     },
     IpcClient {
         server: Arc<Mutex<Ipc>>,
