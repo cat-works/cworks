@@ -4,8 +4,21 @@ mod processes;
 extern crate ghs_demangle;
 
 pub use generator::generate_user_id;
-use kernel::{PollResult, Process};
+use kernel::{HandleData, HandleIssuer, PollResult, Process, Syscall, SyscallData};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(a: &str);
+
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log2(a: JsValue);
+}
+
+macro_rules! console_log {
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
 
 struct CallbackProcess {
     callback: js_sys::Function,
@@ -77,6 +90,10 @@ impl Session {
         self.kernel
             .register_process(Box::new(CallbackProcess::new(callback)));
         JsValue::from_str("aiueo")
+    }
+
+    pub fn step(&mut self) {
+        self.kernel.step();
     }
 }
 
