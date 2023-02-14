@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use kernel::{Handle, PollResult, Process, Syscall, SyscallData};
 #[derive(Default)]
 pub struct IPCSlave {

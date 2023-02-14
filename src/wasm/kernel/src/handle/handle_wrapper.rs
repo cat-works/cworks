@@ -88,7 +88,7 @@ impl<'de> Deserialize<'de> for Handle {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["id", "pid"];
+        const FIELDS: &[&str] = &["id", "pid"];
         deserializer.deserialize_struct("Handle", FIELDS, HandleVisitor)
     }
 }

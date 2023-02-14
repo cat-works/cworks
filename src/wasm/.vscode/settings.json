@@ -2,9 +2,10 @@
   "saveAndRun": {
     "commands": [
       {
-        // "cmd": "cargo test kernel::test::kernel -- --nocapture   "
-        // "cmd": "wasm-pack build --target web wasm -d ../pkg" /*
-        "cmd": "cargo run"
+        "cmd": "cargo clippy" /*
+        "cmd": "cargo run" /*
+        "cmd": "wasm-pack build --target web wasm -d ../pkg" /*
+        "cmd": "cargo test kernel::test::kernel -- --nocapture" /*
         // */
       }
     ]

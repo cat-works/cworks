@@ -3,27 +3,42 @@ mod processes;
 
 extern crate ghs_demangle;
 
-use std::sync::{Arc, Mutex};
-
 pub use generator::generate_user_id;
-use kernel::Process;
+use kernel::{PollResult, Process};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 struct CallbackProcess {
-    callback: Arc<Mutex<js_sys::Function>>
+    callback: js_sys::Function,
 }
 
 impl CallbackProcess {
-    pub fn new(callback: Arc<Mutex<js_sys::Function>>) -> Self {
-        Self {
-            callback
-        }
+    pub fn new(callback: js_sys::Function) -> Self {
+        Self { callback }
     }
 }
 
 impl Process for CallbackProcess {
     fn poll(&mut self, data: &kernel::SyscallData) -> kernel::PollResult<i64> {
-        data
+        let data = {
+            let r = serde_wasm_bindgen::to_value(data);
+            match r {
+                Ok(v) => v,
+                Err(_) => {
+                    return kernel::PollResult::Done(-1);
+                }
+            }
+        };
+
+        let this = JsValue::null();
+        let ret = self
+            .callback
+            .call1(&this, &data)
+            .map(serde_wasm_bindgen::from_value::<PollResult<i64>>);
+
+        match ret {
+            Ok(Ok(x)) => x,
+            _ => PollResult::Done(-1),
+        }
     }
 }
 
@@ -34,6 +49,7 @@ pub struct Session {
 
 #[wasm_bindgen]
 impl Session {
+    #[allow(clippy::new_without_default)]
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
@@ -58,8 +74,8 @@ impl Session {
     } */
 
     pub fn add_process(&mut self, callback: js_sys::Function) -> JsValue {
-        callback.call
-
+        self.kernel
+            .register_process(Box::new(CallbackProcess::new(callback)));
         JsValue::from_str("aiueo")
     }
 }

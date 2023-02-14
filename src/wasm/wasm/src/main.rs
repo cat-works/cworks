@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use kernel::{Handle, SyscallError};
+use kernel::SyscallError;
 use rust_process::{RustProcess, Session};
 
 extern crate kernel;

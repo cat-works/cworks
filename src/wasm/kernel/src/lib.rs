@@ -3,8 +3,6 @@ mod handle;
 mod ipc;
 mod kernel;
 mod libs;
-mod lock;
-mod pid;
 mod process;
 mod uri;
 
