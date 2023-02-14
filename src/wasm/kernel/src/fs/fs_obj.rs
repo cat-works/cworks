@@ -20,7 +20,7 @@ pub enum FSObj {
     Bytes(RefOrVal<Vec<u8>>),
     List(RefOrVal<Vec<FSObj>>),
     Dist(RefOrVal<HashMap<String, FSObj>>),
-    Handle(RefOrVal<Arc<Handle>>),
+    Handle(RefOrVal<Handle>),
     Dynamic(Box<dyn DynamicFSObj>),
     Null,
 }
