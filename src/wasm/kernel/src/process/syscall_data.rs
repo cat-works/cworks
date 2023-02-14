@@ -8,7 +8,7 @@ use super::SyscallError;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum SyscallData {
-    Handle(Result<Handle, SyscallError>),
+    Fail(SyscallError),
     Connection { client: Handle, server: Handle },
     ReceivingData { focus: Handle, data: String },
     None,

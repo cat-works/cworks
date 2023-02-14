@@ -1,4 +1,6 @@
-#[derive(Debug, Clone)]
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
 pub enum SyscallError {
     NoSuchEntry,   // no such entry(like file, socket or ipc)
     AlreadyExists, // entry already exists
