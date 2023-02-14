@@ -1,6 +1,8 @@
+use serde::Deserialize;
+
 use crate::Syscall;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub enum PollResult<Ret> {
     Pending,
     Done(Ret),
