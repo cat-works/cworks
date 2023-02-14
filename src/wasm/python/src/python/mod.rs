@@ -21,6 +21,29 @@ impl Python {
     }
 }
 
+pub fn format_exception(e: PyRef<PyBaseException>, vm: &VirtualMachine) -> String {
+    let mut s = String::new();
+
+    s += &format!(
+        "Error: {:#?}",
+        e.args()
+            .iter()
+            .map(|x| x.str(vm).unwrap())
+            .collect::<Vec<_>>()
+    );
+    if let Some(traceback) = e.traceback() {
+        let frames = traceback.iter();
+        for x in frames {
+            s += &format!(
+                "  File \"{}\", line {}, in {}",
+                x.frame.code.source_path, x.lineno, x.frame.code.obj_name
+            );
+        }
+    }
+
+    s
+}
+
 pub fn panic_py_except(e: PyRef<PyBaseException>, vm: &VirtualMachine) -> ! {
     println!(
         "Error: {:#?}",
