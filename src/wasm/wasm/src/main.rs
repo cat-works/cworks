@@ -9,7 +9,7 @@ extern crate kernel;
 async fn server(session: Arc<Session>) -> Result<i64, SyscallError> {
     let s = session.ipc_create("aiueo".to_string()).await?;
     println!("Server: {}", s);
-    let mut sc: Option<Arc<Handle>> = None; // ServerClient
+    let mut sc = None;
 
     loop {
         let data = session.get_syscall_data().await;
