@@ -18,6 +18,6 @@ pub enum Syscall {
     Send(Handle, String),
 }
 
-pub trait Process: Sync + Send {
+pub trait Process {
     fn poll(&mut self, data: &SyscallData) -> PollResult<i64>;
 }
