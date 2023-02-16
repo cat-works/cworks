@@ -9,6 +9,15 @@ use super::{handle_core::HandleCore, HandleData};
 #[derive(Debug)]
 pub struct Handle(Arc<HandleCore>);
 
+impl Serialize for Handle {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
 impl Clone for Handle {
     fn clone(&self) -> Self {
         Self(self.0.clone())
@@ -20,19 +29,6 @@ impl Deref for Handle {
 
     fn deref(&self) -> &Self::Target {
         &self.0
-    }
-}
-
-impl Serialize for Handle {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let mut m = serializer.serialize_map(Some(3))?;
-        m.serialize_entry("id", &self.id)?;
-        m.serialize_entry("pid", &self.pid)?;
-
-        m.end()
     }
 }
 
