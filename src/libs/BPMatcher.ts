@@ -3,10 +3,26 @@ export type TraitDefine = {
   filter?: (x: string) => string;
 };
 
-export type Pattern = {
-  traits: { [key: string]: string[] },
-  binary: string[],
-  mnemonic: string
+export class Pattern {
+  traits: { [key: string]: string[] };
+  binary: string[];
+  mnemonic: string;
+
+  constructor(s: string) {
+    // s: [r: r, R: r + R] 01rrrRRR dddddddd: ${r} <- ${R}
+    let match = s.match(/\[(.*)\] (.*): (.*)/);
+    if (match === null) throw new Error("invalid pattern");
+
+
+    this.traits = {};
+    match[1].replace(/\s/g, "").split(",").forEach((x) => {
+      let [key, value] = x.split(":");
+      this.traits[key] = value.split("+");
+    });
+
+    this.binary = match[2].split(" ");
+    this.mnemonic = match[3];
+  }
 };
 
 export class BinaryPatternMatcherConfig {
@@ -51,16 +67,12 @@ function apply_trait(trait: TraitDefine, data: string): string | null {
 }
 
 export class BinaryPatternMatcher {
-  buffer: string[];
+  private buffer: string[];
   constructor(private config: BinaryPatternMatcherConfig) {
 
   }
   set_buffer(buffer: string[]) {
     this.buffer = buffer;
-  }
-
-  private get_buffer_length(): number {
-    return this.buffer.length;
   }
 
   private get_buffer_slice(length: number): string[] | null {
@@ -89,6 +101,10 @@ export class BinaryPatternMatcher {
     }
 
     return match;
+  }
+
+  public has_data(): boolean {
+    return this.buffer.length > 0;
   }
 
   private match_pattern(pattern: Pattern): Match | null {
