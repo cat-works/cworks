@@ -46,10 +46,12 @@ export class EventEmitter {
   emit(event: string, ...args: Parameters<Listener>) {
     if (this.listeners[event]) {
       for (let listener of this.listeners[event]) {
-        if (listener(...args)) {
-          break;
+        let r = listener(...args);
+        if (r === true) {
+          return;
         }
       }
     }
+    console.log(`Unhandled Event emitted: ${event} ${args.map(x => JSON.stringify(x, (_, v) => typeof v === "bigint" ? v.toString() : v)).join(", ")}`);
   }
 }
