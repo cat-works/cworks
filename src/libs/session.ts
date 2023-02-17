@@ -8,9 +8,8 @@ export class Handle extends EventEmitter {
     this.process.emitter.on(
       "connection",
       (c: { client: RawHandle; server: RawHandle }) => {
-        console.log("connection", c, this_handle.handle);
-        if (c.server === this_handle.handle) {
-          this.emit("connection", new Handle(c.server, this.process));
+        if (c.server.id === this_handle.handle.id) {
+          this.emit("connection", new Handle(c.client, this.process));
           return true;
         }
         return false;
@@ -57,6 +56,9 @@ export class Process {
   private result_queue: PollResult[] = [];
 
   constructor(process: (p: Process) => Promise<bigint>) {
+
+    this.emitter.mark_can_be_unused("callback");
+
     process(this).then((n) => {
       this.result_queue.push({ Done: n });
     })
