@@ -98,8 +98,8 @@ export class Parser {
       } else {
         return `${this.get_mathematics_operator_mnemonic_name(reg1)} A, ${this.get_register_name(reg2)}`
       }
-    } else if (opcode == 0xc9) {
-      return `ret`;
+    } else if (opcode === 0xc9) {
+      return "ret";
     } else {
       return `Unimplemented instruction: ${opcode.toString(16)}`;
     }
