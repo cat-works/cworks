@@ -2,6 +2,12 @@ type Listener = (...args) => (boolean | void);
 
 export class EventEmitter {
   private listeners: { [key: string]: Listener[] } = {};
+  private marked_unused: string[] = [];
+
+
+  mark_can_be_unused(event: string) {
+    this.marked_unused.push(event);
+  }
 
   on(event: string, listener: Listener): () => void {
     if (!this.listeners[event]) {
@@ -52,6 +58,7 @@ export class EventEmitter {
         }
       }
     }
-    console.log(`Unhandled Event emitted: ${event} ${args.map(x => JSON.stringify(x, (_, v) => typeof v === "bigint" ? v.toString() : v)).join(", ")}`);
+    if (!this.marked_unused.includes(event))
+      console.log(`Unhandled Event emitted: ${event} ${args.map(x => JSON.stringify(x, (_, v) => typeof v === "bigint" ? v.toString() : v)).join(", ")}`);
   }
 }
