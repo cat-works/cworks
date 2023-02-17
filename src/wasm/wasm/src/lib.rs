@@ -3,8 +3,12 @@ mod processes;
 
 extern crate ghs_demangle;
 
+use std::collections::HashMap;
+
 pub use generator::generate_user_id;
-use kernel::{HandleData, HandleIssuer, PollResult, Process, Syscall, SyscallData, SyscallError};
+use kernel::{
+    Handle, HandleData, HandleIssuer, PollResult, Process, Syscall, SyscallData, SyscallError,
+};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 #[wasm_bindgen]
@@ -22,16 +26,25 @@ macro_rules! console_log {
 
 struct CallbackProcess {
     callback: js_sys::Function,
+    handles: HashMap<u128, Handle>,
 }
 
 impl CallbackProcess {
     pub fn new(callback: js_sys::Function) -> Self {
-        Self { callback }
+        Self {
+            callback,
+            handles: HashMap::default(),
+        }
     }
 }
 
 impl Process for CallbackProcess {
     fn poll(&mut self, data: &kernel::SyscallData) -> kernel::PollResult<i64> {
+        if let SyscallData::Handle(ref h) = data {
+            let h = h.clone();
+            self.handles.insert(h.id, h);
+        }
+
         let data = {
             let r = serde_wasm_bindgen::to_value(data);
             match r {
@@ -47,9 +60,13 @@ impl Process for CallbackProcess {
             .callback
             .call1(&this, &data)
             .map(serde_wasm_bindgen::from_value::<PollResult<i64>>);
-
         match ret {
-            Ok(Ok(x)) => x,
+            Ok(Ok(x)) => match x {
+                PollResult::Syscall(Syscall::Send(h, d)) => {
+                    PollResult::Syscall(Syscall::Send(self.handles.get(&h.id).unwrap().clone(), d))
+                }
+                _ => x,
+            },
             _ => PollResult::Done(-1),
         }
     }
@@ -104,7 +121,10 @@ pub fn demangle_str(x: String) -> String {
 
 #[wasm_bindgen(start)]
 fn m() {
-    let s = serde_wasm_bindgen::to_value(&SyscallData::None);
+    // let s = serde_wasm_bindgen::to_value(&PollResult::<i64>::Syscall(Syscall::Send(
+    //     HandleIssuer::default().get_new_handle(0, HandleData::None),
+    //     "aiu".to_string(),
+    // )));
     // log2(s.unwrap());
     // console_log!("{:?}", s.unwrap());
 }
