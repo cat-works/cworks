@@ -1,10 +1,15 @@
-use std::{sync::{Arc, Mutex}, ops::{Deref, DerefMut}};
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+    sync::{Arc, Mutex},
+};
 
 use crate::{fs::FSObj, rust_process::Session, SyscallData, SyscallError};
 
 enum FSReturns {
     InvalidCommandFormat,
     UnsupportedMethod,
+    InvalidHandle,
 }
 
 impl From<FSReturns> for String {
@@ -12,6 +17,7 @@ impl From<FSReturns> for String {
         match value {
             FSReturns::InvalidCommandFormat => "InvalidCommandFormat".to_string(),
             FSReturns::UnsupportedMethod => "UnsupportedMethod".to_string(),
+            FSReturns::InvalidHandle => "InvalidHandle".to_string(),
         }
     }
 }
@@ -38,6 +44,10 @@ impl FS {
     pub fn new(root: Arc<Mutex<FSObj>>) -> Self {
         Self { root }
     }
+
+    pub fn cursor(&self) -> FSCursor {
+        return FSCursor::new("/".to_string(), self.root.clone());
+    }
 }
 
 impl Deref for FS {
@@ -53,22 +63,41 @@ impl DerefMut for FS {
     }
 }
 
+struct FSCursor {
+    path: String,
+    obj: Arc<Mutex<FSObj>>,
+}
+
+impl FSCursor {
+    pub fn new(path: String, obj: Arc<Mutex<FSObj>>) -> Self {
+        Self { path, obj }
+    }
+
+    pub fn list(&self) -> Result<Vec<String>, FSReturns> {
+        match *self.obj.lock().unwrap() {
+            FSObj::Dist(ref map) => Ok(map.keys().map(|x| x.to_string()).collect::<Vec<_>>()),
+            _ => Err(FSReturns::UnsupportedMethod),
+        }
+    }
+}
 
 pub async fn fs_daemon_process(
     session: Arc<Session>,
     daemon: Arc<Mutex<FSObj>>,
 ) -> Result<i64, SyscallError> {
-    let s = session.ipc_create("system/file-system".to_string()).await?;
-    let mut sc = None;
+    let _s = session.ipc_create("system/file-system".to_string()).await?;
+
+    let fs = FS::new(daemon.clone());
+    let mut state = HashMap::new();
 
     loop {
         let data = session.get_syscall_data().await;
         match data {
-            SyscallData::Connection { client, server } => {
-                // TODO: Handle this
+            SyscallData::Connection { client, server: _ } => {
+                state.insert(client.id, fs.cursor());
             }
-            SyscallData::ReceivingData { focus, data } if Option::Some(focus.clone()) == sc => {
-                let r = match FSCommand::try_from(data) {
+            SyscallData::ReceivingData { focus, data } => {
+                let r = match FSCommand::try_from(data.clone()) {
                     Ok(x) => x,
                     Err(e) => {
                         session.ipc_send(focus.clone(), e.into()).await?;
@@ -78,25 +107,24 @@ pub async fn fs_daemon_process(
 
                 match r {
                     FSCommand::List => {
-                        let daemon = daemon.lock().unwrap();
-                        let list = match daemon {
-                            FSObj::Dist(ref map) => {
-                                map
-                                    .keys()
-                                    .map(|x| x.to_string())
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                                    .clone()
-                            },
-                            _ => {
+                        let state = match state.get(&focus.id) {
+                            Some(x) => x,
+                            None => {
                                 session
-                                .ipc_send(focus.clone(), "UnsupportedMethod".to_string())
-                                .await?;
+                                    .ipc_send(focus.clone(), "InvalidHandle".to_string())
+                                    .await?;
                                 continue;
                             }
-                        }
-                        session.ipc_send(focus.clone(), list).await?;
-                        continue;
+                        };
+                        let ret = match state.list().map(|x| x.join(", ")) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                session.ipc_send(focus.clone(), e.into()).await?;
+                                continue;
+                            }
+                        };
+
+                        session.ipc_send(focus.clone(), ret).await?;
                     }
                 }
 
