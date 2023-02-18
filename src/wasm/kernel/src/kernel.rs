@@ -6,6 +6,7 @@ use std::{
 use crate::{
     fs::{FSObj, RefOrVal},
     handle::{HandleData, HandleIssuer},
+    initfs::initfs,
     ipc::Ipc,
     kernel_processes::fs_daemon_process,
     libs::{timestamp, AutoMap},
@@ -38,7 +39,7 @@ impl Default for Kernel {
 
         ret.register_process(Box::new(RustProcess::new(
             &fs_daemon_process,
-            Arc::new(Mutex::new(FSObj::Dist(RefOrVal::Val(HashMap::new())))),
+            Arc::new(Mutex::new(initfs())),
         )));
 
         ret

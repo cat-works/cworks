@@ -1,5 +1,6 @@
 mod fs;
 mod handle;
+mod initfs;
 mod ipc;
 mod kernel;
 mod kernel_processes;
