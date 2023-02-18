@@ -4,10 +4,13 @@ use std::{
 };
 
 use crate::{
+    fs::{FSObj, RefOrVal},
     handle::{HandleData, HandleIssuer},
     ipc::Ipc,
+    kernel_processes::fs_daemon_process,
     libs::{timestamp, AutoMap},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
+    rust_process::RustProcess,
 };
 
 use super::process::{KernelProcess, PollResult, Process};
@@ -26,12 +29,17 @@ pub struct Kernel {
 
 impl Default for Kernel {
     fn default() -> Kernel {
-        let ret = Kernel {
+        let mut ret = Kernel {
             processes: AutoMap::new(),
             ipc_instances: HashMap::new(),
             handle_issuer: HandleIssuer::default(),
             actions: vec![],
         };
+
+        ret.register_process(Box::new(RustProcess::new(
+            &fs_daemon_process,
+            Arc::new(Mutex::new(FSObj::Dist(RefOrVal::Val(HashMap::new())))),
+        )));
 
         ret
     }
