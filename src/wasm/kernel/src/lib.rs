@@ -2,8 +2,10 @@ mod fs;
 mod handle;
 mod ipc;
 mod kernel;
+mod kernel_processes;
 mod libs;
 mod process;
+pub mod rust_process;
 mod uri;
 
 pub use handle::{Handle, HandleData, HandleIssuer};

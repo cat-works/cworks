@@ -4,17 +4,13 @@ use std::{
 };
 
 use crate::{
-    fs::RefOrVal,
     handle::{HandleData, HandleIssuer},
     ipc::Ipc,
     libs::{timestamp, AutoMap},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
 };
 
-use super::{
-    fs::FSObj,
-    process::{KernelProcess, PollResult, Process},
-};
+use super::process::{KernelProcess, PollResult, Process};
 
 enum KernelAction {
     ProcessKill(u128),
@@ -23,7 +19,6 @@ enum KernelAction {
 
 pub struct Kernel {
     processes: AutoMap<KernelProcess>,
-    fs_root: FSObj,
     ipc_instances: HashMap<String, Arc<Mutex<Ipc>>>,
     handle_issuer: HandleIssuer,
     actions: Vec<KernelAction>,
@@ -31,13 +26,14 @@ pub struct Kernel {
 
 impl Default for Kernel {
     fn default() -> Kernel {
-        Kernel {
+        let ret = Kernel {
             processes: AutoMap::new(),
-            fs_root: FSObj::Dist(RefOrVal::Val(HashMap::new())),
             ipc_instances: HashMap::new(),
             handle_issuer: HandleIssuer::default(),
             actions: vec![],
-        }
+        };
+
+        ret
     }
 }
 

@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
-use kernel::SyscallError;
-use rust_process::{RustProcess, Session};
+use kernel::{rust_process::*, SyscallError};
 
 extern crate kernel;
 // extern crate python;
 
-async fn server(session: Arc<Session>) -> Result<i64, SyscallError> {
+async fn server(session: Arc<Session>, _: u32) -> Result<i64, SyscallError> {
     let s = session.ipc_create("aiueo".to_string()).await?;
     println!("Server: {}", s);
     let mut sc = None;
@@ -43,7 +42,7 @@ async fn server(session: Arc<Session>) -> Result<i64, SyscallError> {
     Ok(0i64)
 }
 
-async fn client(session: Arc<Session>) -> Result<i64, SyscallError> {
+async fn client(session: Arc<Session>, _: u32) -> Result<i64, SyscallError> {
     session.sleep(0.5).await;
     let c = session.ipc_connect("aiueo".to_string()).await?;
     session
@@ -73,8 +72,8 @@ async fn client(session: Arc<Session>) -> Result<i64, SyscallError> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut k = kernel::Kernel::default();
 
-    k.register_process(Box::new(RustProcess::new(&server)));
-    k.register_process(Box::new(RustProcess::new(&client)));
+    k.register_process(Box::new(RustProcess::new(&server, 0)));
+    k.register_process(Box::new(RustProcess::new(&client, 0)));
 
     k.start();
     Ok(())

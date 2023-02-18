@@ -2,7 +2,6 @@
 
 members = [
   "kernel",
-  "python",
-  "wasm",
-  "rust_process"
+# "python",
+  "wasm"
 ]

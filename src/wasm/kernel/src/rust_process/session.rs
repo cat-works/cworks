@@ -3,9 +3,9 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use kernel::{Handle, Syscall, SyscallData, SyscallError};
+use crate::{Handle, Syscall, SyscallData, SyscallError};
 
-use crate::dummy_future::DummyFuture;
+use super::dummy_future::DummyFuture;
 
 pub struct Session {
     pub(crate) syscall: Arc<Mutex<Option<Syscall>>>,
