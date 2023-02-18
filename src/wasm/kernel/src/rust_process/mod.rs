@@ -1,4 +1,7 @@
-use std::{pin::Pin, sync::Arc};
+use std::{
+    pin::Pin,
+    sync::{Arc, Mutex},
+};
 
 use futures::Future;
 
@@ -11,33 +14,33 @@ pub use session::Session;
 
 use crate::{PollResult, Process, SyscallData, SyscallError};
 
-pub struct RustProcess<'a, F>
+pub struct RustProcess<'a, F, T: Clone>
 where
-    F: Future<Output = Result<i64, SyscallError>> + Send + Sync,
+    F: Future<Output = Result<i64, SyscallError>>,
 {
     f: F,
-    session: Arc<Session>,
+    session: Arc<Session<T>>,
     ctx: Context<'a>,
 }
 
-impl<'a, F> RustProcess<'a, F>
+impl<'a, F, T: Clone> RustProcess<'a, F, T>
 where
-    F: Future<Output = Result<i64, SyscallError>> + Send + Sync,
+    F: Future<Output = Result<i64, SyscallError>>,
 {
-    pub fn new<T>(f: &impl Fn(Arc<Session>, T) -> F, data: T) -> Self {
-        let session = Arc::new(Session::default());
+    pub fn new(f: &impl Fn(Arc<Session<T>>) -> F, data: T) -> Self {
+        let session = Arc::new(Session::new(data));
 
         Self {
-            f: f(session.clone(), data),
+            f: f(session.clone()),
             session,
             ctx: Context::from_waker(futures_task::noop_waker_ref()),
         }
     }
 }
 
-impl<'a, F> Process for RustProcess<'a, F>
+impl<'a, F, T: Clone> Process for RustProcess<'a, F, T>
 where
-    F: Future<Output = Result<i64, SyscallError>> + Send + Sync,
+    F: Future<Output = Result<i64, SyscallError>>,
 {
     fn poll(&mut self, data: &SyscallData) -> PollResult<i64> {
         let f = unsafe { Pin::new_unchecked(&mut self.f) };

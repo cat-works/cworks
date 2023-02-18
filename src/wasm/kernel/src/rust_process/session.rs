@@ -7,26 +7,31 @@ use crate::{Handle, Syscall, SyscallData, SyscallError};
 
 use super::dummy_future::DummyFuture;
 
-pub struct Session {
+pub struct Session<T: Clone> {
     pub(crate) syscall: Arc<Mutex<Option<Syscall>>>,
     pub(crate) syscall_data: Arc<Mutex<SyscallData>>,
 
     data_buffer: Mutex<VecDeque<Arc<SyscallData>>>,
+
+    value: T,
 }
 
-impl Default for Session {
-    fn default() -> Self {
+impl<T: Clone> Session<T> {
+    pub fn new(value: T) -> Self {
         let syscall = Arc::new(Mutex::new(Option::None));
         let data = Arc::new(Mutex::new(SyscallData::default()));
         Self {
             syscall,
             syscall_data: data,
             data_buffer: VecDeque::new().into(),
+            value,
         }
     }
-}
 
-impl Session {
+    pub fn get_value(&self) -> T {
+        self.value.clone()
+    }
+
     fn poll_syscall_data(&self) {
         let m = self.syscall_data.lock().unwrap();
         match &(*m) {
