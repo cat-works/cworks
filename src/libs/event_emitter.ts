@@ -49,16 +49,26 @@ export class EventEmitter {
     });
   }
 
-  emit(event: string, ...args: Parameters<Listener>) {
+  emit(event: string, ...args: Parameters<Listener>): boolean {
     if (this.listeners[event]) {
       for (let listener of this.listeners[event]) {
         let r = listener(...args);
         if (r === true) {
-          return;
+          return true;
         }
       }
     }
-    if (!this.marked_unused.includes(event))
-      console.log(`Unhandled Event emitted: ${event} ${args.map(x => JSON.stringify(x, (_, v) => typeof v === "bigint" ? v.toString() : v)).join(", ")}`);
+    if (!this.marked_unused.includes(event)) {
+      console.log(
+        `Unhandled Event emitted: ${event} ${args
+          .map((x) =>
+            JSON.stringify(x, (_, v) =>
+              typeof v === "bigint" ? v.toString() : v,
+            ),
+          )
+          .join(", ")}`,
+      );
+    }
+    return false;
   }
 }
