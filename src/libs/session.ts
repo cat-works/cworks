@@ -5,21 +5,38 @@ export class Handle extends EventEmitter {
     super();
 
     let this_handle = this;
+    this.process.emitter.on("receiving_data", (x: { focus: RawHandle; data: string }) => {
+      if (x.focus.id !== this_handle.handle.id) {
+        return false;
+      }
+
+      this_handle.emit("message", x.data);
+      return true;
+    })
     this.process.emitter.on(
       "connection",
       (c: { client: RawHandle; server: RawHandle }) => {
-        if (c.server.id === this_handle.handle.id) {
-          this.emit("connection", new Handle(c.client, this.process));
-          return true;
+        if (c.server.id !== this_handle.handle.id) {
+          return false;
         }
-        return false;
+        let client = new Handle(c.client, this.process);
+        this.emit("connection", client);
+        this.process.emitter.on("receiving_data", (x: { focus: RawHandle; data: string }) => {
+          if (x.focus.id !== client.handle.id) {
+            return false;
+          }
+
+          client.emit("message", x.data);
+          return true;
+        })
+        return true;
+
       },
     );
   }
 
   public send(data: string): Promise<void> {
-    this.process.send(this, data);
-    return this.process.pending();
+    return this.process.send(this.handle, data);
   }
 }
 
@@ -61,7 +78,9 @@ export class Process {
 
     process(this).then((n) => {
       this.result_queue.push({ Done: n });
-    })
+    }).catch((e) => {
+      this.result_queue.push({ Done: -1n });
+    });
   }
 
   public get_syscall_handle(): Promise<Handle> {
@@ -79,9 +98,10 @@ export class Process {
 
   public pending(): Promise<void> {
     return new Promise((resolve) => {
-      this.emitter.once("callback", () => {
+      this.emitter.once("callback", (x) => {
         resolve();
-        return true;
+        return x === "None";
+
       });
     });
   }
@@ -95,8 +115,21 @@ export class Process {
     return this.get_syscall_handle();
   }
 
-  public send(handle: Handle, data: string): void {
-    this.result_queue.push({ Syscall: { Send: [handle.handle, data] } });
+  public send(handle: RawHandle, data: string): Promise<void> {
+    this.result_queue.push({ Syscall: { Send: [handle, data] } });
+    return new Promise((resolve, reject) => {
+      this.emitter.once("callback", (s: SyscallData) => {
+        if (Object.hasOwnProperty.call(s, "Fail")) {
+          reject(s["Fail"]);
+          return true;
+        } else if (s === "None") {
+          resolve();
+          return true;
+        } else {
+          return false;
+        }
+      })
+    })
   }
 
   public sleep(time: number): Promise<void> {
@@ -105,16 +138,17 @@ export class Process {
   }
 
   kernel_callback(data: SyscallData): PollResult {
-    this.emitter.emit("callback", data);
-
-    if (Object.hasOwnProperty.call(data, "Handle")) {
-      this.emitter.emit("handle", data["Handle"]);
-    } else if (Object.hasOwnProperty.call(data, "Fail")) {
-      this.emitter.emit("fail", data["Fail"]);
-    } else if (Object.hasOwnProperty.call(data, "Connection")) {
-      this.emitter.emit("connection", data["Connection"]);
-    } else if (Object.hasOwnProperty.call(data, "ReceivingData")) {
-      this.emitter.emit("receiving_data", data["ReceivingData"]);
+    let callback_handled = this.emitter.emit("callback", data);
+    if (callback_handled === false) {
+      if (Object.hasOwnProperty.call(data, "Handle")) {
+        this.emitter.emit("handle", data["Handle"]);
+      } else if (Object.hasOwnProperty.call(data, "Fail")) {
+        this.emitter.emit("fail", data["Fail"]);
+      } else if (Object.hasOwnProperty.call(data, "Connection")) {
+        this.emitter.emit("connection", data["Connection"]);
+      } else if (Object.hasOwnProperty.call(data, "ReceivingData")) {
+        this.emitter.emit("receiving_data", data["ReceivingData"]);
+      }
     }
 
     return this.result_queue.shift() || "Pending";
