@@ -26,9 +26,26 @@ macro_rules! console_log {
 }
 
 #[derive(Default)]
+struct HandleCasher {
+    handles: HashMap<u128, Handle>,
+}
+
+impl HandleCasher {
+    pub fn register_handle(&mut self, h: Handle) {
+        let h = h.clone();
+        console_log!("Registering Handle {}", h.clone());
+        self.handles.insert(h.id, h);
+    }
+
+    pub fn get_handle(&self, id: u128) -> Option<Handle> {
+        self.handles.get(&id).cloned()
+    }
+}
+
+#[derive(Default)]
 struct CallbackProcess {
     callback: js_sys::Function,
-    handles: HashMap<u128, Handle>,
+    handle_casher: HandleCasher,
     syscall_data_buffer: Option<SyscallData>,
 }
 
@@ -44,22 +61,15 @@ impl CallbackProcess {
 impl Process for CallbackProcess {
     fn poll(&mut self, data: &kernel::SyscallData) -> kernel::PollResult<i64> {
         if let SyscallData::Handle(ref h) = data {
-            let h = h.clone();
-            console_log!("Registering Handle {}", h.clone());
-            self.handles.insert(h.id, h);
+            self.handle_casher.register_handle(h.clone());
         }
         if let SyscallData::Connection {
             ref server,
             ref client,
         } = data
         {
-            let h = server.clone();
-            console_log!("Registering Handle {}", h.clone());
-            self.handles.insert(h.id, h);
-
-            let h = client.clone();
-            console_log!("Registering Handle {}", h.clone());
-            self.handles.insert(h.id, h);
+            self.handle_casher.register_handle(server.clone());
+            self.handle_casher.register_handle(client.clone());
         }
 
         let data = {
@@ -83,10 +93,11 @@ impl Process for CallbackProcess {
             .callback
             .call1(&this, &data)
             .map(serde_wasm_bindgen::from_value::<PollResult<i64>>);
+
         let ret = match ret {
             Ok(Ok(x)) => match x {
                 PollResult::Syscall(Syscall::Send(h, d)) => {
-                    if let Some(h) = self.handles.get(&h.id) {
+                    if let Some(h) = self.handle_casher.get_handle(h.id) {
                         PollResult::Syscall(Syscall::Send(h.clone(), d))
                     } else {
                         self.syscall_data_buffer =
