@@ -50,6 +50,7 @@ export class EventEmitter {
   }
 
   emit(event: string, ...args: Parameters<Listener>): boolean {
+    /// console.log(`Event emitted: ${event} ${args}`);
     if (this.listeners[event]) {
       for (let listener of this.listeners[event]) {
         let r = listener(...args);
