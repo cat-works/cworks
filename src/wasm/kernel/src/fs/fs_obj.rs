@@ -87,4 +87,27 @@ impl FSObj {
 
         Ok(obj)
     }
+
+    pub fn get_obj(&self, path: String) -> Result<&FSObj, SyscallError> {
+        let mut obj = self;
+        let path = path.trim_start_matches('/');
+
+        if path == "" {
+            return Ok(self);
+        }
+
+        for part in path.split('/') {
+            match obj {
+                FSObj::Dist(map) => {
+                    if !map.contains_key(part) {
+                        return Err(SyscallError::NoSuchEntry);
+                    }
+                    obj = map.get(part).unwrap();
+                }
+                _ => return Err(SyscallError::NoSuchEntry),
+            }
+        }
+
+        Ok(obj)
+    }
 }
