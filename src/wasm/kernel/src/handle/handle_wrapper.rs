@@ -1,6 +1,6 @@
 use std::{ops::Deref, sync::Arc};
 
-use serde::{ser::SerializeMap, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::fs::FSObj;
 

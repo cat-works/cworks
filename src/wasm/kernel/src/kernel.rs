@@ -4,7 +4,6 @@ use std::{
 };
 
 use crate::{
-    fs::{FSObj, RefOrVal},
     handle::{HandleData, HandleIssuer},
     initfs::initfs,
     ipc::Ipc,
@@ -37,10 +36,7 @@ impl Default for Kernel {
             actions: vec![],
         };
 
-        ret.register_process(Box::new(RustProcess::new(
-            &fs_daemon_process,
-            Arc::new(Mutex::new(initfs())),
-        )));
+        ret.register_process(Box::new(RustProcess::new(&fs_daemon_process, initfs())));
 
         ret
     }

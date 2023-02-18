@@ -92,7 +92,7 @@ impl FSObj {
         let mut obj = self;
         let path = path.trim_start_matches('/');
 
-        if path == "" {
+        if path.is_empty() {
             return Ok(self);
         }
 

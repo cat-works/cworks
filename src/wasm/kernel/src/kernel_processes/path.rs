@@ -11,7 +11,7 @@ where
     } else if y.is_empty() {
         x
     } else if x.ends_with('/') {
-        x + if y.starts_with('/') { &y[1..] } else { &y }
+        x + y.strip_prefix('/').unwrap_or(&y)
     } else {
         x + if !y.starts_with('/') { "/" } else { "" } + &y
     }

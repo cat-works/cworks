@@ -1,12 +1,5 @@
 mod path;
-use std::{
-    borrow::{Borrow, BorrowMut},
-    cell::RefCell,
-    collections::HashMap,
-    ops::{Deref, DerefMut},
-    rc::Rc,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{fs::FSObj, rust_process::Session, SyscallData, SyscallError};
 
@@ -15,6 +8,7 @@ enum FSReturns {
     UnsupportedMethod,
     InvalidHandle,
     UnknownPath,
+    UnknownError,
     Ok,
 }
 
@@ -25,6 +19,7 @@ impl From<FSReturns> for String {
             FSReturns::UnsupportedMethod => "UnsupportedMethod".to_string(),
             FSReturns::InvalidHandle => "InvalidHandle".to_string(),
             FSReturns::UnknownPath => "UnknownPath".to_string(),
+            FSReturns::UnknownError => "UnknownError".to_string(),
             FSReturns::Ok => "Ok".to_string(),
         }
     }
@@ -38,11 +33,11 @@ enum FSCommand {
 impl TryFrom<String> for FSCommand {
     type Error = FSReturns;
     fn try_from(value: String) -> Result<Self, FSReturns> {
-        if value == "" {
+        if value.is_empty() {
             return Err(FSReturns::InvalidCommandFormat);
         }
 
-        let toks = value.split("?").collect::<Vec<_>>();
+        let toks = value.split('?').collect::<Vec<_>>();
         match (toks.len(), toks[0]) {
             (1, "List") => Ok(FSCommand::List),
             (2, "Cd") => Ok(FSCommand::Cd(toks[1].to_string())),
@@ -59,12 +54,6 @@ impl FS {
     pub fn new(root: FSObj) -> Self {
         Self { root }
     }
-    pub(crate) fn get_obj(&self) -> &FSObj {
-        &self.root
-    }
-    pub(crate) fn get_obj_mut(&mut self) -> &mut FSObj {
-        &mut self.root
-    }
 
     pub fn exists(&self, path: String) -> bool {
         self.root.get_obj(path).is_ok()
@@ -76,7 +65,7 @@ impl FS {
             .get_obj(path)
             .map_err(|_| FSReturns::UnknownPath)?
         {
-            FSObj::Dist(x) => Ok(x.keys().map(|x| x.clone()).collect::<Vec<_>>()),
+            FSObj::Dist(x) => Ok(x.keys().cloned().collect::<Vec<_>>()),
             _ => Err(FSReturns::UnsupportedMethod),
         }
     }
@@ -110,20 +99,20 @@ pub async fn fs_daemon_process(session: Arc<Session<FSObj>>) -> Result<i64, Sysc
                     FSCommand::List => match state.get(&focus.id).map(|x| fs.list(x.to_string())) {
                         Some(Ok(x)) => x.join("?"),
                         Some(Err(e)) => e.into(),
-                        None => "InvalidHandle".to_string(),
+                        None => FSReturns::InvalidHandle.into(),
                     },
                     FSCommand::Cd(path) => match state
                         .get(&focus.id)
                         .map(|x| path::join(x, path.clone()))
                         .map(|x| (x.clone(), fs.exists(x)))
                     {
-                        Some((p, f)) if f == true => {
+                        Some((p, f)) if f => {
                             state.insert(focus.id, p);
-                            "Success".to_string()
+                            FSReturns::Ok.into()
                         }
-                        Some((_, f)) if f == false => "UnknownPath".to_string(),
-                        Some(_) => "UnknownError".to_string(),
-                        None => "InvalidHandle".to_string(),
+                        Some((_, f)) if !f => FSReturns::UnknownPath.into(),
+                        Some(_) => FSReturns::UnknownError.into(),
+                        None => FSReturns::InvalidHandle.into(),
                     },
                 };
                 println!("Received: {} [Client -> Server]", data);
@@ -136,8 +125,6 @@ pub async fn fs_daemon_process(session: Arc<Session<FSObj>>) -> Result<i64, Sysc
             }
         }
     }
-
-    Ok(0i64)
 }
 
 // fn fs_daemon() -> Box<dyn Process> {
