@@ -1,23 +1,36 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use futures::Future;
+use crate::{fs::FSObj, rust_process::Session, SyscallData, SyscallError};
 
-use crate::{
-    fs::{FSObj, RefOrVal},
-    rust_process::{RustProcess, Session},
-    PollResult, Process, SyscallData, SyscallError,
-};
-
-struct FSDaemon {
-    pub fs_root: Arc<FSObj>,
+enum FSReturns {
+    InvalidCommandFormat,
 }
 
-async fn fs_daemon(session: Arc<Session>, daemon: Arc<Mutex<FSObj>>) -> Result<i64, SyscallError> {
-    let s = session.ipc_create("0system/fs".to_string()).await?;
-    println!("Server: {}", s);
+impl From<FSReturns> for String {
+    fn from(value: FSReturns) -> Self {
+        match value {
+            FSReturns::InvalidCommandFormat => "InvalidCommandFormat".to_string(),
+        }
+    }
+}
+
+enum FSCommand {
+    List,
+}
+impl TryFrom<String> for FSCommand {
+    fn try_from(value: String) -> Result<Self> {
+        match value.as_str() {
+            "l" => Ok(FSCommand::List),
+            _ => panic!(),
+        }
+    }
+}
+
+pub async fn fs_daemon_process(
+    session: Arc<Session>,
+    daemon: Arc<Mutex<FSObj>>,
+) -> Result<i64, SyscallError> {
+    let s = session.ipc_create("system/file-system".to_string()).await?;
     let mut sc = None;
 
     loop {
@@ -50,9 +63,8 @@ async fn fs_daemon(session: Arc<Session>, daemon: Arc<Mutex<FSObj>>) -> Result<i
     Ok(0i64)
 }
 
-impl FSDaemon {
-    fn new() -> Box<dyn Process> {
-        let root = Arc::new(Mutex::new(FSObj::Dist(RefOrVal::Val(HashMap::new()))));
-        Box::new(RustProcess::new(&fs_daemon, root.clone()))
-    }
-}
+// fn fs_daemon() -> Box<dyn Process> {
+//     let fs_obj = ;
+//
+//     Box::new(RustProcess::new(&fs_daemon_process, fs_obj))
+// }
