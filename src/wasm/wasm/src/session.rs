@@ -49,4 +49,8 @@ impl Session {
         }
         self.kernel.step();
     }
+
+    pub fn get_ipc_names(&self) -> String {
+        self.kernel.get_ipc_names().join(", ")
+    }
 }

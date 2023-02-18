@@ -43,6 +43,10 @@ impl Default for Kernel {
 }
 
 impl Kernel {
+    pub fn get_ipc_names(&self) -> Vec<String> {
+        self.ipc_instances.keys().map(|s| s.clone()).collect()
+    }
+
     pub fn register_process(&mut self, p: Box<dyn Process>) {
         self.processes.add_value(p.into());
     }
