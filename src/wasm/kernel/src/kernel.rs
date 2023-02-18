@@ -189,12 +189,15 @@ impl Kernel {
                     self.processes.map.remove(&pid);
                 }
                 KernelAction::SendSyscallData(pid, data) => {
-                    self.processes
-                        .map
-                        .get_mut(&pid)
-                        .unwrap()
-                        .outgoing_data_buffer
-                        .push(data);
+                    let process = self.processes.map.get_mut(&pid);
+                    match process {
+                        Some(process) => {
+                            process.outgoing_data_buffer.push(data);
+                        }
+                        None => {
+                            println!("Process {pid} not found! (ignored)");
+                        }
+                    }
                 }
             }
         }
