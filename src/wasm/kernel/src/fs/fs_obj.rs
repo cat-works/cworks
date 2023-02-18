@@ -12,7 +12,7 @@ pub trait DynamicFSObj: std::fmt::Debug + Send + Sync {
     fn set_obj(&mut self, path: String, obj: FSObj) -> Result<(), SyscallError>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum FSObj {
     Int(RefOrVal<i128>),
     String(RefOrVal<String>),
