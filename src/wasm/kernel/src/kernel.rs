@@ -5,9 +5,8 @@ use std::{
 
 use crate::{
     handle::{HandleData, HandleIssuer},
-    initfs::initfs,
     ipc::Ipc,
-    kernel_processes::fs_daemon_process,
+    kernel_processes::{fs_daemon_process, initfs::initfs},
     libs::{timestamp, AutoMap},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
     RustProcess,

@@ -1,7 +1,12 @@
+pub(crate) mod fs;
+pub(crate) mod initfs;
 mod path;
+
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{fs::FSObj, Session, SyscallData, SyscallError};
+use crate::{Session, SyscallData, SyscallError};
+
+use self::fs::FSObj;
 
 enum FSReturns {
     InvalidCommandFormat,
