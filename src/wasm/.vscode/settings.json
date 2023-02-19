@@ -3,8 +3,8 @@
     "commands": [
       {
         "cmd": "cargo clippy" /*
-        "cmd": "cargo run" /*
         "cmd": "wasm-pack build --target web wasm -d ../pkg" /*
+        "cmd": "cargo run" /*
         "cmd": "cargo test kernel::test::kernel -- --nocapture" /*
         // */
       }
