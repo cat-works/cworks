@@ -51,7 +51,7 @@ impl Kernel {
     }
 
     fn step_all_processes(&mut self) {
-        for (pid, p) in &mut self.processes.map {
+        for (pid, p) in &mut self.processes.iter_mut() {
             // println!("Polling {pid} {:?}", p.status);
             if let ProcessStatus::Sleeping(t) = p.status {
                 if t > timestamp() {
@@ -190,10 +190,10 @@ impl Kernel {
         while let Some(act) = self.actions.pop() {
             match act {
                 KernelAction::ProcessKill(pid) => {
-                    self.processes.map.remove(&pid);
+                    self.processes.remove(&pid);
                 }
                 KernelAction::SendSyscallData(pid, data) => {
-                    let process = self.processes.map.get_mut(&pid);
+                    let process = self.processes.get_mut(&pid);
                     match process {
                         Some(process) => {
                             process.outgoing_data_buffer.push(data);
@@ -207,7 +207,7 @@ impl Kernel {
         }
     }
     pub fn start(&mut self) {
-        while !self.processes.map.is_empty() {
+        while !self.processes.is_empty() {
             self.step();
         }
     }
