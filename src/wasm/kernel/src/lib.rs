@@ -1,14 +1,15 @@
 mod fs;
 mod handle;
+mod initfs;
 mod ipc;
 mod kernel;
+mod kernel_processes;
 mod libs;
-mod lock;
-mod pid;
 mod process;
+pub mod rust_process;
 mod uri;
 
-pub use handle::{Handle, HandleIssuer};
+pub use handle::{Handle, HandleData, HandleIssuer};
 pub use kernel::Kernel;
-pub use process::{PollResult, Process, Syscall, SyscallData};
+pub use process::*;
 pub use uri::Uri;

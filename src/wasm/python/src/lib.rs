@@ -8,7 +8,8 @@ use kernel::{PollResult, Process, SyscallData};
 use python::panic_py_except;
 use rustpython_vm::{convert::IntoPyException, PyResult};
 
-use crate::python::python_enter;
+pub use python::format_exception;
+pub use python::python_enter;
 
 pub struct PythonProcess {
     generator: GeneratorWrapepr,

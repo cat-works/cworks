@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use kernel::{Handle, PollResult, Process, Syscall, SyscallData};
 
 #[derive(Default)]
 pub struct IPCMaster {
     state: i32,
-    ipc_handle: Arc<Handle>,
-    client_handle: Arc<Handle>,
+    ipc_handle: Handle,
+    client_handle: Handle,
 }
 
 impl Process for IPCMaster {
@@ -19,12 +17,12 @@ impl Process for IPCMaster {
             }
 
             1 => {
-                if let SyscallData::Handle(Ok(handle)) = data {
+                if let SyscallData::Handle(handle) = data {
                     self.ipc_handle = handle.clone();
                     self.state = 2;
                     println!("[Master] IPC created: {}", self.ipc_handle);
                     PollResult::Pending
-                } else if let SyscallData::Handle(Err(e)) = data {
+                } else if let SyscallData::Fail(e) = data {
                     println!("[Master] IPC create error: {:?}", e);
                     PollResult::Done(-1)
                 } else {

@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
 use kernel::{Handle, PollResult, Process, Syscall, SyscallData};
 #[derive(Default)]
 pub struct IPCSlave {
     state: i32,
-    dest: Arc<Handle>,
+    dest: Handle,
 }
 
 impl Process for IPCSlave {
@@ -12,7 +10,7 @@ impl Process for IPCSlave {
         match self.state {
             0 => {
                 self.state = 1;
-                PollResult::Sleep(0.1)
+                PollResult::Syscall(Syscall::Sleep(0.1))
             }
 
             1 => {
@@ -22,11 +20,11 @@ impl Process for IPCSlave {
             }
             2 => {
                 self.state = 3;
-                if let SyscallData::Handle(Ok(handle)) = data {
+                if let SyscallData::Handle(handle) = data {
                     self.dest = handle.clone();
                     println!("[Slave ] IPC Connected: {}", self.dest);
                     PollResult::Pending
-                } else if let SyscallData::Handle(Err(e)) = data {
+                } else if let SyscallData::Fail(e) = data {
                     println!("[Slave ] IPC Connect error: {:?}", e);
                     PollResult::Done(-1)
                 } else {

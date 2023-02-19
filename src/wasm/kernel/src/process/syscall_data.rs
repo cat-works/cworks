@@ -1,20 +1,15 @@
-use std::sync::Arc;
+use serde::Serialize;
 
 use crate::Handle;
 
 use super::SyscallError;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum SyscallData {
-    Handle(Result<Arc<Handle>, SyscallError>),
-    Connection {
-        client: Arc<Handle>,
-        server: Arc<Handle>,
-    },
-    ReceivingData {
-        focus: Arc<Handle>,
-        data: String,
-    },
+    Fail(SyscallError),
+    Handle(Handle),
+    Connection { client: Handle, server: Handle },
+    ReceivingData { focus: Handle, data: String },
     None,
 }
 

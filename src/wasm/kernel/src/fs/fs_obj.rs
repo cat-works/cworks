@@ -1,16 +1,18 @@
 use std::{collections::HashMap, sync::Arc};
 
+use futures::lock::Mutex;
+
 use crate::{process::SyscallError, Handle};
 
 use super::RefOrVal;
 
-pub trait DynamicFSObj: std::fmt::Debug {
+pub trait DynamicFSObj: std::fmt::Debug + Send + Sync {
     fn hash(&self) -> u64;
     fn get_obj(&self, path: String) -> Result<&FSObj, SyscallError>;
     fn set_obj(&mut self, path: String, obj: FSObj) -> Result<(), SyscallError>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum FSObj {
     Int(RefOrVal<i128>),
     String(RefOrVal<String>),
@@ -20,8 +22,8 @@ pub enum FSObj {
     Bytes(RefOrVal<Vec<u8>>),
     List(RefOrVal<Vec<FSObj>>),
     Dist(RefOrVal<HashMap<String, FSObj>>),
-    Handle(RefOrVal<Arc<Handle>>),
-    Dynamic(Box<dyn DynamicFSObj>),
+    Handle(RefOrVal<Handle>),
+    Dynamic(Arc<Mutex<dyn DynamicFSObj>>),
     Null,
 }
 
@@ -78,6 +80,29 @@ impl FSObj {
                         }
                     }
                     obj = map.get_mut(part).unwrap();
+                }
+                _ => return Err(SyscallError::NoSuchEntry),
+            }
+        }
+
+        Ok(obj)
+    }
+
+    pub fn get_obj(&self, path: String) -> Result<&FSObj, SyscallError> {
+        let mut obj = self;
+        let path = path.trim_start_matches('/');
+
+        if path.is_empty() {
+            return Ok(self);
+        }
+
+        for part in path.split('/') {
+            match obj {
+                FSObj::Dist(map) => {
+                    if !map.contains_key(part) {
+                        return Err(SyscallError::NoSuchEntry);
+                    }
+                    obj = map.get(part).unwrap();
                 }
                 _ => return Err(SyscallError::NoSuchEntry),
             }
