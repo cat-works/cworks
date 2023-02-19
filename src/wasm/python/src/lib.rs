@@ -3,7 +3,7 @@ mod python;
 mod python_interpreter;
 
 extern crate kernel;
-use generator_wrapper::GeneratorWrapepr;
+use generator_wrapper::GeneratorWrapper;
 use kernel::{PollResult, Process, SyscallData};
 use python::panic_py_except;
 pub use python_interpreter::python_interpreter;
@@ -13,13 +13,13 @@ pub use python::format_exception;
 pub use python::python_enter;
 
 pub struct PythonProcess {
-    generator: GeneratorWrapepr,
+    generator: GeneratorWrapper,
 }
 
 impl PythonProcess {
     pub fn new(source: String) -> PyResult<PythonProcess> {
         Ok(PythonProcess {
-            generator: GeneratorWrapepr::new(source + "\nwrapper()")?,
+            generator: GeneratorWrapper::new(source + "\nwrapper()")?,
         })
     }
 }
