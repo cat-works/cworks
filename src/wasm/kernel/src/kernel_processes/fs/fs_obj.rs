@@ -21,7 +21,7 @@ pub enum FSObj {
     Double(RefOrVal<f64>),
     Bytes(RefOrVal<Vec<u8>>),
     List(RefOrVal<Vec<FSObj>>),
-    Dist(RefOrVal<HashMap<String, FSObj>>),
+    Dict(RefOrVal<HashMap<String, FSObj>>),
     Handle(RefOrVal<Handle>),
     Dynamic(Arc<Mutex<dyn DynamicFSObj>>),
     Null,
@@ -44,7 +44,7 @@ impl From<&FSObj> for String {
                         .join(", ")
                     + "]"
             }
-            FSObj::Dist(d) => {
+            FSObj::Dict(d) => {
                 "{".to_string()
                     + &d.iter()
                         .map(|(k, v)| format!("{}: {}", k, String::from(v)))
@@ -68,12 +68,12 @@ impl FSObj {
         let mut obj = self;
         for part in path.split('/') {
             match obj {
-                FSObj::Dist(map) => {
+                FSObj::Dict(map) => {
                     if !map.contains_key(part) {
                         if allow_auto_digging {
                             map.insert(
                                 part.to_string(),
-                                FSObj::Dist(RefOrVal::Val(HashMap::new())),
+                                FSObj::Dict(RefOrVal::Val(HashMap::new())),
                             );
                         } else {
                             return Err(SyscallError::NoSuchEntry);
@@ -98,7 +98,7 @@ impl FSObj {
 
         for part in path.split('/') {
             match obj {
-                FSObj::Dist(map) => {
+                FSObj::Dict(map) => {
                     if !map.contains_key(part) {
                         return Err(SyscallError::NoSuchEntry);
                     }

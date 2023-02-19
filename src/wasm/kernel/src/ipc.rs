@@ -20,7 +20,7 @@ impl From<IpcMessage> for FSObj {
             "message".to_string(),
             FSObj::String(RefOrVal::Ref(Box::new(x.message))),
         );
-        FSObj::Dist(RefOrVal::Ref(Box::new(message)))
+        FSObj::Dict(RefOrVal::Ref(Box::new(message)))
     }
 }
 
@@ -94,6 +94,6 @@ impl From<Ipc> for FSObj {
         }
         root.insert("clients".to_string(), FSObj::List(RefOrVal::Val(clients)));
 
-        FSObj::Dist(RefOrVal::Val(root))
+        FSObj::Dict(RefOrVal::Val(root))
     }
 }

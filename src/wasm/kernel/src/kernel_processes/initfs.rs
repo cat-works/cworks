@@ -6,17 +6,17 @@ fn usr() -> FSObj {
     let mut usr = HashMap::new();
     usr.insert(
         "mime".to_string(),
-        FSObj::Dist(RefOrVal::Val(HashMap::new())),
+        FSObj::Dict(RefOrVal::Val(HashMap::new())),
     );
     usr.insert(
         "app".to_string(),
-        FSObj::Dist(RefOrVal::Val(HashMap::new())),
+        FSObj::Dict(RefOrVal::Val(HashMap::new())),
     );
     usr.insert(
         "lib".to_string(),
-        FSObj::Dist(RefOrVal::Val(HashMap::new())),
+        FSObj::Dict(RefOrVal::Val(HashMap::new())),
     );
-    FSObj::Dist(RefOrVal::Val(usr))
+    FSObj::Dict(RefOrVal::Val(usr))
 }
 
 pub fn initfs() -> FSObj {
@@ -24,11 +24,11 @@ pub fn initfs() -> FSObj {
     root.insert("usr".to_string(), usr());
     root.insert(
         "mnt".to_string(),
-        FSObj::Dist(RefOrVal::Val(HashMap::new())),
+        FSObj::Dict(RefOrVal::Val(HashMap::new())),
     );
     root.insert(
         "workspace".to_string(),
-        FSObj::Dist(RefOrVal::Val(HashMap::new())),
+        FSObj::Dict(RefOrVal::Val(HashMap::new())),
     );
-    FSObj::Dist(RefOrVal::Val(root))
+    FSObj::Dict(RefOrVal::Val(root))
 }

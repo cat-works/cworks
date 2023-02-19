@@ -20,7 +20,7 @@ impl<T: Into<FSObj>> From<Option<T>> for FSObj {
                 map.insert("has_data".to_string(), FSObj::Boolean(RefOrVal::Val(false)));
             }
         }
-        FSObj::Dist(RefOrVal::Val(map))
+        FSObj::Dict(RefOrVal::Val(map))
     }
 }
 impl<T: Into<FSObj>> From<Box<T>> for FSObj {

@@ -70,7 +70,7 @@ impl FS {
             .get_obj(path)
             .map_err(|_| FSReturns::UnknownPath)?
         {
-            FSObj::Dist(x) => Ok(x.keys().cloned().collect::<Vec<_>>()),
+            FSObj::Dict(x) => Ok(x.keys().cloned().collect::<Vec<_>>()),
             _ => Err(FSReturns::UnsupportedMethod),
         }
     }
