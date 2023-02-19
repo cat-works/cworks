@@ -1,7 +1,7 @@
 mod path;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{fs::FSObj, rust_process::Session, SyscallData, SyscallError};
+use crate::{fs::FSObj, Session, SyscallData, SyscallError};
 
 enum FSReturns {
     InvalidCommandFormat,

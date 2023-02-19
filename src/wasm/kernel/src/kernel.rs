@@ -10,7 +10,7 @@ use crate::{
     kernel_processes::fs_daemon_process,
     libs::{timestamp, AutoMap},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
-    rust_process::RustProcess,
+    RustProcess,
 };
 
 use super::process::{KernelProcess, PollResult, Process};

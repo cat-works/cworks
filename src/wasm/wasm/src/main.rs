@@ -1,6 +1,6 @@
 use std::{process::exit, sync::Arc};
 
-use kernel::{rust_process::*, SyscallError};
+use kernel::{RustProcess, Session, SyscallError};
 
 extern crate kernel;
 // extern crate python;
