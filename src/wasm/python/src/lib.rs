@@ -1,11 +1,12 @@
 mod generator_wrapper;
 mod python;
+mod python_interpreter;
 
 extern crate kernel;
-
 use generator_wrapper::GeneratorWrapepr;
 use kernel::{PollResult, Process, SyscallData};
 use python::panic_py_except;
+pub use python_interpreter::python_interpreter;
 use rustpython_vm::{convert::IntoPyException, PyResult};
 
 pub use python::format_exception;
