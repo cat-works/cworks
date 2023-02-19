@@ -37,8 +37,6 @@ export class FileSystem {
     let ret = await this.ipc.recv();
 
     this.handle_error(ret);
-
-    return;
   }
 
   public async list(): Promise<string[]> {
