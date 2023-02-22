@@ -5,7 +5,7 @@ export class Pattern {
 
   constructor(s: string) {
     // s: [r: r, R: r + R] 01rrrRRR dddddddd: ${r} <- ${R}
-    let match = s.match(/\[(.*)\] (.*): (.*)/);
+    let match = s.match(/\[(.*)\]\s+(.*):\s+(.*)/);
     if (match === null) throw new Error("invalid pattern");
 
 
