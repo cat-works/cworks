@@ -35,8 +35,10 @@ export class Matcher {
     return r;
   }
 
-  private reduce_buffer_head(length: number) {
+  private reduce_buffer_head(length: number): string[] {
+    const data = this.buffer.slice(0, length);
     this.buffer = this.buffer.slice(length);
+    return data;
   }
 
   private match_without_trait(pattern: Pattern, part: string[]): Match | null {
@@ -96,13 +98,13 @@ export class Matcher {
     return buf;
   }
 
-  match(): [number, string] | null {
+  match(): [number, string[], string] | null {
     for (let pattern of this.config.patterns) {
       let match = this.match_pattern(pattern);
       if (match === null) continue;
       const bin_length = pattern.binary.length
-      this.reduce_buffer_head(pattern.binary.length);
-      return [bin_length, match.format(pattern.mnemonic)];
+      const matched = this.reduce_buffer_head(pattern.binary.length);
+      return [bin_length, matched, match.format(pattern.mnemonic)];
     }
     return null;
   }
