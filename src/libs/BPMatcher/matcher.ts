@@ -1,65 +1,7 @@
-export type TraitDefine = {
-  check?: (x: string, arg: string) => boolean;
-  filter?: (x: string, arg: string) => string;
-};
-
-export class Pattern {
-  traits: { [key: string]: [string, string][] };
-  binary: string[];
-  mnemonic: string;
-
-  constructor(s: string) {
-    // s: [r: r, R: r + R] 01rrrRRR dddddddd: ${r} <- ${R}
-    let match = s.match(/\[(.*)\] (.*): (.*)/);
-    if (match === null) throw new Error("invalid pattern");
-
-
-    this.traits = {};
-    match[1].replace(/\s/g, "").split(",").forEach((x) => {
-      let [key, value] = x.split(":");
-      this.traits[key] = value.split("+").map(x => {
-        let m = x.match(/(.*)\((.*)\)/);
-        return m ? [m[1], m[2]] : [x, ""]
-      });
-    });
-
-    this.binary = match[2].split(" ");
-    this.mnemonic = match[3];
-  }
-};
-
-export class BinaryPatternMatcherConfig {
-  traits: { [key: string]: TraitDefine };
-  dynamic_datas: {
-    [key: string]: () => string
-  };
-  patterns: Pattern[];
-}
-
-class Match {
-  variables: { [key: string]: string };
-
-  constructor() {
-    this.variables = {};
-  }
-
-  append_variable(key: string, data: string): void {
-    if (!Object.hasOwn(this.variables, key)) {
-      this.variables[key] = data;
-    } else {
-      this.variables[key] += data;
-    }
-  }
-
-  format(mnemonic: string): string {
-    let r = mnemonic;
-    for (const key in this.variables) {
-      r = r.replace(new RegExp(`\\$\\{${key}\\}`, "g"), this.variables[key]);
-    }
-
-    return r;
-  }
-}
+import type { Config } from "./config";
+import { Match } from "./match";
+import type { Pattern } from "./pattern";
+import type { TraitDefine } from "./trait_define";
 
 function apply_trait(trait: TraitDefine, data: string, trait_arg: string): string | null {
   if (trait.check && !trait.check(data, trait_arg)) {
@@ -72,9 +14,9 @@ function apply_trait(trait: TraitDefine, data: string, trait_arg: string): strin
   return data;
 }
 
-export class BinaryPatternMatcher {
+export class Matcher {
   private buffer: string[];
-  constructor(private config: BinaryPatternMatcherConfig) {
+  constructor(private config: Config) {
 
   }
   set_buffer(buffer: string[]) {
