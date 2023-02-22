@@ -4,14 +4,7 @@ import type { Pattern } from "./pattern";
 import type { TraitDefine } from "./trait_define";
 
 function apply_trait(trait: TraitDefine, data: string, trait_arg: string): string | null {
-  if (trait.check && !trait.check(data, trait_arg)) {
-    return null;
-  }
-  if (trait.filter) {
-    data = trait.filter(data, trait_arg);
-  }
-
-  return data;
+  return trait(data, trait_arg);
 }
 
 export class Matcher {
