@@ -75,6 +75,19 @@ export class BinaryPatternMatcher {
     this.buffer = buffer;
   }
 
+  public *undefined_patterns(): Generator<number> {
+    let buffer_ = this.buffer;
+
+    for (let i = 0; i < 0x100; i++) {
+      this.set_buffer([i.toString(2).padStart(8, "0")]);
+      if (this.match() === null) {
+        yield i;
+      }
+    }
+
+    this.buffer = buffer_;
+  }
+
   private get_buffer_slice(length: number): string[] | null {
     let r = this.buffer.slice(0, length);
     if (r.length !== length) return null;
@@ -135,15 +148,21 @@ export class BinaryPatternMatcher {
     return match;
   }
 
+  pop(): string {
+    let buf = this.buffer[0];
+    if (buf === undefined) return "";
+    this.reduce_buffer_head(1);
+    return buf;
+  }
+
   match(): string {
     for (let pattern of this.config.patterns) {
       let match = this.match_pattern(pattern);
       if (match === null) continue;
-      this.reduce_buffer_head(pattern.binary.length)
-      console.log("matched", match);
+      this.reduce_buffer_head(pattern.binary.length);
       return match.format(pattern.mnemonic);
     }
-    return "^^";
+    return null;
   }
 
 }
