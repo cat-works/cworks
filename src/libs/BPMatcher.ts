@@ -1,10 +1,10 @@
 export type TraitDefine = {
-  check?: (x: string) => boolean;
-  filter?: (x: string) => string;
+  check?: (x: string, arg: string) => boolean;
+  filter?: (x: string, arg: string) => string;
 };
 
 export class Pattern {
-  traits: { [key: string]: string[] };
+  traits: { [key: string]: [string, string][] };
   binary: string[];
   mnemonic: string;
 
@@ -17,7 +17,10 @@ export class Pattern {
     this.traits = {};
     match[1].replace(/\s/g, "").split(",").forEach((x) => {
       let [key, value] = x.split(":");
-      this.traits[key] = value.split("+");
+      this.traits[key] = value.split("+").map(x => {
+        let m = x.match(/(.*)\((.*)\)/);
+        return m ? [m[1], m[2]] : [x, ""]
+      });
     });
 
     this.binary = match[2].split(" ");
@@ -27,6 +30,9 @@ export class Pattern {
 
 export class BinaryPatternMatcherConfig {
   traits: { [key: string]: TraitDefine };
+  dynamic_datas: {
+    [key: string]: () => string
+  };
   patterns: Pattern[];
 }
 
@@ -55,12 +61,12 @@ class Match {
   }
 }
 
-function apply_trait(trait: TraitDefine, data: string): string | null {
-  if (trait.check && !trait.check(data)) {
+function apply_trait(trait: TraitDefine, data: string, trait_arg: string): string | null {
+  if (trait.check && !trait.check(data, trait_arg)) {
     return null;
   }
   if (trait.filter) {
-    data = trait.filter(data);
+    data = trait.filter(data, trait_arg);
   }
 
   return data;
@@ -132,13 +138,13 @@ export class BinaryPatternMatcher {
     for (const var_name in match.variables) {
       if (pattern.traits[var_name] === undefined) continue;
 
-      for (const trait_name of pattern.traits[var_name]) {
+      for (const [trait_name, trait_arg] of pattern.traits[var_name]) {
         let trait = this.config.traits[trait_name];
         if (trait === undefined) {
           throw new Error(`trait ${trait_name} is not defined`);
         }
 
-        let data = apply_trait(trait, match.variables[var_name]);
+        let data = apply_trait(trait, match.variables[var_name], trait_arg);
         if (data === null) return null;
 
         match.variables[var_name] = data;
@@ -155,12 +161,13 @@ export class BinaryPatternMatcher {
     return buf;
   }
 
-  match(): string {
+  match(): [number, string] | null {
     for (let pattern of this.config.patterns) {
       let match = this.match_pattern(pattern);
       if (match === null) continue;
+      const bin_length = pattern.binary.length
       this.reduce_buffer_head(pattern.binary.length);
-      return match.format(pattern.mnemonic);
+      return [bin_length, match.format(pattern.mnemonic)];
     }
     return null;
   }
