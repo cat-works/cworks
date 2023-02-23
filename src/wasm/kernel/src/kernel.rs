@@ -5,12 +5,11 @@ use std::{
 
 use crate::{
     handle::{HandleData, HandleIssuer},
-    initfs::initfs,
     ipc::Ipc,
-    kernel_processes::fs_daemon_process,
+    kernel_processes::{fs_daemon_process, initfs::initfs},
     libs::{timestamp, AutoMap},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
-    rust_process::RustProcess,
+    RustProcess,
 };
 
 use super::process::{KernelProcess, PollResult, Process};
@@ -44,7 +43,7 @@ impl Default for Kernel {
 
 impl Kernel {
     pub fn get_ipc_names(&self) -> Vec<String> {
-        self.ipc_instances.keys().map(|s| s.clone()).collect()
+        self.ipc_instances.keys().cloned().collect()
     }
 
     pub fn register_process(&mut self, p: Box<dyn Process>) {
@@ -52,7 +51,7 @@ impl Kernel {
     }
 
     fn step_all_processes(&mut self) {
-        for (pid, p) in &mut self.processes.map {
+        for (pid, p) in &mut self.processes.iter_mut() {
             // println!("Polling {pid} {:?}", p.status);
             if let ProcessStatus::Sleeping(t) = p.status {
                 if t > timestamp() {
@@ -75,6 +74,7 @@ impl Kernel {
                 PollResult::Syscall(s) => match s {
                     Syscall::Sleep(seconds) => {
                         p.status = ProcessStatus::Sleeping(timestamp() + seconds);
+                        log::debug!("Process<{pid}> Sleeps for {seconds} seconds");
                     }
                     Syscall::IpcCreate(ref name) => {
                         if self.ipc_instances.contains_key(name) {
@@ -191,10 +191,10 @@ impl Kernel {
         while let Some(act) = self.actions.pop() {
             match act {
                 KernelAction::ProcessKill(pid) => {
-                    self.processes.map.remove(&pid);
+                    self.processes.remove(&pid);
                 }
                 KernelAction::SendSyscallData(pid, data) => {
-                    let process = self.processes.map.get_mut(&pid);
+                    let process = self.processes.get_mut(&pid);
                     match process {
                         Some(process) => {
                             process.outgoing_data_buffer.push(data);
@@ -208,7 +208,7 @@ impl Kernel {
         }
     }
     pub fn start(&mut self) {
-        while !self.processes.map.is_empty() {
+        while !self.processes.is_empty() {
             self.step();
         }
     }

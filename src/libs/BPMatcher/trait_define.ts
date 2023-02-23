@@ -1,0 +1,1 @@
+export type TraitDefine = (x: string, arg: string) => string | undefined;

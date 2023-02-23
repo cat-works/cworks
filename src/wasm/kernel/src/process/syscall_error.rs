@@ -10,6 +10,8 @@ pub enum SyscallError {
     NotImplemented,
 
     UnreachableEntry,
+
+    ResourceIsBusy,
 }
 
 impl From<SyscallError> for i64 {
@@ -20,6 +22,7 @@ impl From<SyscallError> for i64 {
             SyscallError::UnknownHandle => -3,
             SyscallError::NotImplemented => -4,
             SyscallError::UnreachableEntry => -5,
+            SyscallError::ResourceIsBusy => -6,
         }
     }
 }

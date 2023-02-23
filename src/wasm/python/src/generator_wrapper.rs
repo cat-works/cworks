@@ -4,17 +4,17 @@ use rustpython_vm::{
     PyObjectRef, PyResult,
 };
 
-pub struct GeneratorWrapepr {
+pub struct GeneratorWrapper {
     generator: PyObjectRef,
 }
 
-impl GeneratorWrapepr {
-    pub fn new(source: String) -> PyResult<GeneratorWrapepr> {
+impl GeneratorWrapper {
+    pub fn new(source: String) -> PyResult<GeneratorWrapper> {
         python_enter(|vm| {
             let scope = vm.new_scope_with_builtins();
             let scope = init_scope(vm, &scope)?;
 
-            Ok(GeneratorWrapepr {
+            Ok(GeneratorWrapper {
                 generator: vm.run_block_expr(scope.clone(), source.as_str())?,
             })
         })

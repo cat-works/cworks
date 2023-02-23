@@ -2,6 +2,6 @@
 
 members = [
   "kernel",
-# "python",
+ "python",
   "wasm"
 ]

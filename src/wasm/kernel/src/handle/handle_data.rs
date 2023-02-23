@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::{ipc::Ipc, Handle};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum HandleData {
     IpcServer {
         ipc: Arc<Mutex<Ipc>>,
@@ -14,6 +14,7 @@ pub enum HandleData {
     IpcClient {
         server: Arc<Mutex<Ipc>>,
     },
+    #[default]
     None,
 }
 

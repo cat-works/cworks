@@ -4,8 +4,6 @@ use futures::lock::Mutex;
 
 use crate::{process::SyscallError, Handle};
 
-use super::RefOrVal;
-
 pub trait DynamicFSObj: std::fmt::Debug + Send + Sync {
     fn hash(&self) -> u64;
     fn get_obj(&self, path: String) -> Result<&FSObj, SyscallError>;
@@ -14,15 +12,15 @@ pub trait DynamicFSObj: std::fmt::Debug + Send + Sync {
 
 #[derive(Debug, Clone)]
 pub enum FSObj {
-    Int(RefOrVal<i128>),
-    String(RefOrVal<String>),
-    Boolean(RefOrVal<bool>),
-    Float(RefOrVal<f32>),
-    Double(RefOrVal<f64>),
-    Bytes(RefOrVal<Vec<u8>>),
-    List(RefOrVal<Vec<FSObj>>),
-    Dist(RefOrVal<HashMap<String, FSObj>>),
-    Handle(RefOrVal<Handle>),
+    Int(Arc<i128>),
+    String(Arc<String>),
+    Boolean(Arc<bool>),
+    Float(Arc<f32>),
+    Double(Arc<f64>),
+    Bytes(Arc<Vec<u8>>),
+    List(Arc<Vec<FSObj>>),
+    Dict(Arc<Mutex<HashMap<String, FSObj>>>),
+    Handle(Handle),
     Dynamic(Arc<Mutex<dyn DynamicFSObj>>),
     Null,
 }
@@ -44,12 +42,19 @@ impl From<&FSObj> for String {
                         .join(", ")
                     + "]"
             }
-            FSObj::Dist(d) => {
+            FSObj::Dict(d) => {
                 "{".to_string()
-                    + &d.iter()
-                        .map(|(k, v)| format!("{}: {}", k, String::from(v)))
-                        .collect::<Vec<String>>()
-                        .join(", ")
+                    + &(match d.try_lock() {
+                        Some(d) => {
+                            let s = &d
+                                .iter()
+                                .map(|(k, v)| format!("{}: {}", k, String::from(v)))
+                                .collect::<Vec<String>>()
+                                .join(", ");
+                            s.clone()
+                        }
+                        None => "Resource is busy".to_string(),
+                    })
                     + "}"
             }
             FSObj::Handle(h) => format!("Handle({h})"),
@@ -60,54 +65,49 @@ impl From<&FSObj> for String {
 }
 
 impl FSObj {
-    pub fn get_obj_mut(
-        &mut self,
-        path: String,
-        allow_auto_digging: bool,
-    ) -> Result<&mut FSObj, SyscallError> {
-        let mut obj = self;
-        for part in path.split('/') {
-            match obj {
-                FSObj::Dist(map) => {
-                    if !map.contains_key(part) {
-                        if allow_auto_digging {
-                            map.insert(
-                                part.to_string(),
-                                FSObj::Dist(RefOrVal::Val(HashMap::new())),
-                            );
-                        } else {
-                            return Err(SyscallError::NoSuchEntry);
-                        }
-                    }
-                    obj = map.get_mut(part).unwrap();
-                }
-                _ => return Err(SyscallError::NoSuchEntry),
-            }
-        }
-
-        Ok(obj)
-    }
-
-    pub fn get_obj(&self, path: String) -> Result<&FSObj, SyscallError> {
-        let mut obj = self;
+    pub fn get_obj_mut(&mut self, path: String) -> Result<FSObj, SyscallError> {
+        let mut obj = self.clone();
         let path = path.trim_start_matches('/');
-
         if path.is_empty() {
-            return Ok(self);
+            return Ok(obj);
         }
-
         for part in path.split('/') {
             match obj {
-                FSObj::Dist(map) => {
+                FSObj::Dict(map) => {
+                    let mut map = map.try_lock().ok_or(SyscallError::ResourceIsBusy)?;
                     if !map.contains_key(part) {
                         return Err(SyscallError::NoSuchEntry);
                     }
-                    obj = map.get(part).unwrap();
+                    obj = map.get_mut(part).unwrap().clone();
                 }
                 _ => return Err(SyscallError::NoSuchEntry),
             }
         }
 
-        Ok(obj)
+        Ok(obj.clone())
+    }
+
+    pub fn get_obj(&self, path: String) -> Result<FSObj, SyscallError> {
+        let mut obj = self.clone();
+        let path = path.trim_start_matches('/');
+
+        if path.is_empty() {
+            return Ok(obj);
+        }
+
+        for part in path.split('/') {
+            match obj {
+                FSObj::Dict(map) => {
+                    let map = map.try_lock().ok_or(SyscallError::ResourceIsBusy)?;
+                    if !map.contains_key(part) {
+                        return Err(SyscallError::NoSuchEntry);
+                    }
+                    obj = map.get(part).unwrap().clone();
+                }
+                _ => return Err(SyscallError::NoSuchEntry),
+            }
+        }
+
+        Ok(obj.clone())
     }
 }

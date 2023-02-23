@@ -21,18 +21,16 @@ impl CallbackProcess {
 
 impl Process for CallbackProcess {
     fn poll(&mut self, data: &kernel::SyscallData) -> kernel::PollResult<i64> {
-        if let SyscallData::Handle(ref h) = data {
-            self.handle_casher.register_handle(h.clone());
+        match &data {
+            SyscallData::Handle(h) => {
+                self.handle_casher.register_handle(h.clone());
+            }
+            SyscallData::Connection { server, client } => {
+                self.handle_casher.register_handle(server.clone());
+                self.handle_casher.register_handle(client.clone());
+            }
+            _ => {}
         }
-        if let SyscallData::Connection {
-            ref server,
-            ref client,
-        } = data
-        {
-            self.handle_casher.register_handle(server.clone());
-            self.handle_casher.register_handle(client.clone());
-        }
-
         let data = {
             match serde_wasm_bindgen::to_value(&{
                 if let Some(d) = self.syscall_data_buffer.take() {

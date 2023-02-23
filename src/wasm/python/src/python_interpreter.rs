@@ -1,4 +1,4 @@
-use python::PythonProcess;
+use crate::PythonProcess;
 
 pub fn python_interpreter() -> PythonProcess {
     PythonProcess::new(

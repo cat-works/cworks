@@ -1,7 +1,12 @@
+pub(crate) mod fs;
+pub(crate) mod initfs;
 mod path;
+
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{fs::FSObj, rust_process::Session, SyscallData, SyscallError};
+use crate::{Session, SyscallData, SyscallError};
+
+use self::fs::FSObj;
 
 enum FSReturns {
     InvalidCommandFormat,
@@ -9,6 +14,7 @@ enum FSReturns {
     InvalidHandle,
     UnknownPath,
     UnknownError,
+    ResourceIsBusy,
     Ok,
 }
 
@@ -20,6 +26,7 @@ impl From<FSReturns> for String {
             FSReturns::InvalidHandle => "InvalidHandle".to_string(),
             FSReturns::UnknownPath => "UnknownPath".to_string(),
             FSReturns::UnknownError => "UnknownError".to_string(),
+            FSReturns::ResourceIsBusy => "ResourceIsBusy".to_string(),
             FSReturns::Ok => "Ok".to_string(),
         }
     }
@@ -65,14 +72,21 @@ impl FS {
             .get_obj(path)
             .map_err(|_| FSReturns::UnknownPath)?
         {
-            FSObj::Dist(x) => Ok(x.keys().cloned().collect::<Vec<_>>()),
+            FSObj::Dict(x) => Ok(x
+                .try_lock()
+                .ok_or(FSReturns::ResourceIsBusy)?
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>()),
             _ => Err(FSReturns::UnsupportedMethod),
         }
     }
 }
 
 pub async fn fs_daemon_process(session: Arc<Session<FSObj>>) -> Result<i64, SyscallError> {
+    log::debug!("FS: Starting Daemon");
     let _s = session.ipc_create("system/file-system".to_string()).await?;
+    log::debug!("FS: IPC Created!");
 
     let fs = session.get_value();
     let fs = FS::new(fs);
@@ -86,7 +100,7 @@ pub async fn fs_daemon_process(session: Arc<Session<FSObj>>) -> Result<i64, Sysc
                 state.insert(client.id, "/".to_string());
             }
             SyscallData::ReceivingData { focus, data } => {
-                println!("Received: Client[{}] -> Server: {}", focus.id, data);
+                log::debug!("FS: Client[{}] <- {}", focus.id, data);
                 let r = match FSCommand::try_from(data.clone()) {
                     Ok(x) => x,
                     Err(e) => {
@@ -115,7 +129,7 @@ pub async fn fs_daemon_process(session: Arc<Session<FSObj>>) -> Result<i64, Sysc
                         None => FSReturns::InvalidHandle.into(),
                     },
                 };
-                println!("Received: {} [Client -> Server]", data);
+                log::debug!("FS: Client[{}] -> {}", focus.id, ret);
                 session.ipc_send(focus.clone(), ret).await?;
             }
 

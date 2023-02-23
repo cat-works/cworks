@@ -1,10 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use crate::{
-    fs::{FSObj, RefOrVal},
-    handle::HandleData,
-    Handle,
-};
+use crate::{fs::FSObj, handle::HandleData, Handle};
 
 #[derive(Debug)]
 pub struct IpcMessage {
@@ -16,11 +12,8 @@ impl From<IpcMessage> for FSObj {
     fn from(x: IpcMessage) -> FSObj {
         let mut message = HashMap::new();
         message.insert("handle".to_string(), x.from.into());
-        message.insert(
-            "message".to_string(),
-            FSObj::String(RefOrVal::Ref(Box::new(x.message))),
-        );
-        FSObj::Dist(RefOrVal::Ref(Box::new(message)))
+        message.insert("message".to_string(), FSObj::String(Arc::new(x.message)));
+        FSObj::Dict(Arc::new(message.into()))
     }
 }
 
@@ -90,10 +83,10 @@ impl From<Ipc> for FSObj {
 
         let mut clients = vec![];
         for client in x.clients {
-            clients.push(FSObj::Handle(RefOrVal::Ref(Box::new(client))));
+            clients.push(FSObj::Handle(client));
         }
-        root.insert("clients".to_string(), FSObj::List(RefOrVal::Val(clients)));
+        root.insert("clients".to_string(), FSObj::List(Arc::new(clients)));
 
-        FSObj::Dist(RefOrVal::Val(root))
+        FSObj::Dict(Arc::new(root.into()))
     }
 }
