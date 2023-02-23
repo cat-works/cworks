@@ -1,6 +1,5 @@
 mod generator;
 mod js_process;
-mod processes;
 mod session;
 
 extern crate ghs_demangle;
