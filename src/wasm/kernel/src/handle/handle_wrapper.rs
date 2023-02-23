@@ -2,7 +2,7 @@ use std::{ops::Deref, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
-use crate::kernel_processes::fs::{FSObj, RefOrVal};
+use crate::kernel_processes::fs::FSObj;
 
 use super::{handle_core::HandleCore, HandleData};
 
@@ -55,7 +55,7 @@ impl PartialEq for Handle {
 
 impl From<Handle> for FSObj {
     fn from(x: Handle) -> FSObj {
-        FSObj::Handle(RefOrVal::Val(x))
+        FSObj::Handle(x)
     }
 }
 

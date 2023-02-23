@@ -14,15 +14,15 @@ pub trait DynamicFSObj: std::fmt::Debug + Send + Sync {
 
 #[derive(Debug, Clone)]
 pub enum FSObj {
-    Int(RefOrVal<i128>),
-    String(RefOrVal<String>),
-    Boolean(RefOrVal<bool>),
-    Float(RefOrVal<f32>),
-    Double(RefOrVal<f64>),
-    Bytes(RefOrVal<Vec<u8>>),
+    Int(Arc<i128>),
+    String(Arc<String>),
+    Boolean(Arc<bool>),
+    Float(Arc<f32>),
+    Double(Arc<f64>),
+    Bytes(Arc<Vec<u8>>),
     List(RefOrVal<Vec<FSObj>>),
     Dict(RefOrVal<HashMap<String, FSObj>>),
-    Handle(RefOrVal<Handle>),
+    Handle(Handle),
     Dynamic(Arc<Mutex<dyn DynamicFSObj>>),
     Null,
 }
