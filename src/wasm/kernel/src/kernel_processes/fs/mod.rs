@@ -1,10 +1,8 @@
 mod fs_obj;
-mod ref_or_val;
 
 use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 pub use fs_obj::FSObj;
-pub use ref_or_val::RefOrVal;
 
 impl<T: Into<FSObj>> From<Option<T>> for FSObj {
     fn from(value: Option<T>) -> Self {
@@ -18,7 +16,7 @@ impl<T: Into<FSObj>> From<Option<T>> for FSObj {
                 map.insert("has_data".to_string(), FSObj::Boolean(Arc::new(false)));
             }
         }
-        FSObj::Dict(RefOrVal::Val(map))
+        FSObj::Dict(Arc::new(map.into()))
     }
 }
 impl<T: Into<FSObj>> From<Box<T>> for FSObj {

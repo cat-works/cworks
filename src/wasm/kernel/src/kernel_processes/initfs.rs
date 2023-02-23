@@ -1,22 +1,22 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use crate::fs::{FSObj, RefOrVal};
+use crate::fs::FSObj;
 
 fn usr() -> FSObj {
     let mut usr = HashMap::new();
     usr.insert(
         "mime".to_string(),
-        FSObj::Dict(RefOrVal::Val(HashMap::new())),
+        FSObj::Dict(Arc::new(HashMap::new().into())),
     );
     usr.insert(
         "app".to_string(),
-        FSObj::Dict(RefOrVal::Val(HashMap::new())),
+        FSObj::Dict(Arc::new(HashMap::new().into())),
     );
     usr.insert(
         "lib".to_string(),
-        FSObj::Dict(RefOrVal::Val(HashMap::new())),
+        FSObj::Dict(Arc::new(HashMap::new().into())),
     );
-    FSObj::Dict(RefOrVal::Val(usr))
+    FSObj::Dict(Arc::new(usr.into()))
 }
 
 pub fn initfs() -> FSObj {
@@ -24,11 +24,11 @@ pub fn initfs() -> FSObj {
     root.insert("usr".to_string(), usr());
     root.insert(
         "mnt".to_string(),
-        FSObj::Dict(RefOrVal::Val(HashMap::new())),
+        FSObj::Dict(Arc::new(HashMap::new().into())),
     );
     root.insert(
         "workspace".to_string(),
-        FSObj::Dict(RefOrVal::Val(HashMap::new())),
+        FSObj::Dict(Arc::new(HashMap::new().into())),
     );
-    FSObj::Dict(RefOrVal::Val(root))
+    FSObj::Dict(Arc::new(root.into()))
 }

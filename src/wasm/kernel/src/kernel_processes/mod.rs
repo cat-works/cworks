@@ -14,6 +14,7 @@ enum FSReturns {
     InvalidHandle,
     UnknownPath,
     UnknownError,
+    ResourceIsBusy,
     Ok,
 }
 
@@ -25,6 +26,7 @@ impl From<FSReturns> for String {
             FSReturns::InvalidHandle => "InvalidHandle".to_string(),
             FSReturns::UnknownPath => "UnknownPath".to_string(),
             FSReturns::UnknownError => "UnknownError".to_string(),
+            FSReturns::ResourceIsBusy => "ResourceIsBusy".to_string(),
             FSReturns::Ok => "Ok".to_string(),
         }
     }
@@ -70,7 +72,12 @@ impl FS {
             .get_obj(path)
             .map_err(|_| FSReturns::UnknownPath)?
         {
-            FSObj::Dict(x) => Ok(x.keys().cloned().collect::<Vec<_>>()),
+            FSObj::Dict(x) => Ok(x
+                .try_lock()
+                .ok_or(FSReturns::ResourceIsBusy)?
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>()),
             _ => Err(FSReturns::UnsupportedMethod),
         }
     }
