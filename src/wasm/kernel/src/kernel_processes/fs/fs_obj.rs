@@ -60,23 +60,16 @@ impl From<&FSObj> for String {
 }
 
 impl FSObj {
-    pub fn get_obj_mut(
-        &mut self,
-        path: String,
-        allow_auto_digging: bool,
-    ) -> Result<&mut FSObj, SyscallError> {
+    pub fn get_obj_mut(&mut self, path: String) -> Result<&mut FSObj, SyscallError> {
         let mut obj = self;
         for part in path.split('/') {
             match obj {
                 FSObj::Dict(map) => {
                     if !map.contains_key(part) {
-                        if allow_auto_digging {
-                            map.insert(
-                                part.to_string(),
-                                FSObj::Dict(RefOrVal::Val(HashMap::new())),
-                            );
-                        } else {
                             return Err(SyscallError::NoSuchEntry);
+                            return Err(SyscallError::NoSuchEntry);
+                        }
+                        return Err(SyscallError::NoSuchEntry);
                         }
                     }
                     obj = map.get_mut(part).unwrap();
