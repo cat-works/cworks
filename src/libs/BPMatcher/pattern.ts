@@ -18,7 +18,10 @@ export class Pattern {
       });
     });
 
-    this.binary = match[2].split(" ");
+    this.binary = match[2].split(" ").map(x => {
+      const m = x.match(/(.*)h/);
+      return m ? parseInt(m[1], 16).toString(2).padStart(8, "0") : x;
+    });
     this.mnemonic = match[3];
   }
 };
