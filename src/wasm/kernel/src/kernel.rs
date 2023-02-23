@@ -74,6 +74,7 @@ impl Kernel {
                 PollResult::Syscall(s) => match s {
                     Syscall::Sleep(seconds) => {
                         p.status = ProcessStatus::Sleeping(timestamp() + seconds);
+                        log::debug!("Process<{pid}> Sleeps for {seconds} seconds");
                     }
                     Syscall::IpcCreate(ref name) => {
                         if self.ipc_instances.contains_key(name) {
