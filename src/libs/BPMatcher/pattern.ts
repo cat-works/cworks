@@ -29,7 +29,7 @@ export class Pattern {
       } else {
         return x;
       }
-    });
+    }).join("").split(/(........)/).filter(Boolean);
     this.mnemonic = match[3];
   }
 };
