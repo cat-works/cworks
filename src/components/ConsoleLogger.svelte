@@ -10,7 +10,7 @@
   window.console.log = (...args) => {
     clog(...args);
     const time = timestamp();
-    const data = args[0].toString().includes("%c")
+    const _data = args[0].toString().includes("%c")
       ? [...args.shift().match(/(%C)?[^%]*/gi)]
           .map((x) =>
             x.match(/^%C/i)
@@ -31,6 +31,10 @@
             return my_stringify(arg);
           })
           .join(" ");
+    const data = _data
+      .replace("kernel/src/kernel_processes/mod.rs", "[KernelP]")
+      .replace("kernel/src/kernel.rs", "[Kernel]")
+      .replace("wasm/src/lib.rs", "[wasm]");
     clog(data);
     buf.update((x) => `${x}\n${time} ${data}`);
   };
