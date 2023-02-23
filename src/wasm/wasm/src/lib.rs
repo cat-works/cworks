@@ -23,8 +23,6 @@ pub fn start() {
     console_error_panic_hook::set_once();
     wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));
 
-    log("hi");
-
     log::debug!("Debug");
     log::info!("Info");
 }
