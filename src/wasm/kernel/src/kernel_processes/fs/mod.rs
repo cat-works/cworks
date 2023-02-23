@@ -1,10 +1,8 @@
-mod fs_cursor;
 mod fs_obj;
 mod ref_or_val;
 
 use std::{collections::HashMap, rc::Rc};
 
-// pub use fs_cursor::FSCursor;
 pub use fs_obj::FSObj;
 pub use ref_or_val::RefOrVal;
 
