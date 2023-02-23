@@ -66,11 +66,7 @@ impl FSObj {
             match obj {
                 FSObj::Dict(map) => {
                     if !map.contains_key(part) {
-                            return Err(SyscallError::NoSuchEntry);
-                            return Err(SyscallError::NoSuchEntry);
-                        }
                         return Err(SyscallError::NoSuchEntry);
-                        }
                     }
                     obj = map.get_mut(part).unwrap();
                 }
