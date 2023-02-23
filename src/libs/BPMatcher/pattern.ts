@@ -19,8 +19,16 @@ export class Pattern {
     });
 
     this.binary = match[2].split(" ").map(x => {
-      const m = x.match(/(.*)h/);
-      return m ? parseInt(m[1], 16).toString(2).padStart(8, "0") : x;
+      const m1 = x.match(/\[[0-9a-fA-F]{2}\]/);
+      const m2 = x.match(/(.)\{(\d+)\}/);
+
+      if (m1) {
+        return parseInt(m1[1], 16).toString(2).padStart(8, "0");
+      } else if (m2) {
+        return m2[1].repeat(parseInt(m2[2], 10));
+      } else {
+        return x;
+      }
     });
     this.mnemonic = match[3];
   }
