@@ -41,5 +41,28 @@
   window.console.trace = (...args) => window.console.log(...args);
 </script>
 
-<pre><div
-    style="font-family: 'Fira Code'; width: 100%;word-wrap: break-word;">{@html $buf}</div></pre>
+<div class="container">
+  <span class="header">console.xxx</span>
+  <pre class="datas"><div
+      style="font-family: 'Fira Code'; width: 100%;word-wrap: break-word;">{@html $buf}</div></pre>
+</div>
+
+<style>
+  .container {
+    position: relative;
+
+    background-color: #2228;
+    border: 1px solid #333;
+  }
+  .datas {
+    margin-top: 1rem;
+  }
+  .header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: #333;
+
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+</style>
