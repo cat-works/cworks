@@ -43,24 +43,30 @@
 string: <length: uint16_t><str: char[length]>
 ```
 
-- `Server -> Client` `02 <s_sock: uint32_t><c_sock: uint32_t><c_ident: string>`
+#### Handshake
+
+- `Server -> Client` `number[]`
+  - version = 01
+- `Client -> Server` `<version>`
+  - version = 00: No Versions are supported (terminate)
+  - version = ff: Latest
+
+#### After Handshake
+
+- `Server --> Client` `{event:"connection",server:u32,client:u32,client:string}`
   - Notify connection.
   - 00 -> Allow
   - ff -> Deny
-- `Client -> Server` `02 <host: string><port: uint16_t>`
+- `Client --> Server` `{event:"connect",host:string}`
   - Connect to host.
   - `00 <c_socket: uint32_t>` -> Success
   - `<error: errno>` -> Failed
 
-- `Client -> Server` `03 <socket: uint32_t>`
-  - Disconnect from server or disconnect client
-  - `00`: Success
-  - `<error: errno>`: Failed
-- `Server -> Client` `03 <socket: uint32_t>`: Notify disconnected.
+- `Client <-> Server` `{event:"disconnect",socket:u32}`
 
-- `C -> S || S -> C` `00 <socket: uint32_t><data: bytes>`: Send data
+- `Client <-> Server` `{event:"send",}`: Send data
 
-- `Client -> Server` `10 <host: string><port: uint16_t>`
+- `Client --> Server` `{event:"listen",host:string}`
   - Set host:port as connectable
   - `00: <s_sock: uint32_t>`: Successed
   - `<error: errno>`: Failed
