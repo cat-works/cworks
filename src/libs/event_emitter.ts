@@ -1,3 +1,5 @@
+import { my_stringify } from "./utils";
+
 type Listener = (...args) => (boolean | void);
 
 export class EventEmitter {
@@ -62,11 +64,7 @@ export class EventEmitter {
     if (!this.marked_unused.includes(event)) {
       console.log(
         `Unhandled Event emitted: ${event} ${args
-          .map((x) =>
-            JSON.stringify(x, (_, v) =>
-              typeof v === "bigint" ? v.toString() : v,
-            ),
-          )
+          .map(my_stringify)
           .join(", ")}`,
       );
     }

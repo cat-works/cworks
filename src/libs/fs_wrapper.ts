@@ -26,9 +26,9 @@ export class FileSystem {
     }
   }
 
-  public async wait_for_ready(): Promise<void> {
+  public async wait_for_ready(waits: number = 100): Promise<void> {
     while (this.ipc === undefined) {
-      await sleep(100);
+      await sleep(waits);
     }
   }
 
