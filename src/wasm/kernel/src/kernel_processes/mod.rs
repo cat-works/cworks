@@ -8,6 +8,8 @@ use crate::{Session, SyscallData, SyscallError};
 
 use self::fs::FSObj;
 
+// TODO: (should) auto generate ts wrapper
+
 enum FSReturns {
     InvalidCommandFormat,
     UnsupportedMethod,
@@ -35,6 +37,7 @@ impl From<FSReturns> for String {
 enum FSCommand {
     List,
     Cd(String),
+    // TODO: Add Root Command
 }
 
 impl TryFrom<String> for FSCommand {
