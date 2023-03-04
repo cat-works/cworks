@@ -12,7 +12,7 @@ export function my_stringify(x: object) {
 eval("window.my_stringify = my_stringify");
 
 export function timestamp(): string {
-  return new Date().toISOString();
+  return new Date().toISOString().slice(11, -2);
 }
 
 export function patch_console_log() {
