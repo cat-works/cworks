@@ -37,7 +37,7 @@ impl From<FSReturns> for String {
 enum FSCommand {
     List,
     Cd(String),
-    // TODO: Add Root Command
+    Get(String), // TODO: Add Root Command
 }
 
 impl TryFrom<String> for FSCommand {
@@ -47,10 +47,11 @@ impl TryFrom<String> for FSCommand {
             return Err(FSReturns::InvalidCommandFormat);
         }
 
-        let toks = value.split('?').collect::<Vec<_>>();
-        match (toks.len(), toks[0]) {
+        let tokens = value.split('?').collect::<Vec<_>>();
+        match (tokens.len(), tokens[0]) {
             (1, "List") => Ok(FSCommand::List),
-            (2, "Cd") => Ok(FSCommand::Cd(toks[1].to_string())),
+            (2, "Cd") => Ok(FSCommand::Cd(tokens[1].to_string())),
+            (2, "Get") => Ok(FSCommand::Get(tokens[1].to_string())),
             _ => Err(FSReturns::InvalidCommandFormat),
         }
     }
@@ -82,6 +83,38 @@ impl FS {
                 .cloned()
                 .collect::<Vec<_>>()),
             _ => Err(FSReturns::UnsupportedMethod),
+        }
+    }
+
+    pub fn get(&self, path: String) -> Result<FSObj, FSReturns> {
+        self.root.get_obj(path).map_err(|_| FSReturns::UnknownPath)
+    }
+}
+
+trait ToDaemonString {
+    fn to_daemon_string(&self) -> Result<String, FSReturns>;
+}
+
+impl ToDaemonString for FSObj {
+    fn to_daemon_string(&self) -> Result<String, FSReturns> {
+        match self {
+            FSObj::Boolean(x) => Ok(format!("Boolean?{}", x)),
+            FSObj::Float(x) => Ok(format!("Float?{}", x)),
+            FSObj::Int(x) => Ok(format!("Integer?{}", x)),
+            FSObj::Double(x) => Ok(format!("Double?{}", x)),
+            FSObj::String(x) => Ok(format!("String?{}", x)),
+            FSObj::Bytes(x) => Ok(format!(
+                "Bytes?{}",
+                x.iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join("?")
+            )),
+            FSObj::Null => Ok("Null".to_string()),
+            FSObj::Dict(_) => Err(FSReturns::UnsupportedMethod),
+            FSObj::List(_) => Err(FSReturns::UnsupportedMethod),
+            FSObj::Handle(_) => Err(FSReturns::UnsupportedMethod),
+            FSObj::Dynamic(_) => Err(FSReturns::UnsupportedMethod),
         }
     }
 }
@@ -129,6 +162,15 @@ pub async fn fs_daemon_process(session: Arc<Session<FSObj>>) -> Result<i64, Sysc
                         }
                         Some((_, f)) if !f => FSReturns::UnknownPath.into(),
                         Some(_) => FSReturns::UnknownError.into(),
+                        None => FSReturns::InvalidHandle.into(),
+                    },
+                    FSCommand::Get(s) => match state
+                        .get(&focus.id)
+                        .map(|x| fs.get(path::join(x, s)).map(|x| x.to_daemon_string()))
+                    {
+                        Some(Ok(Ok(x))) => x,
+                        Some(Ok(Err(x))) => x.into(),
+                        Some(Err(x)) => x.into(),
                         None => FSReturns::InvalidHandle.into(),
                     },
                 };
