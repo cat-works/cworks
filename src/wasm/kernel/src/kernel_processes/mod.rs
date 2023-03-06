@@ -89,6 +89,16 @@ impl FS {
     pub fn get(&self, path: String) -> Result<FSObj, FSReturns> {
         self.root.get_obj(path).map_err(|_| FSReturns::UnknownPath)
     }
+    pub fn set(&self, path: String, obj: FSObj) -> Result<(), FSReturns> {
+        let p = self.root.get_obj(path::parent(&path).unwrap());
+        if let Ok(FSObj::Dict(x)) = p {
+            let mut x = x.try_lock().ok_or(FSReturns::ResourceIsBusy)?;
+            x.insert(path::basename(&path).to_string(), obj);
+            Ok(())
+        } else {
+            Err(FSReturns::UnsupportedMethod)
+        }
+    }
 }
 
 trait ToDaemonString {
