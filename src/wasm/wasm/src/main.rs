@@ -22,7 +22,8 @@ async fn client(session: Arc<Session<u32>>) -> Result<i64, SyscallError> {
                 println!("C <- {}", data);
                 if n == 0 {
                     session
-                        .ipc_send(c.clone(), "Cd?usr/mime/cafecode".to_string())
+                        // Cd?usr/mime/cafecode
+                        .ipc_send(c.clone(), "Get?test".to_string())
                         .await?;
                     n = 1;
                 } else if n == 1 {
@@ -56,6 +57,8 @@ async fn client(session: Arc<Session<u32>>) -> Result<i64, SyscallError> {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+
     let mut k = kernel::Kernel::default();
 
     // k.register_process(Box::new(RustProcess::new(&server, 0)));
