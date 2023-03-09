@@ -39,7 +39,7 @@ enum FSCommand {
     Cd(String),
     Get(String),
     Set(String, FSObj),
-    // TODO: Add Root Command
+    Root,
 }
 
 impl TryFrom<String> for FSCommand {
@@ -52,6 +52,7 @@ impl TryFrom<String> for FSCommand {
         let tokens = value.split('?').collect::<Vec<_>>();
         match (tokens.len(), tokens[0]) {
             (1, "List") => Ok(FSCommand::List),
+            (1, "Root") => Ok(FSCommand::Root),
             (2, "Cd") => Ok(FSCommand::Cd(tokens[1].to_string())),
             (2, "Get") => Ok(FSCommand::Get(tokens[1].to_string())),
             (3.., "Set") => Ok(FSCommand::Set(
@@ -223,6 +224,10 @@ pub async fn fs_daemon_process(session: Arc<Session<FSObj>>) -> Result<i64, Sysc
                         Some(Err(e)) => e.into(),
                         None => FSReturns::InvalidHandle.into(),
                     },
+                    FSCommand::Root => {
+                        state.insert(focus.id, "/".to_string());
+                        FSReturns::Ok.into()
+                    }
                     FSCommand::Cd(path) => match state
                         .get(&focus.id)
                         .map(|x| path::join(x, path.clone()))
