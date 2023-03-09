@@ -37,7 +37,9 @@ impl From<FSReturns> for String {
 enum FSCommand {
     List,
     Cd(String),
-    Get(String), // TODO: Add Root Command
+    Get(String),
+    Set(String, FSObj),
+    // TODO: Add Root Command
 }
 
 impl TryFrom<String> for FSCommand {
@@ -52,6 +54,10 @@ impl TryFrom<String> for FSCommand {
             (1, "List") => Ok(FSCommand::List),
             (2, "Cd") => Ok(FSCommand::Cd(tokens[1].to_string())),
             (2, "Get") => Ok(FSCommand::Get(tokens[1].to_string())),
+            (3.., "Set") => Ok(FSCommand::Set(
+                tokens[1].to_string(),
+                FSObj::from_daemon_string(tokens[2..].join("?").to_string())?,
+            )),
             _ => Err(FSReturns::InvalidCommandFormat),
         }
     }
@@ -93,7 +99,12 @@ impl FS {
         let p = self.root.get_obj(path::parent(&path).unwrap());
         if let Ok(FSObj::Dict(x)) = p {
             let mut x = x.try_lock().ok_or(FSReturns::ResourceIsBusy)?;
-            x.insert(path::basename(&path).to_string(), obj);
+            x.insert(
+                path::basename(&path)
+                    .ok_or(FSReturns::UnknownPath)?
+                    .to_string(),
+                obj,
+            );
             Ok(())
         } else {
             Err(FSReturns::UnsupportedMethod)
@@ -125,6 +136,57 @@ impl ToDaemonString for FSObj {
             FSObj::List(_) => Err(FSReturns::UnsupportedMethod),
             FSObj::Handle(_) => Err(FSReturns::UnsupportedMethod),
             FSObj::Dynamic(_) => Err(FSReturns::UnsupportedMethod),
+        }
+    }
+}
+
+trait FromDaemonString {
+    fn from_daemon_string(s: String) -> Result<FSObj, FSReturns>;
+}
+
+impl FromDaemonString for FSObj {
+    fn from_daemon_string(s: String) -> Result<FSObj, FSReturns> {
+        let tokens = s.split('?').collect::<Vec<_>>();
+
+        if tokens.len() < 2 {
+            return Err(FSReturns::InvalidCommandFormat);
+        }
+
+        match tokens[0] {
+            "Boolean" => Ok(FSObj::Boolean(
+                tokens[1]
+                    .parse::<bool>()
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?
+                    .into(),
+            )),
+            "Float" => Ok(FSObj::Float(
+                tokens[1]
+                    .parse::<f32>()
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?
+                    .into(),
+            )),
+            "Integer" => Ok(FSObj::Int(
+                tokens[1]
+                    .parse::<i128>()
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?
+                    .into(),
+            )),
+            "Double" => Ok(FSObj::Double(
+                tokens[1]
+                    .parse::<f64>()
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?
+                    .into(),
+            )),
+            "String" => Ok(FSObj::String(tokens[1].to_string().into())),
+            "Bytes" => Ok(FSObj::Bytes(
+                tokens[1..]
+                    .iter()
+                    .map(|x| x.parse::<u8>().map_err(|_| FSReturns::InvalidCommandFormat))
+                    .collect::<Result<Vec<_>, FSReturns>>()?
+                    .into(),
+            )),
+            "Null" => Ok(FSObj::Null),
+            _ => Err(FSReturns::InvalidCommandFormat),
         }
     }
 }
@@ -183,6 +245,13 @@ pub async fn fs_daemon_process(session: Arc<Session<FSObj>>) -> Result<i64, Sysc
                         Some(Err(x)) => x.into(),
                         None => FSReturns::InvalidHandle.into(),
                     },
+                    FSCommand::Set(s, obj) => {
+                        match state.get(&focus.id).map(|x| fs.set(path::join(x, s), obj)) {
+                            Some(Ok(())) => FSReturns::Ok.into(),
+                            Some(Err(x)) => x.into(),
+                            None => FSReturns::InvalidHandle.into(),
+                        }
+                    }
                 };
                 log::debug!("FS: Client[{}] -> {}", focus.id, ret);
                 session.ipc_send(focus.clone(), ret).await?;
