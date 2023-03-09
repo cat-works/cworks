@@ -55,4 +55,10 @@ export class FileSystem {
 
     return ret.split("?");
   }
+  public async set_raw(p: string, obj: string): Promise<void> {
+    await this.ipc.send(`Set?${p}?${obj}`);
+    let ret = await this.ipc.recv();
+
+    this.handle_error(ret);
+  }
 }
