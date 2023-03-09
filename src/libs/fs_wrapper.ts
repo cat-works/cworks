@@ -47,4 +47,12 @@ export class FileSystem {
 
     return ret.split("?");
   }
+  public async get(p: string): Promise<string[]> {
+    await this.ipc.send(`Get?${p}`);
+    let ret = await this.ipc.recv();
+
+    this.handle_error(ret);
+
+    return ret.split("?");
+  }
 }
