@@ -7,7 +7,7 @@
   eval("console.clog = console.log");
 
   let clog = console.log;
-  window.console.log = (...args) => {
+  let f = (...args) => {
     clog(...args);
     const time = timestamp();
     const _data = args[0].toString().includes("%c")
@@ -35,14 +35,15 @@
       .replace("kernel/src/kernel_processes/mod.rs", "[KernelP]")
       .replace("kernel/src/kernel.rs", "[Kernel]")
       .replace("wasm/src/lib.rs", "[wasm]");
-    clog(data);
+    clog("a");
     buf.update((x) => `${x}\n${time} ${data}`);
   };
-  window.console.info = (...args) => window.console.log(...args);
-  window.console.warn = (...args) => window.console.log(...args);
-  window.console.error = (...args) => window.console.log(...args);
-  window.console.debug = (...args) => window.console.log(...args);
-  window.console.trace = (...args) => window.console.log(...args);
+  window.console.log = (...args) => f(...args);
+  window.console.info = (...args) => f(...args);
+  window.console.warn = (...args) => f(...args);
+  window.console.error = (...args) => f(...args);
+  window.console.debug = (...args) => f(...args);
+  window.console.trace = (...args) => f(...args);
 </script>
 
 <div class="container">

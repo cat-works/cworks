@@ -26,9 +26,9 @@ export class FileSystem {
     }
   }
 
-  public async wait_for_ready(): Promise<void> {
+  public async wait_for_ready(waits: number = 100): Promise<void> {
     while (this.ipc === undefined) {
-      await sleep(100);
+      await sleep(waits);
     }
   }
 
@@ -46,5 +46,25 @@ export class FileSystem {
     this.handle_error(ret);
 
     return ret.split("?");
+  }
+  public async root(): Promise<void> {
+    await this.ipc.send("Root");
+    let ret = await this.ipc.recv();
+
+    this.handle_error(ret);
+  }
+  public async get(p: string): Promise<string[]> {
+    await this.ipc.send(`Get?${p}`);
+    let ret = await this.ipc.recv();
+
+    this.handle_error(ret);
+
+    return ret.split("?");
+  }
+  public async set_raw(p: string, obj: string): Promise<void> {
+    await this.ipc.send(`Set?${p}?${obj}`);
+    let ret = await this.ipc.recv();
+
+    this.handle_error(ret);
   }
 }
