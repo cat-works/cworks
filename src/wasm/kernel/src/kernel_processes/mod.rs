@@ -208,7 +208,7 @@ pub async fn fs_daemon_process(session: Arc<Session<FSObj>>) -> Result<i64, Sysc
                 state.insert(client.id, "/".to_string());
             }
             SyscallData::ReceivingData { focus, data } => {
-                log::debug!("FS: Client[{}] <- {}", focus.id, data);
+                log::debug!("FS: Client[{}] <- [{}]", focus.id, data);
                 let r = match FSCommand::try_from(data.clone()) {
                     Ok(x) => x,
                     Err(e) => {
