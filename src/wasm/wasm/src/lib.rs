@@ -21,7 +21,7 @@ extern "C" {
 #[wasm_bindgen(start)]
 pub fn start() {
     console_error_panic_hook::set_once();
-    wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));
+    wasm_logger::init(wasm_logger::Config::new(log::Level::Info));
 
     log::debug!("Debug");
     log::info!("Info");

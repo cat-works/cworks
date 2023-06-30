@@ -1,166 +1,58 @@
 <script lang="ts">
-  import { generate_user_id } from "@src/wasm/pkg/wasm";
-  import * as fs from "@src/libs/fs";
-  import Terminal from "@components/Terminal.svelte";
+  import { sleep } from "../libs/utils";
+  import { Process } from "../libs/session";
+  import init, { Session } from "../wasm/pkg/wasm";
+  import ConsoleLogger from "@src/components/ConsoleLogger.svelte";
+  import { FileSystem } from "../libs/fs_wrapper";
 
-  let root = fs.fromJSON({
-    a: [1, 2, 3],
-    usr: {
-      packages: {},
-      mime: {
-        application: {},
-        text: {
-          cafecode: {
-            extensions: [".cafecode"],
-            handler: "0syoch/cafecode",
-          },
-          minecode2: {
-            extensions: [".cafecode"],
-            handler: "0syoch/cafecode",
-          },
-        },
-      },
-      apps: {
-        sys: {
-          ".folder.json": {
-            name: "System Apps",
-            icons: "system/icon_setting",
-          },
-          "explorer.app": {},
-          "setting.app": {},
-          "terminal.app": {},
-        },
-        "notepad.app": {},
-        "Necko.app": {},
-        "analysis.app": {},
-      },
-      lib: {
-        "http_wrap.mc2": {},
-        "gui.mc2": {},
-        "necko.mc2": {},
-      },
-    },
-    mnt: {
-      "?wiiu": {
-        type: "mount",
-        parameters: {
-          fs: "0syoch/FTP",
-          source: "ftp://192.168.3.4:21/",
-        },
-      },
-    },
-    workspace: {},
+  let kernel = init()
+    .then(() => sleep(100))
+    .then(() => {
+      let session = new Session();
 
-    "?sys": {
-      type: "mount",
-      parameters: {
-        fs: "system/virtual_fs",
-        source: "system/sysfs",
-      },
-    },
-  });
+      let p2 = new Process(async (p: Process) => {
+        await p.sleep(0.1);
 
-  let cursor = new fs.Cursor(root, "/");
+        console.log("Waiting FS IPC...");
 
-  eval("window.cursor = cursor");
+        let fs = new FileSystem(p);
+        await fs.wait_for_ready();
 
-  let id = "";
-  try {
-    id = generate_user_id();
-  } catch (e) {
-    id = e.toString();
-  }
+        console.log("FS Connected");
+        try {
+          await fs.cd("usr/mime/cafecode");
+          await fs.root();
+          await fs.cd("usr/mime/cafecode");
+          console.log(await fs.list());
+          console.log(await fs.get("text"));
+          await fs.set_raw("text", "String?neko");
+          console.log(await fs.get("text"));
+        } catch (error) {
+          console.log("error", error);
+        }
 
-  // let session = new DebugTerminalSession();
+        return 0n;
+      });
+
+      session.add_process(p2.kernel_callback.bind(p2));
+
+      console.log("Starting session stepping");
+      let step_loop = setInterval(() => {
+        try {
+          session.step();
+        } catch (e) {
+          console.log("stepping failed");
+          console.log("| reason =", e);
+          clearInterval(step_loop);
+        }
+      }, 0);
+    });
 </script>
 
-<button
-  on:click={() => {
-    id = generate_user_id();
-  }}>Regenerate ID: {id}</button
-><br />
+{#await kernel}
+  Initalizing kernel...
+{:then _}
+  Kernel: Ok
+{/await}
 
-<Terminal
-  prompt={() =>
-    "/" +
-    cursor
-      .get_cwd()
-      .split("/")
-      .filter(Boolean)
-      .map((x) => (x[0] == "?" ? x.slice(0, 2) : x[0]))
-      .join("/") +
-    "\n$ "}
-  command_handler={(cmd, write) => {
-    let [command, ...args] = cmd.trim().split(" ");
-    switch (command) {
-      case "": {
-        break;
-      }
-      case "ls": {
-        const obj = cursor.get_object();
-        if (!obj) {
-          write("Failed to get object");
-        }
-
-        if (!fs.isDict(obj)) {
-          write(`"${cursor.get_cwd()}" is not path.`);
-          break;
-        }
-
-        const files = obj.list();
-        write(`Current Directory: ${cursor.get_cwd()}\n`);
-        for (const file_name of files) {
-          const file = obj.get_child(file_name);
-
-          const line =
-            file_name.padEnd(20, " ") +
-            " " +
-            fs.types.ObjectKind[file.kind].padEnd(8);
-
-          if (!(fs.isDict(file) || fs.isList(file))) {
-            write(`${line} [${file.toJSON()}]\n`);
-          } else {
-            write(`${line}\n`);
-          }
-        }
-
-        break;
-      }
-      case "dump": {
-        const obj = cursor.get_object();
-        write(obj.dump() + "\n");
-      }
-      case "cd": {
-        const going_to = args.join(" ");
-        const obj = cursor.get_object();
-
-        if (going_to == "..") {
-          cursor.parent();
-          break;
-        }
-
-        if (!fs.isDict(obj)) {
-          write(
-            `cd: Assertation failed. a item that cursors is not dict object\n`
-          );
-          break;
-        }
-
-        const new_obj = obj.get_child(going_to);
-        if (!new_obj) {
-          write(`No such file or directory: ${going_to}\n`);
-          break;
-        }
-        if (!fs.isDict(new_obj)) {
-          write(`Cannot cd to non-Dict object\n`);
-        }
-        cursor.cd(going_to);
-
-        break;
-      }
-
-      default:
-        write(`Unknown command: ${command}\n`);
-    }
-  }}
-/>
+<ConsoleLogger />

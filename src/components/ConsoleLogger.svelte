@@ -56,7 +56,7 @@
   .container {
     position: relative;
 
-    background-color: #2228;
+    background-color: #2224;
     border: 1px solid #333;
   }
   .datas {
@@ -66,7 +66,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    background-color: #333;
+    background-color: #3334;
 
     border-radius: 0.5rem 0.5rem 0 0;
   }
