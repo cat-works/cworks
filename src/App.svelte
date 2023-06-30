@@ -66,6 +66,10 @@
       <DrawerItem name="GHS Demangle" icon="undo" bind:active bind:open />
       <DrawerItem name="HEX Adder" icon="hexagon" bind:active bind:open />
       <DrawerItem name="Calculator" icon="hexagon" bind:active bind:open />
+      <Separator />
+
+      <Subheader component={H6}>Debug/Utils</Subheader>
+      <DrawerItem name="Debug" icon="bug" bind:active bind:open />
     </List>
   </Content>
 </Drawer>
