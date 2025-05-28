@@ -10,11 +10,6 @@
 <scheme>://[<connection arg>@]<host>[:<port>]/<path>?<request argument>
 ```
 
-### example
-
-- `cftp://root=~storage_mlc@192.168.1.3/...`
-- `cworks://cheat-codes.wiiu.org/fly?combo=0x40`
-
 ### Schemes
 
 - http
