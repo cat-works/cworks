@@ -39,6 +39,7 @@ enum FSCommand {
     Cd(String),
     Get(String),
     Set(String, FSObj),
+    Pwd,
     Root,
 }
 
@@ -59,6 +60,7 @@ impl TryFrom<String> for FSCommand {
                 tokens[1].to_string(),
                 FSObj::from_daemon_string(tokens[2..].join("?").to_string())?,
             )),
+            (1, "Pwd") => Ok(FSCommand::Pwd),
             _ => Err(FSReturns::InvalidCommandFormat),
         }
     }
@@ -257,6 +259,10 @@ pub async fn fs_daemon_process(session: Arc<Session<FSObj>>) -> Result<i64, Sysc
                             None => FSReturns::InvalidHandle.into(),
                         }
                     }
+                    FSCommand::Pwd => match state.get(&focus.id) {
+                        Some(path) => path.clone(),
+                        None => FSReturns::InvalidHandle.into(),
+                    },
                 };
                 log::debug!("FS: Client[{}] -> {}", focus.id, ret);
                 session.ipc_send(focus.clone(), ret).await?;

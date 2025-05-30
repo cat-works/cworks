@@ -70,4 +70,12 @@ export class FileSystem {
 
     this.handle_error(ret);
   }
+  public async pwd(): Promise<string> {
+    await this.ipc.send(`Pwd`);
+    let ret = await this.ipc.recv();
+
+    this.handle_error(ret);
+
+    return ret;
+  }
 }
