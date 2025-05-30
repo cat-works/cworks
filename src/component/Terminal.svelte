@@ -20,7 +20,6 @@
   class="wrapper"
   tabindex="-1"
   on:keydown={(e) => {
-    console.log(e.key);
     if (e.key === "Enter") {
       session.write("\n");
       command_handler(command, (s) => {

@@ -16,5 +16,10 @@ export default defineConfig({
       "@datas/": `${__dirname}/src/datas/`,
       "@src/": `${__dirname}/src/`,
     },
+  },
+  optimizeDeps: {
+    exclude: [
+      "@battlefieldduck/xterm-svelte"
+    ]
   }
 })

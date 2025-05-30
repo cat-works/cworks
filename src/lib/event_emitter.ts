@@ -62,7 +62,7 @@ export class EventEmitter {
       }
     }
     if (!this.marked_unused.includes(event)) {
-      console.log(
+      console.error(
         `Unhandled Event emitted: ${event} ${args
           .map(my_stringify)
           .join(", ")}`,

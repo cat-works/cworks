@@ -14,6 +14,7 @@ export class Process {
       this.result_queue.push({ Done: n });
     }).catch((e) => {
       this.result_queue.push({ Done: -1n });
+      throw e;
     });
   }
 
@@ -72,6 +73,9 @@ export class Process {
   }
 
   kernel_callback(data: SyscallData): PollResult {
+    // if (data !== "None") {
+    //   console.log("Kernel callback received:", data);
+    // }
     let callback_handled = this.emitter.emit("callback", data);
     if (callback_handled === false) {
       if (Object.hasOwnProperty.call(data, "Handle")) {
@@ -85,7 +89,11 @@ export class Process {
       }
     }
 
-    return this.result_queue.shift() || "Pending";
+    const result = this.result_queue.shift();
+    // if (result) {
+    //   console.log("Returning result:", result);
+    // }
+    return result || "Pending";
 
   }
 }

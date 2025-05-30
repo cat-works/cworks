@@ -111,7 +111,7 @@ def wrapper():
 static PYTHON: Lazy<Mutex<Python>> = Lazy::new(|| {
     println!("Initializing Python VM...");
     let mut setting = Settings::default();
-    setting.debug = true;
+    setting.debug = 1;
 
     let interp = InterpreterConfig::new()
         .settings(setting)

@@ -35,7 +35,6 @@
       .replace("kernel/src/kernel_processes/mod.rs", "[KernelP]")
       .replace("kernel/src/kernel.rs", "[Kernel]")
       .replace("wasm/src/lib.rs", "[wasm]");
-    clog("a");
     buf.update((x) => `${x}\n${time} ${data}`);
   };
   globalThis.console.log = (...args) => f(...args);
