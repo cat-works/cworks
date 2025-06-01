@@ -13,6 +13,7 @@ use super::fs_obj::FSObjRef;
 fn data_handler(fs: &FS, focus: Handle, data: String) -> Result<DaemonString, FSReturns> {
     log::debug!("FS: Client[{}] <- '$ {}'", focus.id, data);
     let r = FSCommand::try_from(data.clone())?;
+    log::debug!("FS: Client[{}]: Command parsed successfully", focus.id);
 
     let ret: DaemonString = match r {
         FSCommand::List(path) => fs.list(path.to_string())?.join("?").into(),

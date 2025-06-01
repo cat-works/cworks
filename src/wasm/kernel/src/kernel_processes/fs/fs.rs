@@ -1,3 +1,5 @@
+use log::debug;
+
 use crate::{kernel_processes::path::split_filename, SyscallError};
 
 use super::{
@@ -15,7 +17,7 @@ impl FS {
     }
 
     fn resolve_(&self, path: String) -> Result<FSObjRef, SyscallError> {
-        if path == "/" {
+        if path == "/" || path == "" {
             // Root path
             return Ok(self.root.clone());
         } else if path.starts_with("/") {
@@ -51,17 +53,15 @@ impl FS {
     }
 
     pub fn get(&self, path: String) -> Result<FSObjRef, FSReturns> {
-        let (parent, filename) = split_filename(path).ok_or(FSReturns::InvalidCommandFormat)?;
-
-        self.resolve_(parent)
-            .map_err(|_| FSReturns::UnknownPath)?
-            .borrow()
-            .get_obj(filename)
-            .map_err(|_| FSReturns::UnknownPath)
+        self.resolve_(path).map_err(|_| FSReturns::UnknownPath)
     }
     pub fn set(&self, path: String, obj: FSObjRef) -> Result<(), FSReturns> {
-        let (parent, filename) = split_filename(path).ok_or(FSReturns::InvalidCommandFormat)?;
-
+        let (parent, filename) =
+            split_filename(path.clone()).ok_or(FSReturns::InvalidCommandFormat)?;
+        debug!(
+            "Setting file at path: {}, parent: {:?}, filename: {}",
+            path, parent, filename
+        );
         self.resolve_(parent)
             .map_err(|_| FSReturns::UnknownPath)?
             .borrow_mut()

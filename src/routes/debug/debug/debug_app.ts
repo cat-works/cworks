@@ -37,13 +37,53 @@ class StdIO {
     await this.ipc.send(data);
   }
 }
+class CodeEditor {
+  public ipc: Handle | null = null;
+
+  constructor(public proc: Process) { }
+
+  async init(tag: string) {
+    console.log(`Connecting to system/textarea/${tag}`);
+    this.ipc = await this.proc.ipc_connect(`system/textarea/${tag}`);
+  }
+
+  async load(text: string) {
+    if (!this.ipc) {
+      throw new Error("IPC not initialized");
+    }
+
+    const payload = 'l' + text;
+    await this.ipc.send(payload);
+  }
+
+  async acquire() {
+    if (!this.ipc) {
+      throw new Error("IPC not initialized");
+    }
+
+    const payload = 'a';
+    await this.ipc.send(payload);
+
+    const data = await this.ipc.recv();
+    if (data.startsWith('l')) {
+      return data.slice(1); // Remove the 'l' prefix
+    } else {
+      throw new Error("Invalid data received from IPC");
+    }
+  }
+}
 
 export async function debug_main(p: Process, sess: Session) {
   const stdio = new StdIO(p);
   await stdio.init("root");
 
+  const editor = new CodeEditor(p);
+  await editor.init("root");
+  editor.load("CodeEditor API loaded.");
+
   const fs = new FileSystem(p);
   await fs.wait_for_ready();
+
   stdio.write(`[Debug APP]\n`);
 
   let pwd = '/';
@@ -68,14 +108,75 @@ export async function debug_main(p: Process, sess: Session) {
           }
         }
       } else if (command === "cd") {
-        pwd += args[0] || '/';
-        if (!pwd.endsWith('/')) {
-          pwd += '/';
+        if (args[0]) {
+          pwd += args[0];
+          if (!pwd.endsWith('/')) {
+            pwd += '/';
+          }
+        } else {
+          pwd = '/';
         }
       } else if (command === "mkdir") {
         await fs.mkdir(pwd, args[0]);
-      } else if (command === "root") {
-        pwd = '/';
+      } else if (command === "stat") {
+        try {
+          const stat = await fs.stat(`${pwd}${args[0]}`);
+          stdio.write(`${stat}\n`);
+        } catch (e) {
+          stdio.write(`Error: ${e}\n`);
+        }
+      } else if (command === "get") {
+        try {
+          const stat = await fs.get(`${pwd}${args[0]}`);
+          stdio.write(`${stat}\n`);
+        } catch (e) {
+          stdio.write(`Error: ${e}\n`);
+        }
+      } else if (command === "set") {
+        try {
+          await fs.set_raw(`${pwd}${args[0]}`, args.slice(1).join(" "));
+        } catch (e) {
+          stdio.write(`Error: ${e}\n`);
+        }
+      } else if (command === "load") {
+        try {
+          const [kind, content] = await fs.get(`${pwd}${args[0]}`);
+          if (kind !== "String") {
+            stdio.write(`Error: Not a String file\n`);
+          }
+
+          await editor.load(content);
+        } catch (e) {
+          stdio.write(`Error: ${e}\n`);
+        }
+      } else if (command === "save") {
+        try {
+          const content = await editor.acquire();
+          if (!content) {
+            stdio.write(`Error: No content to save\n`);
+            continue;
+          }
+
+          await fs.set_raw(`${pwd}${args[0]}`, "String?" + content);
+        } catch (e) {
+          stdio.write(`Error: ${e}\n`);
+        }
+      } else if (command === "exec") {
+        try {
+          const [kind, content] = await fs.get(`${pwd}${args[0]}`);
+          if (kind !== "String") {
+            stdio.write(`Error: Not a String file\n`);
+            continue;
+          }
+
+          sess.add_python_process(content);
+        } catch (e) {
+          stdio.write(`Error: ${e}\n`);
+        }
+      } else if (command === "_t") {
+        await fs.set_raw(`/test`, "String?" + "a\nb@c");
+      } else if (command === "clear") {
+        stdio.write(`\x1b[2J\x1b[H`);
       } else if (command === "ipc") {
         stdio.write(sess.get_ipc_names().join("\n") + "\n");
       }

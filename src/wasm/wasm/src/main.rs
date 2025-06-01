@@ -13,7 +13,9 @@ async fn client(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError
 
     let mut n = 0;
     println!("Client: {}", c);
-    session.ipc_send(c.clone(), "List?/".to_string()).await?;
+    session
+        .ipc_send(c.clone(), "Set?/b?Integer?1".to_string())
+        .await?;
 
     loop {
         let data = session.get_syscall_data().await;
@@ -22,7 +24,7 @@ async fn client(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError
                 println!("C <- {}", data);
                 if n == 0 {
                     session.ipc_send(c.clone(), "Stat?/.".to_string()).await?;
-                    n = 1;
+                    n = 7;
                 } else if n == 1 {
                     session
                         .ipc_send(c.clone(), "Stat?/workspace".to_string())

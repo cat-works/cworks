@@ -11,10 +11,13 @@
   import { Process } from "$lib/session";
   import { stdio_main } from "./stdio_app";
   import { debug_main } from "./debug_app";
+  import { textarea_main } from "./textarea_app";
 
   function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
+
+  let code_editor: HTMLTextAreaElement | null = null;
 
   let terminal: Terminal;
 
@@ -86,9 +89,16 @@
     );
     session.add_process(stdio_process.kernel_callback.bind(stdio_process));
 
+    const textarea_process = new Process((p) =>
+      textarea_main(p, code_editor as HTMLTextAreaElement)
+    );
+    session.add_process(
+      textarea_process.kernel_callback.bind(textarea_process)
+    );
+
     await sleep(100);
 
-    const debug_process = new Process((p) => debug_main(p, sess));
+    const debug_process = new Process((p) => debug_main(p, sess as Session));
     session.add_process(debug_process.kernel_callback.bind(debug_process));
   }
 </script>
@@ -98,3 +108,5 @@
 {:then sess}
   <Xterm bind:terminal {options} {onLoad} {onData} {onKey} />
 {/await}
+
+<textarea bind:this={code_editor} rows="10" cols="50"> </textarea>

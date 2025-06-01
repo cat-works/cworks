@@ -1,8 +1,8 @@
 use kernel::Process;
+use python::{python_enter, PythonProcess};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 use crate::js_process::CallbackProcess;
-
 #[wasm_bindgen]
 pub struct Session {
     kernel: kernel::Kernel,
@@ -20,7 +20,7 @@ impl Session {
         }
     }
 
-    /* pub fn add_python_process(&mut self, code: String) -> JsValue {
+    pub fn add_python_process(&mut self, code: String) -> JsValue {
         let p = PythonProcess::new(code);
         match p {
             Err(e) => python_enter(|vm| {
@@ -34,7 +34,7 @@ impl Session {
                 JsValue::from_str("Success")
             }
         }
-    } */
+    }
 
     pub fn add_process(&mut self, callback: js_sys::Function) -> JsValue {
         self.spawn_queue
