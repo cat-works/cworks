@@ -1,11 +1,11 @@
-use std::{process::exit, sync::Arc};
+use std::process::exit;
 
-use kernel::{RustProcess, Session, SyscallError};
+use kernel::{RustProcess, RustProcessCore, SyscallError};
 
 extern crate kernel;
 // extern crate python;
 
-async fn client(session: Arc<Session<u32>>) -> Result<i64, SyscallError> {
+async fn client(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError> {
     session.sleep(0.2).await;
     let c = session
         .ipc_connect("system/file-system".to_string())
@@ -13,7 +13,7 @@ async fn client(session: Arc<Session<u32>>) -> Result<i64, SyscallError> {
 
     let mut n = 0;
     println!("Client: {}", c);
-    session.ipc_send(c.clone(), "List".to_string()).await?;
+    session.ipc_send(c.clone(), "List?/".to_string()).await?;
 
     loop {
         let data = session.get_syscall_data().await;
@@ -23,7 +23,7 @@ async fn client(session: Arc<Session<u32>>) -> Result<i64, SyscallError> {
                 if n == 0 {
                     session
                         // Cd?usr/mime/cafecode
-                        .ipc_send(c.clone(), "Get?test".to_string())
+                        .ipc_send(c.clone(), "List?/usr".to_string())
                         .await?;
                     n = 1;
                 } else if n == 1 {
@@ -57,7 +57,9 @@ async fn client(session: Arc<Session<u32>>) -> Result<i64, SyscallError> {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Debug)
+        .init();
 
     let mut k = kernel::Kernel::default();
 

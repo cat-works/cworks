@@ -1,58 +1,48 @@
-use std::{
-    collections::VecDeque,
-    sync::{Arc, Mutex},
-};
+use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
 use crate::{Handle, Syscall, SyscallData, SyscallError};
 
 use super::dummy_future::DummyFuture;
 
-pub struct Session<T: Clone> {
-    pub(crate) syscall: Arc<Mutex<Option<Syscall>>>,
-    pub(crate) syscall_data: Arc<Mutex<SyscallData>>,
+#[derive(Clone)]
+pub struct RustProcessCore {
+    pub(crate) syscall: Rc<RefCell<Option<Syscall>>>,
+    pub(crate) syscall_data: Rc<RefCell<SyscallData>>,
 
-    data_buffer: Mutex<VecDeque<Arc<SyscallData>>>,
-
-    value: T,
+    data_buffer: RefCell<VecDeque<Rc<SyscallData>>>,
 }
 
-impl<T: Clone> Session<T> {
-    pub fn new(value: T) -> Self {
-        let syscall = Arc::new(Mutex::new(Option::None));
-        let data = Arc::new(Mutex::new(SyscallData::default()));
+impl RustProcessCore {
+    pub fn new() -> Self {
+        let syscall = Rc::new(RefCell::new(Option::None));
+        let data = Rc::new(RefCell::new(SyscallData::default()));
         Self {
             syscall,
             syscall_data: data,
             data_buffer: VecDeque::new().into(),
-            value,
         }
     }
 
-    pub fn get_value(&self) -> T {
-        self.value.clone()
-    }
-
     fn poll_syscall_data(&self) {
-        let m = self.syscall_data.lock().unwrap();
+        let m = self.syscall_data.borrow();
         match &(*m) {
             SyscallData::None => {}
             _ => {
                 self.data_buffer
-                    .lock()
-                    .unwrap()
-                    .push_back(Arc::new((*m).clone()));
+                    .borrow_mut()
+                    .push_back(Rc::new((*m).clone()));
             }
         }
     }
 
     fn set_syscall(&self, syscall: Syscall) {
-        *self.syscall.lock().unwrap() = Some(syscall);
+        *self.syscall.borrow_mut() = Some(syscall);
     }
 
     async fn return_handle(&self) -> Result<Handle, SyscallError> {
         loop {
             {
-                let mut buffer = self.data_buffer.lock().unwrap();
+                let mut buffer = self.data_buffer.borrow_mut();
 
                 if let Some(x) = buffer.pop_front() {
                     match *x {
@@ -73,8 +63,7 @@ impl<T: Clone> Session<T> {
         loop {
             let f = self
                 .data_buffer
-                .lock()
-                .unwrap()
+                .borrow_mut()
                 .pop_front()
                 .map(|x| (*x).clone());
             if let Some(x) = f {
@@ -101,7 +90,7 @@ impl<T: Clone> Session<T> {
         self.set_syscall(Syscall::Send(handle, data));
         DummyFuture::Started.await;
 
-        match *(self.syscall_data.lock().unwrap()) {
+        match *(self.syscall_data.borrow()) {
             SyscallData::Fail(ref e) => {
                 self.set_syscall_data(&SyscallData::None);
                 Err(e.clone())
@@ -116,6 +105,6 @@ impl<T: Clone> Session<T> {
     }
 
     pub(crate) fn set_syscall_data(&self, data: &SyscallData) {
-        *self.syscall_data.lock().unwrap() = data.clone();
+        *self.syscall_data.borrow_mut() = data.clone();
     }
 }

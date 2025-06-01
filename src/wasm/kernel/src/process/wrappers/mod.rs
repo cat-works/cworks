@@ -1,3 +1,4 @@
 mod rust;
 
-pub use rust::*;
+pub use rust::RustProcess;
+pub use rust::RustProcessCore;

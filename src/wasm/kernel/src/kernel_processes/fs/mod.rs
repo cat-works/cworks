@@ -1,31 +1,14 @@
+mod daemon;
+mod fs;
+mod fs_command;
 mod fs_obj;
+mod fs_returns;
+mod initfs;
+mod traits;
 
-use std::{collections::HashMap, rc::Rc, sync::Arc};
+pub(crate) use initfs::initfs;
 
-pub use fs_obj::FSObj;
-
-impl<T: Into<FSObj>> From<Option<T>> for FSObj {
-    fn from(value: Option<T>) -> Self {
-        let mut map = HashMap::new();
-        match value {
-            Some(x) => {
-                map.insert("has_data".to_string(), FSObj::Boolean(Arc::new(true)));
-                map.insert("data".to_string(), x.into());
-            }
-            None => {
-                map.insert("has_data".to_string(), FSObj::Boolean(Arc::new(false)));
-            }
-        }
-        FSObj::Dict(Arc::new(map.into()))
-    }
-}
-impl<T: Into<FSObj>> From<Box<T>> for FSObj {
-    fn from(value: Box<T>) -> Self {
-        (*value).into()
-    }
-}
-impl<T: Into<FSObj>> From<Rc<T>> for FSObj {
-    fn from(value: Rc<T>) -> Self {
-        value.into()
-    }
-}
+pub use daemon::fs_daemon_process;
+pub use fs::FS;
+pub use fs_command::FSCommand;
+pub use fs_returns::FSReturns;

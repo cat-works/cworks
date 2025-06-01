@@ -2,8 +2,6 @@ use std::{ops::Deref, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
-use crate::kernel_processes::fs::FSObj;
-
 use super::{handle_core::HandleCore, HandleData};
 
 #[derive(Debug)]
@@ -50,12 +48,6 @@ impl Deref for Handle {
 impl PartialEq for Handle {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id && self.pid == other.pid
-    }
-}
-
-impl From<Handle> for FSObj {
-    fn from(x: Handle) -> FSObj {
-        FSObj::Handle(x)
     }
 }
 

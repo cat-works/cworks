@@ -4,9 +4,9 @@ use std::{
 };
 
 use crate::{
+    fs::{fs_daemon_process, initfs},
     handle::{HandleData, HandleIssuer},
     ipc::Ipc,
-    kernel_processes::{fs_daemon_process, initfs::initfs},
     libs::{timestamp, AutoMap},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
     RustProcess,

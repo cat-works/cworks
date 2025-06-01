@@ -1,0 +1,126 @@
+use crate::{
+    fs::{
+        traits::{DaemonCommunicable, DaemonString},
+        FSReturns,
+    },
+    process::SyscallError,
+    Handle,
+};
+use std::fmt::{Debug, Display};
+
+use super::{
+    fs_obj::{FileKind, FileStat},
+    FSObj, FSObjRef,
+};
+
+#[derive(Debug)]
+pub enum IntrinsicFSObj {
+    Int(i128),
+    String(String),
+    Boolean(bool),
+    Float(f32),
+    Double(f64),
+    Bytes(Vec<u8>),
+    Handle(Handle),
+    Null,
+}
+
+impl Display for IntrinsicFSObj {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IntrinsicFSObj::Int(x) => write!(f, "{x}"),
+            IntrinsicFSObj::String(x) => write!(f, "\"{x}\""),
+            IntrinsicFSObj::Boolean(x) => write!(f, "{x:#}"),
+            IntrinsicFSObj::Float(x) => write!(f, "{x}"),
+            IntrinsicFSObj::Double(x) => write!(f, "{x}"),
+            IntrinsicFSObj::Bytes(x) => write!(f, "{x:?}"),
+            IntrinsicFSObj::Handle(h) => write!(f, "Handle({h})"),
+            IntrinsicFSObj::Null => write!(f, "Null"),
+        }
+    }
+}
+
+impl DaemonCommunicable for IntrinsicFSObj {
+    fn to_daemon_string(&self) -> Result<DaemonString, FSReturns> {
+        match self {
+            IntrinsicFSObj::Boolean(x) => Ok(format!("Boolean?{}", x).into()),
+            IntrinsicFSObj::Float(x) => Ok(format!("Float?{}", x).into()),
+            IntrinsicFSObj::Int(x) => Ok(format!("Integer?{}", x).into()),
+            IntrinsicFSObj::Double(x) => Ok(format!("Double?{}", x).into()),
+            IntrinsicFSObj::String(x) => Ok(format!("String?{}", x).into()),
+            IntrinsicFSObj::Bytes(x) => Ok(format!(
+                "Bytes?{}",
+                x.iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join("?"),
+            )
+            .into()),
+            IntrinsicFSObj::Null => Ok("Null".into()),
+            IntrinsicFSObj::Handle(_) => Err(FSReturns::UnsupportedMethod),
+        }
+    }
+    fn from_daemon_string(s: DaemonString) -> Result<Self, FSReturns>
+    where
+        Self: Sized,
+    {
+        let tokens = s.split('?').collect::<Vec<_>>();
+
+        if tokens.len() < 2 {
+            return Err(FSReturns::InvalidCommandFormat);
+        }
+
+        let obj = match tokens[0] {
+            "Boolean" => Ok(Self::Boolean(
+                tokens[1]
+                    .parse::<bool>()
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?
+                    .into(),
+            )),
+            "Float" => Ok(Self::Float(
+                tokens[1]
+                    .parse::<f32>()
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?
+                    .into(),
+            )),
+            "Integer" => Ok(Self::Int(
+                tokens[1]
+                    .parse::<i128>()
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?
+                    .into(),
+            )),
+            "Double" => Ok(Self::Double(
+                tokens[1]
+                    .parse::<f64>()
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?
+                    .into(),
+            )),
+            "String" => Ok(Self::String(tokens[1].to_string().into())),
+            "Bytes" => Ok(Self::Bytes(
+                tokens[1..]
+                    .iter()
+                    .map(|x| x.parse::<u8>().map_err(|_| FSReturns::InvalidCommandFormat))
+                    .collect::<Result<Vec<_>, FSReturns>>()?
+                    .into(),
+            )),
+            "Null" => Ok(Self::Null),
+            _ => Err(FSReturns::InvalidCommandFormat),
+        };
+
+        let obj = obj.map(|x| x.into());
+
+        obj
+    }
+}
+
+impl FSObj for IntrinsicFSObj {
+    fn get_obj(&self, _part: String) -> Result<FSObjRef, SyscallError> {
+        Err(SyscallError::NoSuchEntry)
+    }
+
+    fn stat(&self) -> Result<super::fs_obj::FileStat, SyscallError> {
+        Ok(FileStat {
+            kind: FileKind::File,
+        })
+    }
+}

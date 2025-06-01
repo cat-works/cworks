@@ -1,20 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
-
-use crate::{fs::FSObj, handle::HandleData, Handle};
+use crate::{handle::HandleData, Handle};
 
 #[derive(Debug)]
 pub struct IpcMessage {
     pub from: Option<Handle>,
     pub message: String,
-}
-
-impl From<IpcMessage> for FSObj {
-    fn from(x: IpcMessage) -> FSObj {
-        let mut message = HashMap::new();
-        message.insert("handle".to_string(), x.from.into());
-        message.insert("message".to_string(), FSObj::String(Arc::new(x.message)));
-        FSObj::Dict(Arc::new(message.into()))
-    }
 }
 
 #[derive(Debug, Default)]
@@ -65,28 +54,13 @@ impl Ipc {
         &self.server
     }
 
-    pub fn send(&mut self, data: String, client: Option<Handle>) -> (u128, IpcMessage) {
+    pub fn send(&self, data: String, client: Option<Handle>) -> (u128, IpcMessage) {
         (
-            self.server.clone().unwrap().pid,
+            self.server.as_ref().unwrap().pid,
             IpcMessage {
                 from: client,
                 message: data,
             },
         )
-    }
-}
-
-impl From<Ipc> for FSObj {
-    fn from(x: Ipc) -> FSObj {
-        let mut root = HashMap::new();
-        root.insert("server".to_string(), x.server.into());
-
-        let mut clients = vec![];
-        for client in x.clients {
-            clients.push(FSObj::Handle(client));
-        }
-        root.insert("clients".to_string(), FSObj::List(Arc::new(clients)));
-
-        FSObj::Dict(Arc::new(root.into()))
     }
 }
