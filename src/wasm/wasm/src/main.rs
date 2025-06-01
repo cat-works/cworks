@@ -21,28 +21,35 @@ async fn client(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError
             kernel::SyscallData::ReceivingData { focus, data } if focus == c => {
                 println!("C <- {}", data);
                 if n == 0 {
-                    session
-                        // Cd?usr/mime/cafecode
-                        .ipc_send(c.clone(), "List?/usr".to_string())
-                        .await?;
+                    session.ipc_send(c.clone(), "Stat?/.".to_string()).await?;
                     n = 1;
                 } else if n == 1 {
-                    session.ipc_send(c.clone(), "Get?text".to_string()).await?;
+                    session
+                        .ipc_send(c.clone(), "Stat?/workspace".to_string())
+                        .await?;
                     n = 2;
                 } else if n == 2 {
-                    session
-                        .ipc_send(c.clone(), "Set?text?String?hi".to_string())
-                        .await?;
+                    session.ipc_send(c.clone(), "Stat?/mnt".to_string()).await?;
                     n = 3;
                 } else if n == 3 {
-                    session.ipc_send(c.clone(), "Get?text".to_string()).await?;
+                    session.ipc_send(c.clone(), "Stat?/usr".to_string()).await?;
                     n = 4;
                 } else if n == 4 {
                     session
-                        .ipc_send(c.clone(), "Get?handler".to_string())
+                        .ipc_send(c.clone(), "List?/usr/".to_string())
                         .await?;
                     n = 5;
                 } else if n == 5 {
+                    session
+                        .ipc_send(c.clone(), "Stat?/usr/.".to_string())
+                        .await?;
+                    n = 6;
+                } else if n == 6 {
+                    session
+                        .ipc_send(c.clone(), "Stat?/usr/..".to_string())
+                        .await?;
+                    n = 7;
+                } else if n == 7 {
                     exit(0);
                 }
                 // break;

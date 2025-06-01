@@ -88,7 +88,7 @@
 
     await sleep(100);
 
-    const debug_process = new Process(debug_main);
+    const debug_process = new Process((p) => debug_main(p, sess));
     session.add_process(debug_process.kernel_callback.bind(debug_process));
   }
 </script>

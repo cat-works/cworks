@@ -1,5 +1,6 @@
 import { FileSystem } from "$lib/fs_wrapper";
 import type { Handle, Process } from "$lib/session";
+import type { Session } from "../../../wasm/pkg/wasm";
 
 class StdIO {
   public ipc: Handle | null = null;
@@ -19,7 +20,6 @@ class StdIO {
 
     while (!this.stdin_buffer.includes("\n")) {
       const data = await this.ipc.recv();
-      console.log(`Received data: ${JSON.stringify(data)}`);
       this.stdin_buffer += data;
     }
 
@@ -38,7 +38,7 @@ class StdIO {
   }
 }
 
-export async function debug_main(p: Process) {
+export async function debug_main(p: Process, sess: Session) {
   const stdio = new StdIO(p);
   await stdio.init("root");
 
@@ -58,14 +58,26 @@ export async function debug_main(p: Process) {
     try {
       if (command === "ls") {
         const entries = await fs.list(pwd);
-        stdio.write(entries.map(x => `- ${x}`).join("\n") + "\n");
+        for (const entry of entries) {
+          try {
+            let s = await fs.stat(`${pwd}${entry}`);
+            stdio.write(`${s} ${entry}\n`);
+          } catch {
+            stdio.write(`? ${entry}\n`);
+
+          }
+        }
       } else if (command === "cd") {
         pwd += args[0] || '/';
         if (!pwd.endsWith('/')) {
           pwd += '/';
         }
+      } else if (command === "mkdir") {
+        await fs.mkdir(pwd, args[0]);
       } else if (command === "root") {
         pwd = '/';
+      } else if (command === "ipc") {
+        stdio.write(sess.get_ipc_names().join("\n") + "\n");
       }
     } catch (e) {
       stdio.write(`Error: ${e}\n`);

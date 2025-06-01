@@ -29,6 +29,10 @@ fn data_handler(fs: &FS, focus: Handle, data: String) -> Result<DaemonString, FS
         }
 
         FSCommand::Stat(path) => fs.stat(path)?.to_daemon_string()?,
+        FSCommand::Mkdir(path, name) => {
+            fs.mkdir(path, name)?;
+            "Ok".into()
+        }
     };
 
     Ok(ret)

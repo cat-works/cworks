@@ -12,6 +12,7 @@ export class FileSystem {
     let fs = this;
     p.ipc_connect("system/file-system").then((ipc) => {
       fs.ipc = ipc;
+      fs.ipc.debug = 1;
     });
   }
 
@@ -62,6 +63,12 @@ export class FileSystem {
   }
   public async set_raw(p: string, obj: string): Promise<void> {
     await this.ipc.send(`Set?${p}?${obj}`);
+    let ret = await this.ipc.recv();
+
+    this.handle_error(ret);
+  }
+  public async mkdir(path: string, name: string): Promise<void> {
+    await this.ipc.send(`Mkdir?${path}?${name}`);
     let ret = await this.ipc.recv();
 
     this.handle_error(ret);

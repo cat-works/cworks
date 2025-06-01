@@ -9,6 +9,7 @@ function sleep(ms: number): Promise<void> {
 export class Handle extends EventEmitter {
   private receive_buffer: string[] = [];
   private receiving_mode: "recv" | "event" = "event";
+  public debug: number = 0; // Debug mode, can be used to log messages
 
   constructor(public handle: RawHandle, private process: Process) {
     super();
@@ -52,7 +53,11 @@ export class Handle extends EventEmitter {
 
   public async recv(): Promise<string> {
     if (this.receive_buffer.length > 0) {
-      return this.receive_buffer.shift();
+      let data = this.receive_buffer.shift();
+      if (this.debug) {
+        console.log(`{{${this.handle.id}}} <-- ${data}`);
+      }
+      return data || "";
     }
 
     this.receiving_mode = "recv";
@@ -62,10 +67,17 @@ export class Handle extends EventEmitter {
     }
     this.receiving_mode = "event";
 
-    return this.recv();
+    let data = await this.recv();
+    if (this.debug) {
+      console.log(`{{${this.handle.id}}} <-- ${data}`);
+    }
+    return data;
   }
 
   public send(data: string): Promise<void> {
+    if (this.debug) {
+      console.log(`{{${this.handle.id}}} --> ${data}`);
+    }
     return this.process.send(this.handle, data);
   }
 }

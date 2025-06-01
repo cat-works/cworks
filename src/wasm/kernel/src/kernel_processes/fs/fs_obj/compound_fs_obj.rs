@@ -70,7 +70,7 @@ impl FSObj for CompoundFSObj {
         }
         if part == ".." {
             if let Some(parent) = &self.parent {
-                return parent.borrow_mut().get_obj(part);
+                return parent.borrow().get_obj(part);
             }
         }
         Err(SyscallError::NoSuchEntry)

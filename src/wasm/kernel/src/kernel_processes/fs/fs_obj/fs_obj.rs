@@ -11,11 +11,13 @@ use std::fmt::Debug;
 
 use super::FSObjRef;
 
+#[derive(Clone)]
 pub enum FileKind {
     File,
     Directory,
 }
 
+#[derive(Clone)]
 pub struct FileStat {
     pub kind: FileKind,
 }
