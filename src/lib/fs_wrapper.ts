@@ -5,9 +5,9 @@ function sleep(ms: number): Promise<void> {
 }
 
 export class FileSystem {
-  public ipc: Handle;
+  public ipc: Handle | null;
   constructor(p: Process) {
-    this.ipc = undefined;
+    this.ipc = null;
 
     let fs = this;
     p.ipc_connect("system/file-system").then((ipc) => {
@@ -30,31 +30,27 @@ export class FileSystem {
   }
 
   public async wait_for_ready(waits: number = 100): Promise<void> {
-    while (this.ipc === undefined) {
+    while (this.ipc === null) {
       await sleep(waits);
     }
   }
 
-  public async cd(path: string): Promise<void> {
-    await this.ipc.send(`Cd?${path}`);
-    let ret = await this.ipc.recv();
 
-    this.handle_error(ret);
-  }
-
-  public async list(): Promise<string[]> {
-    await this.ipc.send("List");
+  public async list(path: string): Promise<string[]> {
+    await this.ipc.send(`List?${path}`);
     let ret = await this.ipc.recv();
 
     this.handle_error(ret);
 
     return ret.split("?");
   }
-  public async root(): Promise<void> {
-    await this.ipc.send("Root");
-    let ret = await this.ipc.recv();
 
+  public async stat(path: string): Promise<string> {
+    await this.ipc.send(`Stat?${path}`);
+    let ret = await this.ipc.recv();
     this.handle_error(ret);
+
+    return ret;
   }
   public async get(p: string): Promise<string[]> {
     await this.ipc.send(`Get?${p}`);
@@ -69,13 +65,5 @@ export class FileSystem {
     let ret = await this.ipc.recv();
 
     this.handle_error(ret);
-  }
-  public async pwd(): Promise<string> {
-    await this.ipc.send(`Pwd`);
-    let ret = await this.ipc.recv();
-
-    this.handle_error(ret);
-
-    return ret;
   }
 }

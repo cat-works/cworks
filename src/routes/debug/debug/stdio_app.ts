@@ -21,6 +21,7 @@ export async function stdio_main(p: Process, terminal: { stdin: () => Promise<st
   async function stdin_process() {
     while (1) {
       const key = await terminal.stdin();
+      terminal.write(key);
       await client.send(key);
     }
   }

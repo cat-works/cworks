@@ -43,20 +43,20 @@
       return session;
     });
 
+  const canonicalize_newline = (data: string): string =>
+    data.replace(/\r(\n)?/g, "\n");
+
   let key_promise: ((key: string) => void) | null = null;
   function onData(data: string) {
-    console.log(JSON.stringify(data), key_promise);
     if (key_promise) {
       key_promise(data);
       key_promise = null;
     } else {
-      terminal.write("\x1b[2m" + data.replace("\r", "\r\n") + "\x1b[0m");
+      terminal.write("\x1b[2m" + canonicalize_newline(data) + "\x1b[0m");
     }
   }
 
-  function onKey(data: { key: string; domEvent: KeyboardEvent }) {
-    console.log(data);
-  }
+  function onKey(data: { key: string; domEvent: KeyboardEvent }) {}
 
   async function onLoad() {
     // FitAddon Usage
@@ -75,12 +75,12 @@
         stdin() {
           return new Promise((resolve) => {
             key_promise = (key: string) => {
-              resolve(key.replace("\r", "\r\n"));
+              resolve(canonicalize_newline(key));
             };
           });
         },
         write(data) {
-          terminal.write(data.replace("\n", "\r\n"));
+          terminal.write(canonicalize_newline(data).replace(/\n/g, "\r\n"));
         },
       })
     );
