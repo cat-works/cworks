@@ -1,18 +1,18 @@
-use std::sync::{Arc, Mutex};
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{ipc::Ipc, Handle};
 
 #[derive(Debug, Clone, Default)]
 pub enum HandleData {
     IpcServer {
-        ipc: Arc<Mutex<Ipc>>,
+        ipc: Rc<RefCell<Ipc>>,
     },
     IpcServerClient {
-        server: Arc<Mutex<Ipc>>,
+        server: Rc<RefCell<Ipc>>,
         client: Handle,
     },
     IpcClient {
-        server: Arc<Mutex<Ipc>>,
+        server: Rc<RefCell<Ipc>>,
     },
     #[default]
     None,
@@ -22,25 +22,16 @@ impl std::fmt::Display for HandleData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             HandleData::IpcClient { server } => {
-                let lock = server.try_lock();
-                match lock {
-                    Ok(x) => write!(f, "IpcClient({})", x)?,
-                    Err(_) => write!(f, "IpcClient")?,
-                }
+                let x = server.borrow();
+                write!(f, "IpcClient({})", x)?
             }
             HandleData::IpcServer { ipc } => {
-                let lock = ipc.try_lock();
-                match lock {
-                    Ok(x) => write!(f, "IpcServer({})", x)?,
-                    Err(_) => write!(f, "IpcServer")?,
-                }
+                let x = ipc.borrow();
+                write!(f, "IpcServer({})", x)?
             }
             HandleData::IpcServerClient { server, client } => {
-                let lock = server.try_lock();
-                match lock {
-                    Ok(x) => write!(f, "IpcServerClient({}:{client})", x)?,
-                    Err(_) => write!(f, "IpcServerClient(<Server>:{client})")?,
-                }
+                let x = server.borrow();
+                write!(f, "IpcServerClient({}:{client})", x)?
             }
             HandleData::None => write!(f, "None")?,
         };

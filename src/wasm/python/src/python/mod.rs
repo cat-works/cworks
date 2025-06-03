@@ -1,7 +1,4 @@
 pub mod cworks;
-use std::sync::Mutex;
-
-use once_cell::sync::Lazy;
 
 use rustpython::InterpreterConfig;
 use rustpython_vm::{
@@ -108,7 +105,9 @@ def wrapper():
     Ok(scope)
 }
 
-static PYTHON: Lazy<Mutex<Python>> = Lazy::new(|| {
+static mut PYTHON: Option<Python> = None;
+
+fn init_python() {
     println!("Initializing Python VM...");
     let mut setting = Settings::default();
     setting.debug = 1;
@@ -123,13 +122,18 @@ static PYTHON: Lazy<Mutex<Python>> = Lazy::new(|| {
 
     println!("Initializing Python VM...DONE!");
 
-    Mutex::new(Python { interp })
-});
+    unsafe { PYTHON.replace(Python { interp }) };
+}
 
 pub fn python_enter<F, R>(f: F) -> R
 where
     F: FnOnce(&VirtualMachine) -> R,
 {
-    let py = PYTHON.lock().unwrap();
+    let py = unsafe {
+        if PYTHON.is_none() {
+            init_python();
+        }
+        PYTHON.as_ref().unwrap()
+    };
     py.enter(f)
 }

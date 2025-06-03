@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use kernel::Process;
 use python::{python_enter, PythonProcess};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
@@ -5,8 +7,8 @@ use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 use crate::js_process::CallbackProcess;
 #[wasm_bindgen]
 pub struct Session {
-    kernel: kernel::Kernel,
-    spawn_queue: Vec<Box<dyn Process>>,
+    kernel: RefCell<kernel::Kernel>,
+    spawn_queue: RefCell<Vec<Box<dyn Process>>>,
 }
 
 #[wasm_bindgen]
@@ -15,42 +17,41 @@ impl Session {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
-            kernel: kernel::Kernel::default(),
-            spawn_queue: Vec::default(),
+            kernel: RefCell::new(kernel::Kernel::default()),
+            spawn_queue: RefCell::new(Vec::new()),
         }
     }
 
-    pub fn add_python_process(&mut self, code: String) -> JsValue {
+    pub fn add_python_process(&self, code: String) -> JsValue {
         let p = PythonProcess::new(code);
         match p {
-            Err(e) => python_enter(|vm| {
-                JsValue::from_str(&format!(
-                    "Failed to Create Process: {}",
-                    python::format_exception(e, vm).to_string()
-                ))
-            }),
+            Err(e) => {
+                error!(format!("Failed to create Python process: {e}"));
+                JsValue::UNDEFINED
+            }
             Ok(r) => {
-                self.kernel.register_process(Box::new(r));
-                JsValue::from_str("Success")
+                self.spawn_queue.borrow_mut().push(Box::new(r));
+                JsValue::from_str("Python process added")
             }
         }
     }
 
-    pub fn add_process(&mut self, callback: js_sys::Function) -> JsValue {
+    pub fn add_process(&self, callback: js_sys::Function) -> JsValue {
         self.spawn_queue
+            .borrow_mut()
             .push(Box::new(CallbackProcess::new(callback)));
 
         JsValue::from_str("aiueo")
     }
 
-    pub fn step(&mut self) {
-        for p in self.spawn_queue.drain(..) {
-            self.kernel.register_process(p);
+    pub fn step(&self) {
+        for p in self.spawn_queue.borrow_mut().drain(..) {
+            self.kernel.borrow_mut().register_process(p);
         }
-        self.kernel.step();
+        self.kernel.borrow_mut().step();
     }
 
     pub fn get_ipc_names(&self) -> Vec<String> {
-        self.kernel.get_ipc_names()
+        self.kernel.borrow().get_ipc_names()
     }
 }

@@ -27,8 +27,7 @@ impl PythonProcess {
 impl Process for PythonProcess {
     fn poll(&mut self, data: &SyscallData) -> PollResult<i64> {
         {
-            let mut a = python::cworks::STATE.lock().unwrap();
-            a.syscall_result = data.clone();
+            python::cworks::get_state_mut().syscall_result = data.clone();
         }
 
         if let Err(e) = self.generator.step() {
@@ -36,8 +35,7 @@ impl Process for PythonProcess {
                 panic_py_except(e.into_pyexception(vm), vm);
             });
         }
-        let a = python::cworks::STATE.lock().unwrap();
-        a.poll_result.clone()
+        python::cworks::get_state_mut().poll_result.take().unwrap()
     }
 }
 

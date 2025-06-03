@@ -1,29 +1,54 @@
-use std::sync::Mutex;
-
 use kernel::{PollResult, SyscallData};
-use once_cell::sync::Lazy;
 use rustpython_vm::pymodule;
 
 #[derive(Default)]
 pub struct State {
     pub syscall_result: SyscallData,
-    pub poll_result: PollResult<i64>,
+    pub poll_result: Option<PollResult<i64>>,
 }
 
-pub static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::default()));
+pub static mut STATE: Option<State> = None;
+
+fn init_state() {
+    unsafe {
+        STATE = Some(State::default());
+    }
+}
+
+pub(crate) fn get_state_mut() -> &'static mut State {
+    unsafe {
+        if STATE.is_none() {
+            init_state();
+        }
+        STATE
+            .as_mut()
+            .expect("STATE must be initialized before use")
+    }
+}
+
+pub(crate) fn get_state() -> &'static State {
+    unsafe {
+        if STATE.is_none() {
+            init_state();
+        }
+        STATE
+            .as_ref()
+            .expect("STATE must be initialized before use")
+    }
+}
 
 #[pymodule]
 pub mod cworks_mod {
     use kernel::{PollResult, SyscallData};
     use rustpython_vm::{builtins::PyIntRef, PyObjectRef, PyResult, VirtualMachine};
 
-    use super::STATE;
+    use super::get_state_mut;
 
     #[pyfunction]
     fn get_syscall_result(vm: &VirtualMachine) -> PyResult<PyObjectRef> {
         let r = vm.ctx.new_dict();
 
-        let res = &STATE.lock().unwrap().syscall_result;
+        let res = &get_state_mut().syscall_result;
 
         match res {
             SyscallData::None => {
@@ -54,7 +79,7 @@ pub mod cworks_mod {
 
     #[pyfunction]
     fn pending(vm: &VirtualMachine) -> PyResult<PyObjectRef> {
-        STATE.lock().unwrap().poll_result = PollResult::Pending;
+        get_state_mut().poll_result = Some(PollResult::Pending);
         Ok(vm.ctx.none())
     }
 
@@ -62,8 +87,9 @@ pub mod cworks_mod {
     fn done(res: PyObjectRef, vm: &VirtualMachine) -> PyResult<PyObjectRef> {
         let r = res.try_into_value::<PyIntRef>(vm)?;
 
-        STATE.lock().unwrap().poll_result =
-            PollResult::Done(r.try_to_primitive::<i128>(vm)?.try_into().unwrap());
+        get_state_mut().poll_result = Some(PollResult::Done(
+            r.try_to_primitive::<i128>(vm)?.try_into().unwrap(),
+        ));
         Ok(vm.ctx.none())
     }
 
