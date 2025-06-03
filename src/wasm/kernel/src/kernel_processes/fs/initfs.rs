@@ -1,7 +1,5 @@
-use super::{
-    fs_obj::{CompoundFSObj, FSObjRef},
-    FSReturns,
-};
+use super::fs_obj::{CompoundFSObj, ExecutableFSObj, FSObjRef};
+use super::FSReturns;
 
 fn usr(root: FSObjRef) -> Result<FSObjRef, FSReturns> {
     let usr: FSObjRef = CompoundFSObj::with_parent(root).into();
@@ -18,6 +16,13 @@ fn usr(root: FSObjRef) -> Result<FSObjRef, FSReturns> {
         "ref".to_string(),
         CompoundFSObj::with_parent(usr.clone()).into(),
     )?;
+    // Hello world 実行ファイルを /usr/app/hello として配置
+    if let Some(app_dir) = usr.borrow().get_obj("app".to_string()).ok() {
+        app_dir.borrow_mut().add_child(
+            "hello".to_string(),
+            ExecutableFSObj::new("print('Hello world!')".to_string()).into(),
+        )?;
+    }
 
     Ok(usr)
 }
