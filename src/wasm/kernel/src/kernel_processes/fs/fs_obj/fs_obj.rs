@@ -1,5 +1,3 @@
-use log::debug;
-
 use crate::{
     fs::{
         traits::{DaemonCommunicable, DaemonString},

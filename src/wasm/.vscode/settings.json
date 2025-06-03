@@ -2,7 +2,7 @@
   "saveAndRun": {
     "commands": [
       {
-        "cmd": "pnpm wasm"
+        "cmd": "cargo run"
       }
     ]
   }

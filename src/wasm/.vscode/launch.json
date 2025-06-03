@@ -5,6 +5,13 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "type": "firefox",
+      "request": "launch",
+      "reAttach": true,
+      "name": "Launch localhost",
+      "url": "http://localhost:5173/debug/debug",
+    },
+    {
       "type": "lldb",
       "request": "launch",
       "name": "Debug",

@@ -1,6 +1,5 @@
 mod fs_obj;
 pub use fs_obj::FSObj;
-pub use fs_obj::FileKind;
 pub use fs_obj::FileStat;
 
 mod intrinsic_fs_obj;

@@ -36,7 +36,7 @@ impl DaemonCommunicable for CompoundFSObj {
         Err(FSReturns::UnsupportedMethod)
     }
 
-    fn from_daemon_string(s: DaemonString) -> Result<Self, FSReturns>
+    fn from_daemon_string(_: DaemonString) -> Result<Self, FSReturns>
     where
         Self: Sized,
     {
@@ -55,7 +55,7 @@ impl FSObj for CompoundFSObj {
     fn list(&self) -> Result<Vec<String>, SyscallError> {
         // '.', '..' and all children
         let mut list = vec![".".to_string()];
-        if let Some(parent) = &self.parent {
+        if self.parent.is_some() {
             list.push("..".to_string());
         }
         for child in self.children.keys() {

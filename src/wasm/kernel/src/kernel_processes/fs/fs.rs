@@ -3,7 +3,7 @@ use log::debug;
 use crate::{kernel_processes::path::split_filename, SyscallError};
 
 use super::{
-    fs_obj::{CompoundFSObj, FSObj, FSObjRef, FileStat, IntrinsicFSObj},
+    fs_obj::{CompoundFSObj, FSObjRef, FileStat},
     fs_returns::FSReturns,
 };
 
