@@ -1,19 +1,19 @@
 mod handle_casher;
 
-use std::{rc::Rc, task::Poll};
+use std::rc::Rc;
 
 use kernel::{PollResult, Process, SyscallData, SyscallError};
 use log::debug;
-use mlua::{FromLua, IntoLua, Lua, Thread};
+use mlua::{Lua, Thread};
 
-struct LuaEnv(pub Lua);
+pub struct LuaEnv(pub Lua);
 impl LuaEnv {
     pub fn new() -> Self {
         LuaEnv(Lua::new())
     }
 }
 
-trait RcLuaEnv {
+pub trait RcLuaEnv {
     fn run(&self, code: String) -> LuaProcess;
 }
 
@@ -23,7 +23,7 @@ impl RcLuaEnv for Rc<LuaEnv> {
     }
 }
 
-struct LuaProcess {
+pub struct LuaProcess {
     lua: Rc<LuaEnv>,
     thread: Thread,
 
@@ -171,7 +171,6 @@ impl Process for LuaProcess {
 #[cfg(test)]
 mod tests {
     use kernel::Kernel;
-    use mlua::{Error, Lua, Thread};
 
     use super::*;
 

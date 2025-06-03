@@ -12,6 +12,7 @@ crate-type=["cdylib", "rlib"]
 wasm-bindgen = {version = "0.2.83"}
 chrono = "0.4.22"
 kernel = { path = "../kernel" }
+lua = { path = "../lua" }
 ghs_demangle = {git = "https://github.com/syoch/ghs_demangle"}
 js-sys = "0.3.61"
 serde = { version = "1.0", features = ["derive"] }

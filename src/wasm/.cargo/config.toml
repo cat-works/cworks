@@ -6,5 +6,5 @@ rustflags = ["-C", "link-arg=-fuse-ld=mold"]
 debug = true
 opt-level = 'z'
 
-[target.wasm32-unknown-unknown]
+[target.wasm32-unknown-emscripten]
 rustflags = ["--cfg=getrandom_backend=\"wasm_js\""]
