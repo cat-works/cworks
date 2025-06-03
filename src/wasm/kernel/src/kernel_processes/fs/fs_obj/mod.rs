@@ -10,3 +10,6 @@ pub use fs_obj_ref::FSObjRef;
 
 mod compound_fs_obj;
 pub use compound_fs_obj::CompoundFSObj;
+
+mod executable_fs_obj;
+pub use executable_fs_obj::ExecutableFSObj;
