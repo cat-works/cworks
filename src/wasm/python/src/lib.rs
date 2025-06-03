@@ -3,6 +3,7 @@ mod python;
 mod python_interpreter;
 
 extern crate kernel;
+extern crate log;
 use generator_wrapper::GeneratorWrapper;
 use kernel::{PollResult, Process, SyscallData};
 use python::panic_py_except;

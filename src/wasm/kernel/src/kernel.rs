@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     fs::{fs_daemon_process, initfs},
@@ -21,7 +18,7 @@ enum KernelAction {
 
 pub struct Kernel {
     processes: AutoMap<KernelProcess>,
-    ipc_instances: HashMap<String, Arc<Mutex<Ipc>>>,
+    ipc_instances: HashMap<String, Rc<RefCell<Ipc>>>,
     handle_issuer: HandleIssuer,
     actions: Vec<KernelAction>,
 }
@@ -35,7 +32,15 @@ impl Default for Kernel {
             actions: vec![],
         };
 
-        ret.register_process(Box::new(RustProcess::new(&fs_daemon_process, initfs())));
+        ret.processes.add_value(
+            KernelProcess {
+                parent_pid: 0,
+                process: Box::new(RustProcess::new(&fs_daemon_process, initfs())),
+                outgoing_data_buffer: vec![],
+                status: ProcessStatus::Running,
+            }
+            .into(),
+        );
 
         ret
     }
@@ -52,7 +57,7 @@ impl Kernel {
 
     fn step_all_processes(&mut self) {
         for (pid, p) in &mut self.processes.iter_mut() {
-            // println!("Polling {pid} {:?}", p.status);
+            log::trace!("Polling {pid} {:?}", p.status);
             if let ProcessStatus::Sleeping(t) = p.status {
                 if t > timestamp() {
                     continue;
@@ -64,11 +69,11 @@ impl Kernel {
             let data = p.outgoing_data_buffer.pop().unwrap_or(SyscallData::None);
 
             let res = p.process.poll(&data);
-            // println!("{pid}: {res:?}");
+            log::trace!("{pid}: {res:?}");
             match res {
                 PollResult::Pending => (),
                 PollResult::Done(n) => {
-                    println!("Process<{pid}> Returns {n}");
+                    log::debug!("Process<{pid}> Returns {n}");
                     self.actions.push(KernelAction::ProcessKill(*pid));
                 }
                 PollResult::Syscall(s) => match s {
@@ -83,12 +88,12 @@ impl Kernel {
                             continue;
                         }
                         // TODO: Authority Check
-                        let ipc = Arc::new(Mutex::new(Ipc::default()));
+                        let ipc = Rc::new(RefCell::new(Ipc::default()));
 
                         let handle = self
                             .handle_issuer
                             .get_new_handle(*pid, HandleData::IpcServer { ipc: ipc.clone() });
-                        ipc.lock().unwrap().set_server_handle(handle.clone());
+                        ipc.borrow_mut().set_server_handle(handle.clone());
 
                         self.ipc_instances.insert(name.clone(), ipc.clone());
 
@@ -120,7 +125,7 @@ impl Kernel {
                         );
 
                         {
-                            let mut ipc = ipc.lock().unwrap();
+                            let mut ipc = ipc.borrow_mut();
 
                             ipc.connect(server_client_handle.clone());
                             let server = ipc.get_server_handle().as_ref().unwrap();
@@ -144,7 +149,7 @@ impl Kernel {
                             continue;
                         }
                         HandleData::IpcClient { ref server } => {
-                            let mut ipc = server.lock().unwrap();
+                            let ipc = server.borrow_mut();
                             let (pid, _) = ipc.send(data.clone(), Some(handle.clone()));
 
                             let handle = ipc.get_server_side_handle(handle.clone());
@@ -200,7 +205,7 @@ impl Kernel {
                             process.outgoing_data_buffer.push(data);
                         }
                         None => {
-                            println!("Process {pid} not found! (ignored)");
+                            log::warn!("Process {pid} not found! (ignored)");
                         }
                     }
                 }

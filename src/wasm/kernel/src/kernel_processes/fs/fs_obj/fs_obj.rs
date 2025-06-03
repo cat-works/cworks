@@ -1,9 +1,6 @@
-use crate::{
-    fs::{
-        traits::{DaemonCommunicable, DaemonString},
-        FSReturns,
-    },
-    process::SyscallError,
+use crate::fs::{
+    traits::{DaemonCommunicable, DaemonString},
+    FSReturns,
 };
 use std::fmt::Debug;
 
@@ -45,28 +42,28 @@ impl DaemonCommunicable for FileStat {
 }
 
 pub trait FSObj: Debug + DaemonCommunicable {
-    fn stat(&self) -> Result<FileStat, SyscallError>;
+    fn stat(&self) -> Result<FileStat, FSReturns>;
 
     // Directory-like methods
-    fn list(&self) -> Result<Vec<String>, SyscallError> {
-        Err(SyscallError::NotImplemented)
+    fn list(&self) -> Result<Vec<String>, FSReturns> {
+        Err(FSReturns::UnsupportedMethod)
     }
-    fn get_obj(&self, _part: String) -> Result<FSObjRef, SyscallError> {
-        Err(SyscallError::NotImplemented)
+    fn get_obj(&self, _part: String) -> Result<FSObjRef, FSReturns> {
+        Err(FSReturns::UnsupportedMethod)
     }
-    fn add_child(&mut self, _name: String, _obj: FSObjRef) -> Result<(), SyscallError> {
-        Err(SyscallError::NotImplemented)
+    fn add_child(&mut self, _name: String, _obj: FSObjRef) -> Result<(), FSReturns> {
+        Err(FSReturns::UnsupportedMethod)
     }
 
     // misc
-    fn follow(&self, path: String) -> Result<FSObjRef, SyscallError> {
+    fn follow(&self, path: String) -> Result<FSObjRef, FSReturns> {
         let parts = path.split('/').filter(|x| x.len() != 0).collect::<Vec<_>>();
 
         let mut parts_iter = parts.iter();
 
         let first = match parts_iter.next() {
             Some(p) => p,
-            None => return Err(SyscallError::NotImplemented),
+            None => return Err(FSReturns::UnsupportedMethod),
         };
         let mut current: FSObjRef = self.get_obj(first.to_string())?;
 
@@ -84,15 +81,15 @@ pub trait FSObj: Debug + DaemonCommunicable {
 }
 
 impl<T: FSObj + DaemonCommunicable> FSObj for Box<T> {
-    fn get_obj(&self, part: String) -> Result<FSObjRef, SyscallError> {
+    fn get_obj(&self, part: String) -> Result<FSObjRef, FSReturns> {
         self.as_ref().get_obj(part)
     }
 
-    fn stat(&self) -> Result<FileStat, SyscallError> {
+    fn stat(&self) -> Result<FileStat, FSReturns> {
         self.as_ref().stat()
     }
 
-    fn follow(&self, path: String) -> Result<FSObjRef, SyscallError> {
+    fn follow(&self, path: String) -> Result<FSObjRef, FSReturns> {
         self.as_ref().follow(path)
     }
 }

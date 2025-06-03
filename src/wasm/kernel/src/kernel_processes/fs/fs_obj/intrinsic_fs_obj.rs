@@ -1,10 +1,6 @@
-use crate::{
-    fs::{
-        traits::{DaemonCommunicable, DaemonString},
-        FSReturns,
-    },
-    process::SyscallError,
-    Handle,
+use crate::fs::{
+    traits::{DaemonCommunicable, DaemonString},
+    FSReturns,
 };
 use std::fmt::{Debug, Display};
 
@@ -21,7 +17,6 @@ pub enum IntrinsicFSObj {
     Float(f32),
     Double(f64),
     Bytes(Vec<u8>),
-    Handle(Handle),
     Null,
 }
 
@@ -34,7 +29,6 @@ impl Display for IntrinsicFSObj {
             IntrinsicFSObj::Float(x) => write!(f, "{x}"),
             IntrinsicFSObj::Double(x) => write!(f, "{x}"),
             IntrinsicFSObj::Bytes(x) => write!(f, "{x:?}"),
-            IntrinsicFSObj::Handle(h) => write!(f, "Handle({h})"),
             IntrinsicFSObj::Null => write!(f, "Null"),
         }
     }
@@ -57,7 +51,6 @@ impl DaemonCommunicable for IntrinsicFSObj {
             )
             .into()),
             IntrinsicFSObj::Null => Ok("Null".into()),
-            IntrinsicFSObj::Handle(_) => Err(FSReturns::UnsupportedMethod),
         }
     }
     fn from_daemon_string(s: DaemonString) -> Result<Self, FSReturns>
@@ -114,11 +107,11 @@ impl DaemonCommunicable for IntrinsicFSObj {
 }
 
 impl FSObj for IntrinsicFSObj {
-    fn get_obj(&self, _part: String) -> Result<FSObjRef, SyscallError> {
-        Err(SyscallError::NoSuchEntry)
+    fn get_obj(&self, _part: String) -> Result<FSObjRef, FSReturns> {
+        Err(FSReturns::UnknownPath)
     }
 
-    fn stat(&self) -> Result<super::fs_obj::FileStat, SyscallError> {
+    fn stat(&self) -> Result<super::fs_obj::FileStat, FSReturns> {
         Ok(FileStat {
             kind: FileKind::File,
         })

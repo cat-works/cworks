@@ -45,7 +45,7 @@ where
         {
             let mut syscall = self.session.syscall.borrow_mut();
             if syscall.is_some() {
-                let r = PollResult::Syscall(syscall.as_ref().unwrap().clone());
+                let r = PollResult::Syscall(syscall.take().unwrap());
                 *syscall = None;
                 return r;
             }

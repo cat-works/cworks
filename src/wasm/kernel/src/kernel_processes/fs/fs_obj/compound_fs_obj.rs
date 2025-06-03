@@ -1,11 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{
-    fs::{
-        traits::{DaemonCommunicable, DaemonString},
-        FSReturns,
-    },
-    SyscallError,
+use crate::fs::{
+    traits::{DaemonCommunicable, DaemonString},
+    FSReturns,
 };
 
 use super::{fs_obj::FileStat, FSObj, FSObjRef};
@@ -45,14 +42,14 @@ impl DaemonCommunicable for CompoundFSObj {
 }
 
 impl FSObj for CompoundFSObj {
-    fn stat(&self) -> Result<super::fs_obj::FileStat, SyscallError> {
+    fn stat(&self) -> Result<super::fs_obj::FileStat, FSReturns> {
         Ok(FileStat {
             kind: super::fs_obj::FileKind::Directory,
         })
     }
 
     // directory-like methods
-    fn list(&self) -> Result<Vec<String>, SyscallError> {
+    fn list(&self) -> Result<Vec<String>, FSReturns> {
         // '.', '..' and all children
         let mut list = vec![".".to_string()];
         if self.parent.is_some() {
@@ -64,7 +61,7 @@ impl FSObj for CompoundFSObj {
         Ok(list)
     }
 
-    fn get_obj(&self, part: String) -> Result<FSObjRef, SyscallError> {
+    fn get_obj(&self, part: String) -> Result<FSObjRef, FSReturns> {
         if let Some(obj) = self.children.get(&part) {
             return Ok(obj.clone());
         }
@@ -73,10 +70,10 @@ impl FSObj for CompoundFSObj {
                 return parent.borrow().get_obj(part);
             }
         }
-        Err(SyscallError::NoSuchEntry)
+        Err(FSReturns::UnknownPath)
     }
 
-    fn add_child(&mut self, name: String, obj: FSObjRef) -> Result<(), SyscallError> {
+    fn add_child(&mut self, name: String, obj: FSObjRef) -> Result<(), FSReturns> {
         self.children.insert(name, obj);
 
         Ok(())

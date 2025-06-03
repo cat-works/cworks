@@ -42,7 +42,7 @@ pub fn format_exception(e: PyRef<PyBaseException>, vm: &VirtualMachine) -> Strin
 }
 
 pub fn panic_py_except(e: PyRef<PyBaseException>, vm: &VirtualMachine) -> ! {
-    println!(
+    log::error!(
         "Error: {:#?}",
         e.args()
             .iter()
@@ -52,9 +52,11 @@ pub fn panic_py_except(e: PyRef<PyBaseException>, vm: &VirtualMachine) -> ! {
     if let Some(traceback) = e.traceback() {
         let frames = traceback.iter();
         for x in frames {
-            println!(
+            log::error!(
                 "  File \"{}\", line {}, in {}",
-                x.frame.code.source_path, x.lineno, x.frame.code.obj_name
+                x.frame.code.source_path,
+                x.lineno,
+                x.frame.code.obj_name
             );
         }
     }
@@ -62,7 +64,7 @@ pub fn panic_py_except(e: PyRef<PyBaseException>, vm: &VirtualMachine) -> ! {
 }
 
 pub fn init_scope<'a>(vm: &VirtualMachine, scope: &'a Scope) -> PyResult<&'a Scope> {
-    println!("Running script.");
+    log::info!("Running script.");
     let r = vm.run_block_expr(
         scope.clone(),
         r#"
@@ -97,7 +99,7 @@ def wrapper():
             yield None
 "#,
     );
-    println!("Running script.");
+    log::info!("Ran script.");
     if let Err(e) = r {
         panic_py_except(e, vm);
     }
@@ -108,7 +110,7 @@ def wrapper():
 static mut PYTHON: Option<Python> = None;
 
 fn init_python() {
-    println!("Initializing Python VM...");
+    log::info!("Initializing Python VM...");
     let mut setting = Settings::default();
     setting.debug = 1;
 
@@ -120,11 +122,15 @@ fn init_python() {
         }))
         .interpreter();
 
-    println!("Initializing Python VM...DONE!");
+    log::info!("Initializing Python VM...DONE!");
 
-    unsafe { PYTHON.replace(Python { interp }) };
+    #[allow(static_mut_refs)]
+    unsafe {
+        PYTHON.replace(Python { interp })
+    };
 }
 
+#[allow(static_mut_refs)]
 pub fn python_enter<F, R>(f: F) -> R
 where
     F: FnOnce(&VirtualMachine) -> R,

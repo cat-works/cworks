@@ -1,9 +1,12 @@
-use std::process::exit;
+use std::{cell::RefCell, process::exit, rc::Rc};
 
 use kernel::{RustProcess, RustProcessCore, SyscallError};
+use session::Session;
 
+mod generator;
+mod js_process;
+mod session;
 extern crate kernel;
-// extern crate python;
 
 async fn client(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError> {
     session.sleep(0.2).await;
@@ -66,6 +69,33 @@ async fn client(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Debug)
+        .init();
+
+    let s = Rc::new(RefCell::new(Box::new(Session::new())));
+
+    let p = RustProcess::new(
+        &async |_: RustProcessCore, sess: Rc<RefCell<Box<Session>>>| -> Result<i64, SyscallError> {
+            sess.borrow().add_python_process(
+                r#"
+async def proc():
+  await pending()
+wrapper()
+"#
+                .to_string(),
+            );
+            Ok(0)
+        },
+        s.clone(),
+    );
+    s.borrow().kernel.borrow_mut().register_process(Box::new(p));
+
+    loop {
+        s.borrow().step();
+    }
+}
+fn main2() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::builder()
         .filter_level(log::LevelFilter::Debug)
         .init();

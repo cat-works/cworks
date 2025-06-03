@@ -1,3 +1,5 @@
+#![allow(static_mut_refs)]
+
 use kernel::{PollResult, SyscallData};
 use rustpython_vm::pymodule;
 
@@ -22,17 +24,6 @@ pub(crate) fn get_state_mut() -> &'static mut State {
         }
         STATE
             .as_mut()
-            .expect("STATE must be initialized before use")
-    }
-}
-
-pub(crate) fn get_state() -> &'static State {
-    unsafe {
-        if STATE.is_none() {
-            init_state();
-        }
-        STATE
-            .as_ref()
             .expect("STATE must be initialized before use")
     }
 }

@@ -1,13 +1,14 @@
 use std::cell::RefCell;
 
 use kernel::Process;
-use python::{python_enter, PythonProcess};
+use python::PythonProcess;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 use crate::js_process::CallbackProcess;
 #[wasm_bindgen]
 pub struct Session {
-    kernel: RefCell<kernel::Kernel>,
+    #[wasm_bindgen(skip)]
+    pub kernel: RefCell<kernel::Kernel>,
     spawn_queue: RefCell<Vec<Box<dyn Process>>>,
 }
 
@@ -22,16 +23,13 @@ impl Session {
         }
     }
 
-    pub fn add_python_process(&self, code: String) -> JsValue {
+    pub fn add_python_process(&self, code: String) -> Option<String> {
         let p = PythonProcess::new(code);
         match p {
-            Err(e) => {
-                error!(format!("Failed to create Python process: {e}"));
-                JsValue::UNDEFINED
-            }
+            Err(_) => Some("Fail".to_string()),
             Ok(r) => {
                 self.spawn_queue.borrow_mut().push(Box::new(r));
-                JsValue::from_str("Python process added")
+                None
             }
         }
     }

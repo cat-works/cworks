@@ -68,7 +68,7 @@ pub async fn fs_daemon_process(
             }
 
             _ => {
-                println!("{data:?}");
+                log::info!("Unknown SyscallData {data:?}");
                 panic!();
             }
         }

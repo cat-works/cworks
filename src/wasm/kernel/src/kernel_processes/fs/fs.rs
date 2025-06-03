@@ -1,6 +1,6 @@
 use log::debug;
 
-use crate::{kernel_processes::path::split_filename, SyscallError};
+use crate::kernel_processes::path::split_filename;
 
 use super::{
     fs_obj::{CompoundFSObj, FSObjRef, FileStat},
@@ -16,7 +16,7 @@ impl FS {
         Self { root }
     }
 
-    fn resolve_(&self, path: String) -> Result<FSObjRef, SyscallError> {
+    fn resolve_(&self, path: String) -> Result<FSObjRef, FSReturns> {
         if path == "/" || path == "" {
             // Root path
             return Ok(self.root.clone());
@@ -26,10 +26,6 @@ impl FS {
         } else {
             todo!("Relative paths are not supported yet")
         }
-    }
-
-    pub fn exists(&self, path: String) -> bool {
-        self.root.borrow().get_obj(path).is_ok()
     }
 
     pub fn list(&self, path: String) -> Result<Vec<String>, FSReturns> {
