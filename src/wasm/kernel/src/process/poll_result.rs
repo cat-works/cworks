@@ -2,15 +2,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::Syscall;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub enum PollResult<Ret> {
+    #[default]
     Pending,
     Done(Ret),
     Syscall(Syscall),
-}
-
-impl<T> Default for PollResult<T> {
-    fn default() -> Self {
-        PollResult::Pending
-    }
 }

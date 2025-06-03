@@ -5,7 +5,7 @@ use crate::fs::{
     FSReturns,
 };
 
-use super::{fs_obj::FileStat, FSObj, FSObjRef};
+use super::{object::FileStat, FSObjRef, Object};
 
 #[derive(Debug)]
 pub struct CompoundFSObj {
@@ -41,10 +41,10 @@ impl DaemonCommunicable for CompoundFSObj {
     }
 }
 
-impl FSObj for CompoundFSObj {
-    fn stat(&self) -> Result<super::fs_obj::FileStat, FSReturns> {
+impl Object for CompoundFSObj {
+    fn stat(&self) -> Result<super::object::FileStat, FSReturns> {
         Ok(FileStat {
-            kind: super::fs_obj::FileKind::Directory,
+            kind: super::object::FileKind::Directory,
         })
     }
 

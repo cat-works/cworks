@@ -1,20 +1,19 @@
+use super::SyscallError;
+use crate::Handle;
 use serde::Serialize;
 
-use crate::Handle;
-
-use super::SyscallError;
-
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub enum SyscallData {
+    #[default]
+    None,
     Fail(SyscallError),
     Handle(Handle),
-    Connection { client: Handle, server: Handle },
-    ReceivingData { focus: Handle, data: String },
-    None,
-}
-
-impl Default for SyscallData {
-    fn default() -> Self {
-        SyscallData::None
-    }
+    Connection {
+        client: Handle,
+        server: Handle,
+    },
+    ReceivingData {
+        focus: Handle,
+        data: String,
+    },
 }

@@ -5,8 +5,8 @@ use crate::fs::{
 use std::fmt::{Debug, Display};
 
 use super::{
-    fs_obj::{FileKind, FileStat},
-    FSObj, FSObjRef,
+    object::{FileKind, FileStat},
+    FSObjRef, Object,
 };
 
 #[derive(Debug)]
@@ -67,51 +67,44 @@ impl DaemonCommunicable for IntrinsicFSObj {
             "Boolean" => Ok(Self::Boolean(
                 tokens[1]
                     .parse::<bool>()
-                    .map_err(|_| FSReturns::InvalidCommandFormat)?
-                    .into(),
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?,
             )),
             "Float" => Ok(Self::Float(
                 tokens[1]
                     .parse::<f32>()
-                    .map_err(|_| FSReturns::InvalidCommandFormat)?
-                    .into(),
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?,
             )),
             "Integer" => Ok(Self::Int(
                 tokens[1]
                     .parse::<i128>()
-                    .map_err(|_| FSReturns::InvalidCommandFormat)?
-                    .into(),
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?,
             )),
             "Double" => Ok(Self::Double(
                 tokens[1]
                     .parse::<f64>()
-                    .map_err(|_| FSReturns::InvalidCommandFormat)?
-                    .into(),
+                    .map_err(|_| FSReturns::InvalidCommandFormat)?,
             )),
-            "String" => Ok(Self::String(tokens[1].to_string().into())),
+            "String" => Ok(Self::String(tokens[1].to_string())),
             "Bytes" => Ok(Self::Bytes(
                 tokens[1..]
                     .iter()
                     .map(|x| x.parse::<u8>().map_err(|_| FSReturns::InvalidCommandFormat))
-                    .collect::<Result<Vec<_>, FSReturns>>()?
-                    .into(),
+                    .collect::<Result<Vec<_>, FSReturns>>()?,
             )),
             "Null" => Ok(Self::Null),
             _ => Err(FSReturns::InvalidCommandFormat),
         };
 
-        let obj = obj.map(|x| x.into());
-
         obj
     }
 }
 
-impl FSObj for IntrinsicFSObj {
+impl Object for IntrinsicFSObj {
     fn get_obj(&self, _part: String) -> Result<FSObjRef, FSReturns> {
         Err(FSReturns::UnknownPath)
     }
 
-    fn stat(&self) -> Result<super::fs_obj::FileStat, FSReturns> {
+    fn stat(&self) -> Result<super::object::FileStat, FSReturns> {
         Ok(FileStat {
             kind: FileKind::File,
         })

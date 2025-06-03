@@ -1,11 +1,11 @@
-use std::{ops::Deref, sync::Arc};
+use std::{ops::Deref, rc::Rc};
 
 use serde::{Deserialize, Serialize};
 
 use super::{handle_core::HandleCore, HandleData};
 
 #[derive(Debug)]
-pub struct Handle(Arc<HandleCore>);
+pub struct Handle(Rc<HandleCore>);
 
 impl Serialize for Handle {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -20,7 +20,7 @@ impl<'de> Deserialize<'de> for Handle {
     where
         D: serde::Deserializer<'de>,
     {
-        HandleCore::deserialize(deserializer).map(|x| Self(Arc::new(x)))
+        HandleCore::deserialize(deserializer).map(|x| Self(Rc::new(x)))
     }
     fn deserialize_in_place<D>(deserializer: D, place: &mut Self) -> Result<(), D::Error>
     where
@@ -65,6 +65,6 @@ impl Default for Handle {
 
 impl Handle {
     pub fn new(pid: u128, id: u128, data: HandleData) -> Self {
-        Self(Arc::new(HandleCore { pid, id, data }))
+        Self(Rc::new(HandleCore { pid, id, data }))
     }
 }

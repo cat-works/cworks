@@ -41,7 +41,7 @@ impl DaemonCommunicable for FileStat {
     }
 }
 
-pub trait FSObj: Debug + DaemonCommunicable {
+pub trait Object: Debug + DaemonCommunicable {
     fn stat(&self) -> Result<FileStat, FSReturns>;
 
     // Directory-like methods
@@ -57,7 +57,10 @@ pub trait FSObj: Debug + DaemonCommunicable {
 
     // misc
     fn follow(&self, path: String) -> Result<FSObjRef, FSReturns> {
-        let parts = path.split('/').filter(|x| x.len() != 0).collect::<Vec<_>>();
+        let parts = path
+            .split('/')
+            .filter(|x| !x.is_empty())
+            .collect::<Vec<_>>();
 
         let mut parts_iter = parts.iter();
 
@@ -80,7 +83,7 @@ pub trait FSObj: Debug + DaemonCommunicable {
     }
 }
 
-impl<T: FSObj + DaemonCommunicable> FSObj for Box<T> {
+impl<T: Object + DaemonCommunicable> Object for Box<T> {
     fn get_obj(&self, part: String) -> Result<FSObjRef, FSReturns> {
         self.as_ref().get_obj(part)
     }

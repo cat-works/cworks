@@ -3,14 +3,14 @@ use std::ops::Deref;
 use crate::{
     fs::{
         traits::{DaemonCommunicable, DaemonString},
-        FSCommand, FSReturns, FS,
+        FSCommand, FSFrontend, FSReturns,
     },
     Handle, RustProcessCore, SyscallData, SyscallError,
 };
 
 use super::fs_obj::FSObjRef;
 
-fn data_handler(fs: &FS, focus: Handle, data: String) -> Result<DaemonString, FSReturns> {
+fn data_handler(fs: &FSFrontend, focus: Handle, data: String) -> Result<DaemonString, FSReturns> {
     log::debug!("FS: Client[{}] <- '$ {}'", focus.id, data);
     let r = FSCommand::try_from(data.clone())?;
     log::debug!("FS: Client[{}]: Command parsed successfully", focus.id);
@@ -48,7 +48,7 @@ pub async fn fs_daemon_process(
     let _s = session.ipc_create("system/file-system".to_string()).await?;
     log::debug!("FS: IPC Created!");
 
-    let fs = FS::new(root.clone());
+    let fs = FSFrontend::new(root.clone());
 
     loop {
         let data = session.get_syscall_data().await;
@@ -63,7 +63,7 @@ pub async fn fs_daemon_process(
                     Err(e) => e.into(),
                 };
 
-                log::debug!("FS: Client[{}] -> {}", focus.id, ret.to_string());
+                log::debug!("FS: Client[{}] -> {}", focus.id, ret);
                 session.ipc_send(focus, ret).await?;
             }
 

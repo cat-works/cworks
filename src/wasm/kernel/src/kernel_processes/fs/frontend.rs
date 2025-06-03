@@ -7,19 +7,19 @@ use super::{
     fs_returns::FSReturns,
 };
 
-pub struct FS {
+pub struct FSFrontend {
     pub root: FSObjRef,
 }
 
-impl FS {
+impl FSFrontend {
     pub fn new(root: FSObjRef) -> Self {
         Self { root }
     }
 
     fn resolve_(&self, path: String) -> Result<FSObjRef, FSReturns> {
-        if path == "/" || path == "" {
+        if path == "/" || path.is_empty() {
             // Root path
-            return Ok(self.root.clone());
+            Ok(self.root.clone())
         } else if path.starts_with("/") {
             // Absolute path
             self.root.borrow().follow(path)
@@ -42,8 +42,7 @@ impl FS {
             .map_err(|_| FSReturns::UnknownPath)?
             .borrow()
             .stat()
-            .map_err(|_| FSReturns::UnknownError)
-            .map(|x| x.clone())?;
+            .map_err(|_| FSReturns::UnknownError)?;
 
         Ok(x)
     }

@@ -1,10 +1,10 @@
 use std::{cell::RefCell, fmt::Debug, ops::Deref, rc::Rc};
 
-use super::FSObj;
+use super::Object;
 
-pub struct FSObjRef(Rc<RefCell<Box<dyn FSObj>>>);
+pub struct FSObjRef(Rc<RefCell<Box<dyn Object>>>);
 
-impl<T: FSObj + 'static> From<T> for FSObjRef {
+impl<T: Object + 'static> From<T> for FSObjRef {
     fn from(obj: T) -> Self {
         FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
     }
@@ -23,7 +23,7 @@ impl Clone for FSObjRef {
 }
 
 impl Deref for FSObjRef {
-    type Target = Rc<RefCell<Box<dyn FSObj>>>;
+    type Target = Rc<RefCell<Box<dyn Object>>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0

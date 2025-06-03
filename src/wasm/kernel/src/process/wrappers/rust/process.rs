@@ -12,8 +12,8 @@ pub struct RustProcessCore {
     data_buffer: RefCell<VecDeque<Rc<SyscallData>>>,
 }
 
-impl RustProcessCore {
-    pub fn new() -> Self {
+impl Default for RustProcessCore {
+    fn default() -> Self {
         let syscall = Rc::new(RefCell::new(Option::None));
         let data = Rc::new(RefCell::new(SyscallData::default()));
         Self {
@@ -22,7 +22,9 @@ impl RustProcessCore {
             data_buffer: VecDeque::new().into(),
         }
     }
+}
 
+impl RustProcessCore {
     fn poll_syscall_data(&self) {
         let m = self.syscall_data.borrow();
         match &(*m) {

@@ -9,7 +9,6 @@ pub struct HandleCasher {
 
 impl HandleCasher {
     pub fn register_handle(&mut self, h: Handle) {
-        let h = h;
         // console_log!("Registering Handle {}", h.clone());
         self.handles.insert(h.id, h);
     }

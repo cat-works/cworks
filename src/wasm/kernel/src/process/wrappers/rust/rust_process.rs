@@ -22,7 +22,7 @@ where
     F: Future<Output = Result<i64, SyscallError>>,
 {
     pub fn new<T>(f: &impl Fn(RustProcessCore, T) -> F, arg: T) -> Self {
-        let session = RustProcessCore::new();
+        let session = RustProcessCore::default();
 
         Self {
             f: f(session.clone(), arg),

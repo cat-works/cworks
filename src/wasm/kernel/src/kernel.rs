@@ -32,15 +32,12 @@ impl Default for Kernel {
             actions: vec![],
         };
 
-        ret.processes.add_value(
-            KernelProcess {
-                parent_pid: 0,
-                process: Box::new(RustProcess::new(&fs_daemon_process, initfs())),
-                outgoing_data_buffer: vec![],
-                status: ProcessStatus::Running,
-            }
-            .into(),
-        );
+        ret.processes.add_value(KernelProcess {
+            parent_pid: 0,
+            process: Box::new(RustProcess::new(&fs_daemon_process, initfs())),
+            outgoing_data_buffer: vec![],
+            status: ProcessStatus::Running,
+        });
 
         ret
     }
