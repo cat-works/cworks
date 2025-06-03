@@ -1,6 +1,7 @@
 import { FileSystem } from "$lib/fs_wrapper";
 import type { Handle, Process } from "$lib/session";
 import type { Session } from "../../../wasm/pkg/wasm";
+import { manuals } from "./man";
 
 class StdIO {
   public ipc: Handle | null = null;
@@ -79,12 +80,13 @@ export async function debug_main(p: Process, sess: Session) {
 
   const editor = new CodeEditor(p);
   await editor.init("root");
-  editor.load("CodeEditor API loaded.");
+  stdio.write("\x1b[32mCodeEditor API loaded.\x1b[m\n");
 
   const fs = new FileSystem(p);
   await fs.wait_for_ready();
+  stdio.write("\x1b[32mFileSystem API loaded.\x1b[m\n");
 
-  stdio.write(`[Debug APP]\n`);
+  stdio.write(`\x1b[1;32mCat OS Shell\x1b[m\n\n`);
 
 
   let pwd = '/';
@@ -133,9 +135,30 @@ export async function debug_main(p: Process, sess: Session) {
         } catch (e) {
           stdio.write(`Error: ${e}\n`);
         }
+      } else if (command === "man") {
+        if (args[0] && manuals[args[0]]) {
+          stdio.write(manuals[args[0]] + "\n");
+        }
+        else {
+          stdio.write("Available manuals:\n");
+          for (const key in manuals) {
+            stdio.write(`- ${key}\n`);
+          }
+        }
       } else if (command === "set") {
         try {
           await fs.set_raw(`${pwd}${args[0]}`, args.slice(1).join(" "));
+        } catch (e) {
+          stdio.write(`Error: ${e}\n`);
+        }
+      } else if (command === "cat") {
+        try {
+          const [kind, content] = await fs.get(`${pwd}${args[0]}`);
+          if (kind !== "String") {
+            stdio.write(`Error: Not a String file\n`);
+          }
+
+          stdio.write(content + "\n");
         } catch (e) {
           stdio.write(`Error: ${e}\n`);
         }

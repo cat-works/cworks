@@ -24,6 +24,22 @@
   let options: ITerminalOptions & ITerminalInitOnlyOptions = {
     fontFamily: "Consolas",
     cursorStyle: "bar",
+    cursorBlink: true,
+    convertEol: true,
+    theme: {
+      background: "#000000",
+      foreground: "#ffffff",
+      cursor: "#ffffff",
+      black: "#000000",
+      red: "#ff0000",
+      green: "green",
+      yellow: "#ffff00",
+      blue: "#0000ff",
+      magenta: "#ff00ff",
+      cyan: "#00ffff",
+      white: "#ffffff",
+      brightRed: "#ff0000",
+    },
   };
 
   let sess: Session | null = null;
@@ -85,7 +101,7 @@
           });
         },
         write(data) {
-          terminal.write(canonicalize_newline(data).replace(/\n/g, "\r\n"));
+          terminal.write(canonicalize_newline(data));
         },
       })
     );
