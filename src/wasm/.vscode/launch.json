@@ -15,9 +15,9 @@
       "type": "lldb",
       "request": "launch",
       "name": "Debug",
-      "program": "/home/syoch093194/ghq/github.com/cat-works/cworks/src/wasm/target/debug/wasm",
+      "program": "${workspaceFolder}/target/debug/wasm",
       "args": [],
-      "cwd": "/home/syoch093194/ghq/github.com/cat-works/cworks/src/wasm"
+      "cwd": "${workspaceFolder}",
     }
   ]
 }

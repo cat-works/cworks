@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 
 use kernel::Process;
-use python::PythonProcess;
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 use crate::js_process::CallbackProcess;
@@ -20,17 +19,6 @@ impl Session {
         Self {
             kernel: RefCell::new(kernel::Kernel::default()),
             spawn_queue: RefCell::new(Vec::new()),
-        }
-    }
-
-    pub fn add_python_process(&self, code: String) -> Option<String> {
-        let p = PythonProcess::new(code);
-        match p {
-            Err(_) => Some("Fail".to_string()),
-            Ok(r) => {
-                self.spawn_queue.borrow_mut().push(Box::new(r));
-                None
-            }
         }
     }
 

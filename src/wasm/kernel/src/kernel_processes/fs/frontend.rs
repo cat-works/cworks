@@ -1,5 +1,3 @@
-use log::debug;
-
 use crate::kernel_processes::path::split_filename;
 
 use super::{
@@ -53,10 +51,7 @@ impl FSFrontend {
     pub fn set(&self, path: String, obj: FSObjRef) -> Result<(), FSReturns> {
         let (parent, filename) =
             split_filename(path.clone()).ok_or(FSReturns::InvalidCommandFormat)?;
-        debug!(
-            "Setting file at path: {}, parent: {:?}, filename: {}",
-            path, parent, filename
-        );
+
         self.resolve_(parent)
             .map_err(|_| FSReturns::UnknownPath)?
             .borrow_mut()

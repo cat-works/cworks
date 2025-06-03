@@ -55,7 +55,7 @@ export class Handle extends EventEmitter {
     if (this.receive_buffer.length > 0) {
       let data = this.receive_buffer.shift();
       if (this.debug) {
-        console.log(`{{${this.handle.id}}} <-- ${data}`);
+        console.log(`{${this.handle.id}} <-- ${data}`);
       }
       return data || "";
     }
@@ -67,16 +67,12 @@ export class Handle extends EventEmitter {
     }
     this.receiving_mode = "event";
 
-    let data = await this.recv();
-    if (this.debug) {
-      console.log(`{{${this.handle.id}}} <-- ${data}`);
-    }
-    return data;
+    return await this.recv();
   }
 
   public send(data: string): Promise<void> {
     if (this.debug) {
-      console.log(`{{${this.handle.id}}} --> ${data}`);
+      console.log(`{${this.handle.id}} --> ${data}`);
     }
     return this.process.send(this.handle, data);
   }

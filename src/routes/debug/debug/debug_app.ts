@@ -86,11 +86,12 @@ export async function debug_main(p: Process, sess: Session) {
 
   stdio.write(`[Debug APP]\n`);
 
+
   let pwd = '/';
 
   while (1) {
-    stdio.write(`\x1b[32m${pwd}\x1b[m\n`);
-    stdio.write(`\x1b[1m$\x1b[m `);
+    stdio.write(`\x1b[1;32m${pwd}\x1b[m\n`);
+    stdio.write(`\x1b[2m$\x1b[m `);
     const line = await stdio.readline();
 
     const [command, ...args] = line.split(" ");
@@ -161,20 +162,6 @@ export async function debug_main(p: Process, sess: Session) {
         } catch (e) {
           stdio.write(`Error: ${e}\n`);
         }
-      } else if (command === "exec") {
-        try {
-          const [kind, content] = await fs.get(`${pwd}${args[0]}`);
-          if (kind !== "String") {
-            stdio.write(`Error: Not a String file\n`);
-            continue;
-          }
-
-          sess.add_python_process(content);
-        } catch (e) {
-          stdio.write(`Error: ${e}\n`);
-        }
-      } else if (command === "_t") {
-        await fs.set_raw(`/test`, "String?" + "a\nb@c");
       } else if (command === "clear") {
         stdio.write(`\x1b[2J\x1b[H`);
       } else if (command === "ipc") {

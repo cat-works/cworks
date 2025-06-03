@@ -11,7 +11,6 @@ crate-type=["cdylib", "rlib"]
 [dependencies]
 wasm-bindgen = {version = "0.2.83"}
 chrono = "0.4.22"
-python = { path = "../python" }
 kernel = { path = "../kernel" }
 ghs_demangle = {git = "https://github.com/syoch/ghs_demangle"}
 js-sys = "0.3.61"

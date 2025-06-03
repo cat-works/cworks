@@ -32,15 +32,17 @@
     .then(() => {
       let session = new Session();
 
-      let step_loop = setInterval(() => {
-        try {
-          session.step();
-        } catch (e) {
-          console.log("stepping failed");
-          console.log("| reason =", e);
-          clearInterval(step_loop);
+      (async () => {
+        while (1) {
+          try {
+            session.step();
+          } catch (e) {
+            debugger;
+            throw e;
+          }
+          await new Promise((r) => setTimeout(r, 0));
         }
-      }, 0);
+      })();
 
       sess = session;
       return session;

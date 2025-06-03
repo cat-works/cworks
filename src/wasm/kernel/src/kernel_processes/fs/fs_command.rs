@@ -1,5 +1,3 @@
-use log::debug;
-
 use super::{
     fs_obj::{FSObjRef, IntrinsicFSObj},
     fs_returns::FSReturns,
@@ -22,7 +20,6 @@ impl TryFrom<String> for FSCommand {
         }
 
         let tokens = value.split('?').collect::<Vec<_>>();
-        debug!("FS: Parsing command: {:?}", tokens);
         match (tokens.len(), tokens[0]) {
             (2, "List") => Ok(FSCommand::List(tokens[1].to_string())),
             (2, "Stat") => Ok(FSCommand::Stat(tokens[1].to_string())),
