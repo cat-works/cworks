@@ -54,7 +54,7 @@ impl Kernel {
 
     fn step_all_processes(&mut self) {
         for (pid, p) in &mut self.processes.iter_mut() {
-            log::trace!("Polling {pid} {:?}", p.status);
+            // log::trace!("Polling {pid} {:?}", p.status);
             if let ProcessStatus::Sleeping(t) = p.status {
                 if t > timestamp() {
                     continue;
@@ -66,7 +66,7 @@ impl Kernel {
             let data = p.outgoing_data_buffer.pop().unwrap_or(SyscallData::None);
 
             let res = p.process.poll(&data);
-            log::trace!("{pid}: {res:?}");
+            // log::trace!("{pid}: {res:?}");
             match res {
                 PollResult::Pending => (),
                 PollResult::Done(n) => {

@@ -1,6 +1,3 @@
 [workspace]
 resolver = "2"
-members = [
-  "kernel", "lua",
-  "wasm"
-]
+members = ["kernel", "wasm"]

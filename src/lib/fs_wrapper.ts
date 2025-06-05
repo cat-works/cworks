@@ -12,7 +12,6 @@ export class FileSystem {
     let fs = this;
     p.ipc_connect("system/file-system").then((ipc) => {
       fs.ipc = ipc;
-      fs.ipc.debug = 1;
     });
   }
 

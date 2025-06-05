@@ -1,5 +1,4 @@
 export type RawHandle = {
-  pid: bigint;
   id: bigint;
 };
 
