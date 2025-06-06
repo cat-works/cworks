@@ -84,7 +84,7 @@ impl DaemonCommunicable for IntrinsicFSObj {
                     .parse::<f64>()
                     .map_err(|_| FSReturns::InvalidCommandFormat)?,
             )),
-            "String" => Ok(Self::String(tokens[1..].join("").to_string())),
+            "String" => Ok(Self::String(tokens[1..].join("?").to_string())),
             "Bytes" => Ok(Self::Bytes(
                 tokens[1..]
                     .iter()

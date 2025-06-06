@@ -45,16 +45,20 @@ local function dispatch_syscall(data)
   return nil
 end
 
+---do_syscall
+---@param data string
+local function do_syscall(data)
+  print("Sending data: " .. hexdump(data))
+  return dispatch_syscall(coroutine.yield(data))
+end
+
 local function exit(retval)
   -- pack retval as follows:
   -- 1 byte: type (0x01 for string)
   -- 8 bytes: retval (8byte big-endian integer)
-  local retval_type = 0x01
   local retval_bytes = string.pack(">I8", retval)
 
-  local packed_retval = string.char(retval_type) .. retval_bytes
-
-  dispatch_syscall(coroutine.yield(packed_retval))
+  do_syscall(string.char(0x01) .. retval_bytes)
 end
 
 ---Sends data to specified handle
@@ -62,26 +66,29 @@ end
 ---@param data string
 local function send(handle, data)
   local handle_bytes = string.pack(">I16", handle)
-
-  local packed_retval = string.char(0x05) .. handle_bytes .. data
-  print("Sending data: " .. hexdump(packed_retval))
-
-  dispatch_syscall(coroutine.yield(packed_retval))
+  do_syscall(string.char(0x05) .. handle_bytes .. data)
 end
 
 local function ipc_connect(socket_name)
-  return dispatch_syscall(coroutine.yield(string.char(0x04) .. socket_name))
+  return do_syscall(string.char(0x04) .. socket_name)
 end
 
 local function pending()
-  dispatch_syscall(coroutine.yield(string.char(0x00)))
+  do_syscall(string.char(0x00))
 end
 
 ---Sleeps specified amount of time
 ---@param seconds number
 local function sleep(seconds)
   local seconds_bytes = string.pack(">f", seconds)
-
-
-  dispatch_syscall(coroutine.yield(string.char(0x02) .. seconds_bytes))
+  do_syscall(string.char(0x02) .. seconds_bytes)
 end
+
+package.loaded["cworks"] = {
+  hexdump = hexdump,
+  exit = exit,
+  send = send,
+  ipc_connect = ipc_connect,
+  pending = pending,
+  sleep = sleep
+}

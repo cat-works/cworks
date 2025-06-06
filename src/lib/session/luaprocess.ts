@@ -1,6 +1,5 @@
 import { LuaEnv, LuaThread } from "../../lua/pkg/lua";
-import lib from "./lualib.lua?raw";
-
+import lib from "./cworks-loader.lua?raw";
 
 const env = new LuaEnv();
 env.run(lib);
