@@ -85,8 +85,3 @@ local function sleep(seconds)
 
   dispatch_syscall(coroutine.yield(string.char(0x02) .. seconds_bytes))
 end
-
-local handle = ipc_connect("system/stdio/root")
-send(handle, "Hello from test_proc.lua!")
-
-exit(0)

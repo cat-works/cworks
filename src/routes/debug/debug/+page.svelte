@@ -12,7 +12,7 @@
   import { stdio_main } from "./stdio_app";
   import { debug_main } from "./debug_app";
   import { textarea_main } from "./textarea_app";
-  import test_proc from "./test_proc.lua?raw";
+
   import { LuaProcess } from "$lib/session/luaprocess";
 
   function sleep(ms: number): Promise<void> {
@@ -120,9 +120,6 @@
 
     const debug_process = new Process((p) => debug_main(p, sess as Session));
     session.add_process(debug_process.kernel_callback.bind(debug_process));
-
-    const test_process = new LuaProcess(test_proc);
-    session.add_process(test_process.kernel_callback.bind(test_process));
   }
 </script>
 

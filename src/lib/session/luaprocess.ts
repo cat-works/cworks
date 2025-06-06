@@ -1,6 +1,9 @@
 import { LuaEnv, LuaThread } from "../../lua/pkg/lua";
+import lib from "./lualib.lua?raw";
+
 
 const env = new LuaEnv();
+env.run(lib);
 
 export class LuaProcess {
   private thread: LuaThread;

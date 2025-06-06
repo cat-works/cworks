@@ -96,7 +96,10 @@ impl CallbackProcess {
                         .try_into()
                         .expect("Failed to convert bytes to u128"),
                 );
-                let handle = self.handle_casher.get_handle(handle_id).unwrap();
+                let handle = self
+                    .handle_casher
+                    .get_handle(handle_id)
+                    .unwrap_or_else(|| panic!("Handle with ID {} not found", handle_id));
 
                 let data = String::from_utf8(value[17..].to_vec())
                     .expect("Failed to convert bytes to String");

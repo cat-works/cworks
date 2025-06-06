@@ -1,7 +1,10 @@
 import { FileSystem } from "$lib/fs_wrapper";
 import type { Handle, Process } from "$lib/session";
+import { LuaProcess } from "$lib/session/luaprocess";
 import type { Session } from "../../../wasm/pkg/wasm";
 import { manuals } from "./man";
+
+import test_proc from "./test_proc.lua?raw";
 
 class StdIO {
   public ipc: Handle | null = null;
@@ -80,11 +83,13 @@ export async function debug_main(p: Process, sess: Session) {
 
   const editor = new CodeEditor(p);
   await editor.init("root");
-  stdio.write("\x1b[32mCodeEditor API loaded.\x1b[m\n");
 
   const fs = new FileSystem(p);
   await fs.wait_for_ready();
-  stdio.write("\x1b[32mFileSystem API loaded.\x1b[m\n");
+
+  {
+    await fs.set_raw("/test.lua", "String?" + test_proc);
+  }
 
   stdio.write(`\x1b[1;32mCat OS Shell\x1b[m\n\n`);
 
@@ -187,6 +192,25 @@ export async function debug_main(p: Process, sess: Session) {
         }
       } else if (command === "clear") {
         stdio.write(`\x1b[2J\x1b[H`);
+      } else if (command === "exec") {
+        // Load string from args[0] into 'code'
+        if (args.length === 0) {
+          stdio.write("Usage: exec <filename>\n");
+          continue;
+        }
+        const filename = `${pwd}${args[0]}`;
+        try {
+          const [kind, code] = await fs.get(filename);
+          if (kind !== "String") {
+            stdio.write(`Error: Not a String file\n`);
+            continue;
+          }
+
+          const test_process = new LuaProcess(code);
+          sess.add_process(test_process.kernel_callback.bind(test_process));
+        } catch (e) {
+          stdio.write(`Error: ${e}\n`);
+        }
       } else if (command === "ipc") {
         stdio.write(sess.get_ipc_names().join("\n") + "\n");
       }

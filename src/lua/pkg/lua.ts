@@ -31,7 +31,7 @@ export class LuaThread {
     const encoded_value = mod.ccall("__ffi_lua_thread_yield", "string", ["number", "string"], [this.ptr, encoded_arg]);
     const value = decode(encoded_value);
 
-    console.log(`${JSON.stringify(arg)} -> ${JSON.stringify(encoded_arg)} -> ${JSON.stringify(encoded_value)} -> ${JSON.stringify(value)}`);
+    // console.log(`${JSON.stringify(arg)} -> ${JSON.stringify(encoded_arg)} -> ${JSON.stringify(encoded_value)} -> ${JSON.stringify(value)}`);
     return value;
   }
 };
