@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "src/wasm"
+		},
+		{
+			"path": "src/lua"
 		}
 	],
 	"settings": {

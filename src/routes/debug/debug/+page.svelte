@@ -12,6 +12,8 @@
   import { stdio_main } from "./stdio_app";
   import { debug_main } from "./debug_app";
   import { textarea_main } from "./textarea_app";
+  import test_proc from "./test_proc.lua?raw";
+  import { LuaProcess } from "$lib/session/luaprocess";
 
   function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -103,21 +105,24 @@
         write(data) {
           terminal.write(canonicalize_newline(data));
         },
-      })
+      }),
     );
     session.add_process(stdio_process.kernel_callback.bind(stdio_process));
 
     const textarea_process = new Process((p) =>
-      textarea_main(p, code_editor as HTMLTextAreaElement)
+      textarea_main(p, code_editor as HTMLTextAreaElement),
     );
     session.add_process(
-      textarea_process.kernel_callback.bind(textarea_process)
+      textarea_process.kernel_callback.bind(textarea_process),
     );
 
     await sleep(100);
 
     const debug_process = new Process((p) => debug_main(p, sess as Session));
     session.add_process(debug_process.kernel_callback.bind(debug_process));
+
+    const test_process = new LuaProcess(test_proc);
+    session.add_process(test_process.kernel_callback.bind(test_process));
   }
 </script>
 

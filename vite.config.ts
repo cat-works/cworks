@@ -4,6 +4,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {allowedHosts: ["syoch-arch.tail39b6e.ts.net"]},
   build: {
     target: "esnext",
   },

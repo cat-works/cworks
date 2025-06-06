@@ -1,0 +1,12 @@
+[package]
+name = "lua"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+mlua = { version = "0.10.5", features = ["lua54", "vendored"] }
+log = "0.4.17"
+env_logger = "0.10.0"
