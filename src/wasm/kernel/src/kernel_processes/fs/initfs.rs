@@ -9,10 +9,6 @@ fn usr(root: FSObjRef) -> Result<FSObjRef, FSReturns> {
         CompoundFSObj::with_parent(usr.clone()).into(),
     )?;
     usr.borrow_mut().add_child(
-        "app".to_string(),
-        CompoundFSObj::with_parent(usr.clone()).into(),
-    )?;
-    usr.borrow_mut().add_child(
         "ref".to_string(),
         CompoundFSObj::with_parent(usr.clone()).into(),
     )?;

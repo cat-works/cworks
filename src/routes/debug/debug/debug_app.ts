@@ -93,7 +93,8 @@ export async function debug_main(p: Process, sess: Session) {
     await fs.mkdir("/usr", "lib");
   }
 
-  stdio.write(`\x1b[1;32mCat OS Shell\x1b[m\n\n`);
+  stdio.write(`\x1b[1;32mCat OS Shell\x1b[m\n`);
+  stdio.write(`Type 'man commands' to see available commands.\n\n`);
 
 
   let pwd = '/';

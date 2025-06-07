@@ -27,29 +27,9 @@
     </Menubar.Content>
   </Menubar.Menu>
   <Menubar.Menu>
-    <Menubar.Trigger>Other</Menubar.Trigger>
+    <Menubar.Trigger>Cat OS</Menubar.Trigger>
     <Menubar.Content>
-      <Menubar.Item href="/debug/debug">Debug</Menubar.Item>
+      <Menubar.Item href="/debug/debug">Shell</Menubar.Item>
     </Menubar.Content>
   </Menubar.Menu>
 </Menubar.Root>
-
-<!--
- #if active == "Cafecode Converter"}
-      <CafeCode />
-    {:else if active == "PowerPC Disassembler"}
-      <PPCDisassembler />
-    {:else if active == "PNG Extractor"}
-      <PNGExtractor />
-    {:else if active == "HEX Adder"}
-      <HexAdder />
-    {:else if active == "syoch"}
-      <Introducation />
-    {:else if active == "Calculator"}
-      <Calc />
-    {:else if active == "GHS Demangle"}
-      <GHSDemangle />
-    {:else if active == "Debug"}
-      <Debug />
-    {/if}
-    --->

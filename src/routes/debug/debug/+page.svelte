@@ -6,14 +6,10 @@
     Terminal,
   } from "@battlefieldduck/xterm-svelte";
   import init, { Session } from "$lib/../wasm/pkg/wasm";
-  import { FileSystem } from "$lib/fs_wrapper";
-  import { writable } from "svelte/store";
   import { Process } from "$lib/session";
   import { stdio_main } from "./stdio_app";
   import { debug_main } from "./debug_app";
   import { textarea_main } from "./textarea_app";
-
-  import { LuaProcess } from "$lib/session/luaprocess";
 
   function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
