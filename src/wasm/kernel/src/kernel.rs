@@ -1,10 +1,12 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
+use log::info;
+
 use crate::{
     fs::{fs_daemon_process, initfs},
     handle::{HandleData, HandleIssuer},
     ipc::Ipc,
-    libs::{timestamp, AutoMap},
+    libs::{timestamp_ms, AutoMap},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
     RustProcess,
 };
@@ -53,12 +55,14 @@ impl Kernel {
     }
 
     fn step_all_processes(&mut self) {
+        let now = timestamp_ms();
         for (pid, p) in &mut self.processes.iter_mut() {
             // log::trace!("Polling {pid} {:?}", p.status);
             if let ProcessStatus::Sleeping(t) = p.status {
-                if t > timestamp() {
+                if t >= now {
                     continue;
                 } else {
+                    /* debug!("Waking up Process<{pid}> ({now:6.4} <= {t:6.4})"); */
                     p.status = ProcessStatus::Running;
                 }
             }
@@ -75,8 +79,11 @@ impl Kernel {
                 }
                 PollResult::Syscall(s) => match s {
                     Syscall::Sleep(seconds) => {
-                        p.status = ProcessStatus::Sleeping(timestamp() + seconds);
-                        log::debug!("Process<{pid}> Sleeps for {seconds} seconds");
+                        let duration_ms = (seconds * 1000.0) as i64;
+                        p.status = ProcessStatus::Sleeping(now + duration_ms);
+                        /* log::debug!(
+                            "Process<{pid}> Sleeps for {seconds:6.4} seconds since {now:6.4}"
+                        ); */
                     }
                     Syscall::IpcCreate(ref name) => {
                         if self.ipc_instances.contains_key(name) {

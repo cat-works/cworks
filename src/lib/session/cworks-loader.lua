@@ -14,11 +14,15 @@ local function hexdump(s)
   return table.concat(out, " ")
 end
 
+
+---Table to store syscall handlers
+---@type table<integer, function>
+local syscall_handlers = {}
+
 ---Interprets the syscall data and dispatch callback or return it
 ---@param data string
 ---@return integer? handle
 local function dispatch_syscall(data)
-  print("Dispatching syscall with data: " .. hexdump(data))
   local syscall_type = string.byte(data, 1)
   local syscall_data = data:sub(2)
 
@@ -38,7 +42,12 @@ local function dispatch_syscall(data)
   elseif syscall_type == 0x09 then    -- receiving_data
     local handle = string.unpack(">I16", syscall_data)
     local data_content = data:sub(10) -- 1 byte for type, 8 bytes for handle
-    print("ReceivingData is not implemented yet!")
+    if syscall_handlers[handle] then
+      -- Call the handler with the received data
+      syscall_handlers[handle](data_content)
+    else
+      print("No handler for handle: " .. handle)
+    end
     return nil
   end
 
@@ -48,7 +57,6 @@ end
 ---do_syscall
 ---@param data string
 local function do_syscall(data)
-  print("Sending data: " .. hexdump(data))
   return dispatch_syscall(coroutine.yield(data))
 end
 
@@ -69,8 +77,19 @@ local function send(handle, data)
   do_syscall(string.char(0x05) .. handle_bytes .. data)
 end
 
-local function ipc_connect(socket_name)
-  return do_syscall(string.char(0x04) .. socket_name)
+---Connects to the IPC socket
+---@param socket_name string
+---@param data_callback function
+---@return integer handle
+local function ipc_connect(socket_name, data_callback)
+  local handle = do_syscall(string.char(0x04) .. socket_name)
+  if handle then
+    syscall_handlers[handle] = data_callback
+    return handle
+  else
+    print("Failed to connect to IPC socket: " .. socket_name)
+    return 0
+  end
 end
 
 local function pending()
@@ -85,10 +104,17 @@ local function sleep(seconds)
 end
 
 package.loaded["cworks"] = {
+  -- misc
   hexdump = hexdump,
+
+  -- syscall layer
+  dispatch_syscall = dispatch_syscall,
+  do_syscall = do_syscall,
+
+  -- syscall
   exit = exit,
   send = send,
   ipc_connect = ipc_connect,
   pending = pending,
-  sleep = sleep
+  sleep = sleep,
 }

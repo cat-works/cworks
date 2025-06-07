@@ -13,6 +13,7 @@ export class Handle extends EventEmitter {
 
   constructor(public handle: RawHandle, private process: Process) {
     super();
+    console.log(`Handle created with ID: ${handle.id}`);
     this.receive_buffer = [];
     this.receiving_mode = "event";
 

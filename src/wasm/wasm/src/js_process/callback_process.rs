@@ -9,7 +9,6 @@ use super::handle_casher::HandleCasher;
 pub struct CallbackProcess {
     callback: js_sys::Function,
     handle_casher: HandleCasher,
-    syscall_data_buffer: Option<SyscallData>,
 }
 
 impl CallbackProcess {
@@ -20,7 +19,7 @@ impl CallbackProcess {
         }
     }
 
-    fn syscall_data_to_vec_u8(&mut self, value: SyscallData) -> Vec<u8> {
+    fn syscall_data_to_vec_u8(&mut self, value: &SyscallData) -> Vec<u8> {
         match value {
             SyscallData::None => vec![0x00],
             SyscallData::Fail(SyscallError::AlreadyExists) => vec![0x01],
@@ -51,13 +50,13 @@ impl CallbackProcess {
 
                 let mut a = vec![0x09];
                 a.extend(focus.id.to_be_bytes());
-                a.extend(data.into_bytes());
+                a.extend(data.clone().into_bytes());
                 a
             }
         }
     }
 
-    fn vec_u8_to_poll_result(&mut self, value: Vec<u8>) -> PollResult<i64> {
+    fn vec_u8_to_poll_result(&mut self, value: &Vec<u8>) -> PollResult<i64> {
         match value[0] {
             0x00 => PollResult::Pending,
             0x01 => {
@@ -113,12 +112,8 @@ impl CallbackProcess {
 
 impl Process for CallbackProcess {
     fn poll(&mut self, data: &kernel::SyscallData) -> kernel::PollResult<i64> {
-        let syscall_data = if let Some(d) = self.syscall_data_buffer.take() {
-            d
-        } else {
-            data.clone()
-        };
-        let syscall_data = self.syscall_data_to_vec_u8(syscall_data);
+        let syscall_data = data;
+        let syscall_data = self.syscall_data_to_vec_u8(data);
         // if syscall_data[0] != 0x00 {
         //     debug!("Syscall data: {:?}", syscall_data);
         // }
@@ -137,7 +132,7 @@ impl Process for CallbackProcess {
                 // if result[0] != 0x00 {
                 //     debug!("Poll: {:?}", result);
                 // }
-                self.vec_u8_to_poll_result(result)
+                self.vec_u8_to_poll_result(&result)
             },
         )
     }
