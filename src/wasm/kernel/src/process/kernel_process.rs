@@ -1,11 +1,12 @@
 use super::{Process, SyscallData};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ProcessStatus {
     Running,
     Sleeping(i64), // TODO: Rename to WaitSeconds
 
-                   // TODO: WaitIPCCreate(String)
+    // TODO: WaitIPCCreate(String)
+    WaitingForProcess, // PID of the process to wait for
 }
 
 pub struct KernelProcess {

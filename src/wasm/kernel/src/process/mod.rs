@@ -21,6 +21,7 @@ pub enum Syscall {
     IpcCreate(String),
     IpcConnect(String),
     Send(Handle, String),
+    WaitForProcess(u128),
 }
 
 pub trait Process {
