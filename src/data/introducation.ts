@@ -48,5 +48,11 @@ export let organizations = [
     name: "Robotics Club",
     description: "ロボコン関連のソフトウェアを開発しています",
     icon_url: "https://avatars.githubusercontent.com/u/129924997"
+  },
+  {
+    url: "https://github.com/cat-works",
+    name: "Cat Works",
+    description: "このページ関連のプログラムを書いてます",
+    icon_url: "https://avatars.githubusercontent.com/u/124240813"
   }
 ]
