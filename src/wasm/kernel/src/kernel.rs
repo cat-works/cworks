@@ -31,7 +31,7 @@ pub struct Kernel {
 
 impl Default for Kernel {
     fn default() -> Kernel {
-        let mut ret = Kernel {
+        let ret = Kernel {
             processes: RefCell::new(AutoMap::new()),
             ipc_instances: RefCell::new(HashMap::new()),
             handle_issuer: HandleIssuer::default(),
@@ -102,6 +102,9 @@ impl Kernel {
                     let pairs = self.waiting_pairs.borrow_mut().remove(pid);
                     if let Some(pairs) = pairs {
                         for pair in pairs {
+                            if pair.waitee != *pid {
+                                continue;
+                            }
                             actions.push(KernelAction::WakeUp(pair.waiter));
                         }
                     }

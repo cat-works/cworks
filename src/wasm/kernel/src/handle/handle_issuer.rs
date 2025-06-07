@@ -18,7 +18,7 @@ impl HandleIssuer {
         if let Some(handle) = self.free_handles.borrow_mut().pop() {
             Handle::new(pid, handle, data)
         } else {
-            let last_handle = self.last_handle.borrow().clone();
+            let last_handle = *self.last_handle.borrow();
             let handle = last_handle.checked_add(1).expect("Handle overflow");
 
             *self.last_handle.borrow_mut() = handle;

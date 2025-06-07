@@ -1,7 +1,6 @@
-use std::{cell::RefCell, process::exit, rc::Rc};
+use std::process::exit;
 
 use kernel::{RustProcess, RustProcessCore, SyscallError};
-use session::Session;
 
 mod generator;
 mod js_process;

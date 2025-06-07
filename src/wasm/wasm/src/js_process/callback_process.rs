@@ -1,6 +1,6 @@
 use js_sys::Uint8Array;
-use kernel::{PollResult, Process, Syscall, SyscallData, SyscallError};
-use log::{debug, error};
+use kernel::{PollResult, Process, SyscallData, SyscallError};
+use log::error;
 use wasm_bindgen::JsValue;
 
 use super::handle_casher::HandleCasher;
@@ -56,7 +56,7 @@ impl CallbackProcess {
         }
     }
 
-    fn vec_u8_to_poll_result(&mut self, value: &Vec<u8>) -> PollResult<i64> {
+    fn vec_u8_to_poll_result(&mut self, value: &[u8]) -> PollResult<i64> {
         match value[0] {
             0x00 => PollResult::Pending,
             0x01 => {
@@ -112,7 +112,6 @@ impl CallbackProcess {
 
 impl Process for CallbackProcess {
     fn poll(&mut self, data: &kernel::SyscallData) -> kernel::PollResult<i64> {
-        let syscall_data = data;
         let syscall_data = self.syscall_data_to_vec_u8(data);
         // if syscall_data[0] != 0x00 {
         //     debug!("Syscall data: {:?}", syscall_data);

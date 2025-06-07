@@ -1,7 +1,7 @@
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
 
 use kernel::Process;
-use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
+use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::js_process::CallbackProcess;
 #[wasm_bindgen]
