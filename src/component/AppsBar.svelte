@@ -14,7 +14,7 @@
   <Menubar.Menu>
     <Menubar.Trigger>Converters</Menubar.Trigger>
     <Menubar.Content>
-      <Menubar.Item href="/conv/cafecode">CafeCode</Menubar.Item>
+      <!-- <Menubar.Item href="/conv/cafecode">CafeCode</Menubar.Item> -->
       <Menubar.Item href="/conv/ppc-disasm">PowerPC Disasm</Menubar.Item>
     </Menubar.Content>
   </Menubar.Menu>

@@ -20,7 +20,6 @@
   let terminal: Terminal;
 
   let options: ITerminalOptions & ITerminalInitOnlyOptions = {
-    fontFamily: "Consolas",
     cursorStyle: "bar",
     cursorBlink: true,
     convertEol: true,
