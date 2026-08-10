@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::fs::{
+use crate::obj_tree::{
     traits::{DaemonCommunicable, DaemonString},
     FSReturns,
 };

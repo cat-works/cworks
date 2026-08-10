@@ -1,4 +1,4 @@
-use crate::kernel_processes::path::split_filename;
+use crate::libs::split_filename;
 
 use super::{
     fs_obj::{CompoundFSObj, FSObjRef, FileStat},

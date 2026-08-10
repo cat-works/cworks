@@ -1,10 +1,10 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
-    fs::{fs_daemon_process, initfs},
     handle::{HandleData, HandleIssuer},
     ipc::Ipc,
     libs::{timestamp_ms, AutoMap},
+    obj_tree::{fs_daemon_process, initfs},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
     RustProcess,
 };

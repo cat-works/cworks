@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use crate::{
-    fs::{
+    obj_tree::{
         traits::{DaemonCommunicable, DaemonString},
         FSCommand, FSFrontend, FSReturns,
     },
