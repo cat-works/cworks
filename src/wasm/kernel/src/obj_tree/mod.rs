@@ -11,4 +11,5 @@ pub(crate) use initfs::initfs;
 pub use daemon::fs_daemon_process;
 pub use frontend::FSFrontend;
 pub use fs_command::FSCommand;
+pub use fs_obj::{CompoundFSObj, FSObjRef, IntrinsicFSObj};
 pub use fs_returns::FSReturns;

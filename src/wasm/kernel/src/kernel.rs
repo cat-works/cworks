@@ -4,7 +4,7 @@ use crate::{
     handle::{HandleData, HandleIssuer},
     ipc::Ipc,
     libs::{timestamp_ms, AutoMap},
-    obj_tree::{fs_daemon_process, initfs},
+    obj_tree::{fs_daemon_process, initfs, CompoundFSObj, FSObjRef},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
     RustProcess,
 };
@@ -27,6 +27,7 @@ pub struct Kernel {
     ipc_instances: RefCell<HashMap<String, Rc<RefCell<Ipc>>>>,
     handle_issuer: HandleIssuer,
     waiting_pairs: RefCell<HashMap<u128, Vec<PWaitingPair>>>,
+    fs_root: FSObjRef,
 }
 
 impl Default for Kernel {
@@ -36,6 +37,7 @@ impl Default for Kernel {
             ipc_instances: RefCell::new(HashMap::new()),
             handle_issuer: HandleIssuer::default(),
             waiting_pairs: RefCell::new(HashMap::new()),
+            fs_root: CompoundFSObj::new().into(),
         };
 
         ret.processes
