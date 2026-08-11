@@ -13,3 +13,4 @@ pub use frontend::FSFrontend;
 pub use fs_command::FSCommand;
 pub use fs_obj::{CompoundFSObj, FSObjRef, IntrinsicFSObj};
 pub use fs_returns::FSReturns;
+pub use traits::DaemonCommunicable;

@@ -7,19 +7,12 @@ use crate::obj_tree::{
 
 use super::{object::FileStat, FSObjRef, Object};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CompoundFSObj {
     pub parent: Option<FSObjRef>,
     pub children: HashMap<String, FSObjRef>,
 }
 impl CompoundFSObj {
-    pub fn new() -> Self {
-        CompoundFSObj {
-            parent: None,
-            children: HashMap::new(),
-        }
-    }
-
     pub fn with_parent(parent: FSObjRef) -> Self {
         CompoundFSObj {
             parent: Some(parent),

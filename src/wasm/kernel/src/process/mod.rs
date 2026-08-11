@@ -11,6 +11,7 @@ pub use syscall_data::SyscallData;
 pub use syscall_error::SyscallError;
 pub use wrappers::*;
 
+use crate::obj_tree::FSObjRef;
 use crate::Handle;
 use serde::Deserialize;
 use serde::Serialize;
@@ -22,6 +23,11 @@ pub enum Syscall {
     IpcConnect(String),
     Send(Handle, String),
     WaitForProcess(u128),
+    List(String),
+    Stat(String),
+    Get(String),
+    Set(String, FSObjRef),
+    Mkdir(String, String),
 }
 
 pub trait Process {

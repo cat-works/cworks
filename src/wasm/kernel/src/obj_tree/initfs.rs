@@ -25,7 +25,7 @@ fn workspace(root: FSObjRef) -> FSObjRef {
 }
 
 fn root() -> Result<FSObjRef, FSReturns> {
-    let root: FSObjRef = CompoundFSObj::new().into();
+    let root: FSObjRef = CompoundFSObj::default().into();
 
     root.borrow_mut()
         .add_child("usr".to_string(), usr(root.clone())?)?;
@@ -42,7 +42,7 @@ pub fn initfs() -> FSObjRef {
         Ok(root) => root,
         Err(_) => {
             log::error!("Failed to initialize filesystem");
-            CompoundFSObj::new().into() // Return an empty filesystem on error
+            CompoundFSObj::default().into() // Return an empty filesystem on error
         }
     }
 }

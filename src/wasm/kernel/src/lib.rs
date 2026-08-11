@@ -2,7 +2,7 @@ mod handle;
 mod ipc;
 mod kernel;
 mod libs;
-mod obj_tree;
+pub mod obj_tree;
 mod process;
 mod uri;
 

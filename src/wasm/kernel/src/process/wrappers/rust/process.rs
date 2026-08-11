@@ -1,10 +1,10 @@
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-use crate::{Handle, Syscall, SyscallData, SyscallError};
+use crate::{obj_tree::FSObjRef, Handle, Syscall, SyscallData, SyscallError};
 
 use super::dummy_future::DummyFuture;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct RustProcessCore {
     pub(crate) syscall: Rc<RefCell<Option<Syscall>>>,
     pub(crate) syscall_data: Rc<RefCell<SyscallData>>,
@@ -12,27 +12,16 @@ pub struct RustProcessCore {
     data_buffer: RefCell<VecDeque<Rc<SyscallData>>>,
 }
 
-impl Default for RustProcessCore {
-    fn default() -> Self {
-        let syscall = Rc::new(RefCell::new(Option::None));
-        let data = Rc::new(RefCell::new(SyscallData::default()));
-        Self {
-            syscall,
-            syscall_data: data,
-            data_buffer: VecDeque::new().into(),
-        }
-    }
-}
-
 impl RustProcessCore {
     fn poll_syscall_data(&self) {
-        let m = self.syscall_data.borrow();
-        match &(*m) {
+        let m = self.syscall_data.borrow().clone();
+        match m {
             SyscallData::None => {}
             _ => {
+                log::trace!("RustProcessCore::poll_syscall_data: pushing data to buffer: {m:?}",);
                 self.data_buffer
                     .borrow_mut()
-                    .push_back(Rc::new((*m).clone()));
+                    .push_back(Rc::new((m).clone()));
             }
         }
     }
@@ -48,7 +37,18 @@ impl RustProcessCore {
 
                 if let Some(x) = buffer.pop_front() {
                     match *x {
-                        SyscallData::Handle(ref e) => return Ok(e.clone()),
+                        SyscallData::Handle(ref e) => {
+                            log::trace!(
+                                "RustProcessCore::return_handle: returning handle from buffer: {e:?}",
+                            );
+                            return Ok(e.clone());
+                        }
+                        SyscallData::Fail(ref e) => {
+                            log::trace!(
+                                "RustProcessCore::return_handle: returning error from buffer: {e:?}",
+                            );
+                            return Err(e.clone());
+                        }
                         _ => {
                             buffer.push_back(x);
                         }
@@ -69,6 +69,10 @@ impl RustProcessCore {
                 .pop_front()
                 .map(|x| (*x).clone());
             if let Some(x) = f {
+                log::trace!(
+                    "RustProcessCore::get_syscall_data: returning data from buffer: {:?}",
+                    x
+                );
                 return x;
             } else {
                 self.poll_syscall_data();
@@ -92,7 +96,8 @@ impl RustProcessCore {
         self.set_syscall(Syscall::Send(handle, data));
         DummyFuture::Started.await;
 
-        match *(self.syscall_data.borrow()) {
+        let m = self.syscall_data.borrow().clone();
+        match m {
             SyscallData::Fail(ref e) => {
                 self.set_syscall_data(&SyscallData::None);
                 Err(e.clone())
@@ -104,6 +109,101 @@ impl RustProcessCore {
         self.set_syscall(Syscall::IpcConnect(name));
         DummyFuture::Started.await;
         self.return_handle().await
+    }
+
+    pub async fn fs_list(&self, path: String) -> Result<(), SyscallError> {
+        self.set_syscall(Syscall::List(path));
+        DummyFuture::Started.await;
+
+        let m = self.syscall_data.borrow().clone();
+        match m {
+            SyscallData::FSResult(r) => {
+                self.set_syscall_data(&SyscallData::None);
+                log::trace!("RustProcessCore::fs_list: returning FSResult: {:?}", r);
+                Ok(())
+            }
+            SyscallData::Fail(ref e) => {
+                self.set_syscall_data(&SyscallData::None);
+                Err(e.clone())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub async fn fs_stat(&self, path: String) -> Result<(), SyscallError> {
+        self.set_syscall(Syscall::Stat(path));
+        DummyFuture::Started.await;
+
+        let m = self.syscall_data.borrow().clone();
+        match m {
+            SyscallData::FSResult(r) => {
+                self.set_syscall_data(&SyscallData::None);
+                log::trace!("RustProcessCore::fs_stat: returning FSResult: {:?}", r);
+                Ok(())
+            }
+            SyscallData::Fail(ref e) => {
+                self.set_syscall_data(&SyscallData::None);
+                Err(e.clone())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub async fn fs_get(&self, path: String) -> Result<(), SyscallError> {
+        self.set_syscall(Syscall::Get(path));
+        DummyFuture::Started.await;
+
+        let m = self.syscall_data.borrow().clone();
+        match m {
+            SyscallData::FSResult(r) => {
+                self.set_syscall_data(&SyscallData::None);
+                log::trace!("RustProcessCore::fs_get: returning FSResult: {:?}", r);
+                Ok(())
+            }
+            SyscallData::Fail(ref e) => {
+                self.set_syscall_data(&SyscallData::None);
+                Err(e.clone())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub async fn fs_set(&self, path: String, data: FSObjRef) -> Result<(), SyscallError> {
+        self.set_syscall(Syscall::Set(path, data));
+        DummyFuture::Started.await;
+
+        let m = self.syscall_data.borrow().clone();
+        match m {
+            SyscallData::FSResult(r) => {
+                self.set_syscall_data(&SyscallData::None);
+                log::trace!("RustProcessCore::fs_set: returning FSResult: {:?}", r);
+                Ok(())
+            }
+            SyscallData::Fail(ref e) => {
+                self.set_syscall_data(&SyscallData::None);
+                Err(e.clone())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub async fn fs_mkdir(&self, path: String, name: String) -> Result<(), SyscallError> {
+        self.set_syscall(Syscall::Mkdir(path, name));
+        DummyFuture::Started.await;
+
+        let m = self.syscall_data.borrow().clone();
+        match m {
+            SyscallData::FSResult(r) => {
+                self.set_syscall_data(&SyscallData::None);
+                log::trace!("RustProcessCore::fs_mkdir: returning FSResult: {:?}", r);
+                Ok(())
+            }
+            SyscallData::Fail(ref e) => {
+                self.set_syscall_data(&SyscallData::None);
+                Err(e.clone())
+            }
+            _ => Ok(()),
+        }
     }
 
     pub(crate) fn set_syscall_data(&self, data: &SyscallData) {

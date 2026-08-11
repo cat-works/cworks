@@ -2,7 +2,7 @@ use super::SyscallError;
 use crate::Handle;
 use serde::Serialize;
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(PartialEq, Debug, Clone, Serialize, Default)]
 pub enum SyscallData {
     #[default]
     None,
@@ -16,4 +16,5 @@ pub enum SyscallData {
         focus: Handle,
         data: String,
     },
+    FSResult(String),
 }

@@ -4,9 +4,8 @@ use crate::{
     handle::{HandleData, HandleIssuer},
     ipc::Ipc,
     libs::{timestamp_ms, AutoMap},
-    obj_tree::{fs_daemon_process, initfs, CompoundFSObj, FSObjRef},
+    obj_tree::{initfs, DaemonCommunicable, FSFrontend, FSObjRef},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
-    RustProcess,
 };
 
 use super::process::{KernelProcess, PollResult, Process};
@@ -32,24 +31,13 @@ pub struct Kernel {
 
 impl Default for Kernel {
     fn default() -> Kernel {
-        let ret = Kernel {
+        Kernel {
             processes: RefCell::new(AutoMap::new()),
             ipc_instances: RefCell::new(HashMap::new()),
             handle_issuer: HandleIssuer::default(),
             waiting_pairs: RefCell::new(HashMap::new()),
-            fs_root: CompoundFSObj::new().into(),
-        };
-
-        ret.processes
-            .borrow_mut()
-            .add_value(RefCell::new(KernelProcess {
-                parent_pid: 0,
-                process: Box::new(RustProcess::new(&fs_daemon_process, initfs())),
-                outgoing_data_buffer: vec![],
-                status: ProcessStatus::Running,
-            }));
-
-        ret
+            fs_root: initfs(),
+        }
     }
 }
 
@@ -71,7 +59,6 @@ impl Kernel {
         let process_keys: Vec<u128> = self.processes.borrow().keys().cloned().collect();
 
         for (pid, p) in self.processes.borrow().iter() {
-            // log::trace!("Polling {pid} {:?}", p.status);
             if let ProcessStatus::Sleeping(t) = p.borrow().status {
                 if t >= now {
                     continue;
@@ -91,8 +78,10 @@ impl Kernel {
                 .pop()
                 .unwrap_or(SyscallData::None);
 
+            if data != SyscallData::None {
+                log::debug!("Process<{pid}> Polling with data: {:?}", data)
+            };
             let res = p.borrow_mut().process.poll(&data);
-            // log::trace!("{pid}: {res:?}");
 
             match res {
                 PollResult::Pending => (),
@@ -112,6 +101,8 @@ impl Kernel {
                     }
                 }
                 PollResult::Syscall(s) => {
+                    log::debug!("Process<{pid}> Syscall: {:?}", s);
+                    let fs_frontend = FSFrontend::new(self.fs_root.clone());
                     match s {
                         Syscall::Sleep(seconds) => {
                             let duration_ms = (seconds * 1000.0) as i64;
@@ -252,6 +243,54 @@ impl Kernel {
                                     .outgoing_data_buffer
                                     .push(SyscallData::Fail(SyscallError::NoSuchEntry));
                             }
+                        }
+                        Syscall::List(path) => {
+                            let res = fs_frontend.list(path);
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::FSResult(
+                                    res.map(|x| x.join("?")).unwrap_or_else(|e| e.into()),
+                                ));
+                        }
+                        Syscall::Stat(path) => {
+                            let stat = fs_frontend.stat(path);
+                            let daemon_str = stat.map(|x| x.to_daemon_string());
+                            let str = match daemon_str {
+                                Ok(Ok(s)) => s,
+                                Ok(Err(e)) => e.into(),
+                                Err(e) => e.into(),
+                            };
+                            let str = str.to_string();
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::FSResult(str));
+                        }
+                        Syscall::Get(path) => {
+                            let res = fs_frontend.get(path).map(|x| x.borrow().to_daemon_string());
+                            let str = match res {
+                                Ok(Ok(s)) => s.to_string(),
+                                Ok(Err(e)) => e.into(),
+                                Err(e) => e.into(),
+                            };
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::FSResult(str));
+                        }
+                        Syscall::Set(path, obj) => {
+                            let res = fs_frontend.set(path, obj);
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::FSResult(
+                                    res.map(|_| "Ok".to_string()).unwrap_or_else(|e| e.into()),
+                                ));
+                        }
+                        Syscall::Mkdir(path, name) => {
+                            let res = fs_frontend.mkdir(path, name);
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::FSResult(
+                                    res.map(|_| "Ok".to_string()).unwrap_or_else(|e| e.into()),
+                                ));
                         }
                     }
                 }

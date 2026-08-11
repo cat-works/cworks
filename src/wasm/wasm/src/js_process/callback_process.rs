@@ -53,6 +53,11 @@ impl CallbackProcess {
                 a.extend(data.clone().into_bytes());
                 a
             }
+            SyscallData::FSResult(res) => {
+                let mut a = vec![0x10];
+                a.extend(res.clone().into_bytes());
+                a
+            }
         }
     }
 
