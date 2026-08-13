@@ -111,7 +111,7 @@ export class Process {
     })
   }
 
-  public fs_stat(path: string): Promise<any> {
+  public fs_stat(path: string): Promise<{ kind: "Directory" | "File" }> {
     this.result_queue.push({
       "Syscall": {
         "Stat": path
@@ -145,6 +145,27 @@ export class Process {
           return true;
         } else if (s === "FSSuccess") {
           resolve();
+          return true;
+        }
+      })
+    })
+  }
+
+  public fs_get(path: string): Promise<any> {
+    this.result_queue.push({
+      "Syscall": {
+        "Get": path
+      }
+    });
+
+    return new Promise((resolve, reject) => {
+      this.emitter.once("callback", (s: any) => {
+        if (s.Fail !== undefined) {
+          reject(s.Fail);
+          return true;
+        }
+        if (s.FSGet !== undefined) {
+          resolve(s.FSGet);
           return true;
         }
       })

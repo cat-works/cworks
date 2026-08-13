@@ -14,7 +14,6 @@ class StdIO {
 
   async init(tag: string) {
     this.ipc = await this.proc.ipc_connect(`system/stdio/${tag}`);
-    this.ipc.debug = 1;
     this.ipc.on("message", (data: string) => {
       this.stdin_buffer += data;
       return true;
@@ -85,13 +84,16 @@ export async function debug_main(p: Process, sess: Session) {
   const stdio = new StdIO(p);
   await stdio.init("root");
 
-  /* const editor = new CodeEditor(p);
-  await editor.init("root"); */
+  const editor = new CodeEditor(p);
+  await editor.init("root");
 
-  // const fs = new FileSystem(p);
+  const fs = new FileSystem(p);
 
-  /* await fs.set("/test.lua", { String: test_proc });
-  await fs.mkdir("/usr", "lib"); */
+  await fs.set("/test.lua", { String: test_proc });
+  await fs.mkdir("/usr", "lib");
+
+  const test_process = new LuaProcess(test_proc);
+  sess.add_process(test_process.kernel_callback.bind(test_process));
 
 
   stdio.write(`\x1b[1;32mCat OS Shell\x1b[m\n`);
@@ -107,120 +109,87 @@ export async function debug_main(p: Process, sess: Session) {
 
     const [command, ...args] = line.split(" ");
 
-    try {
-      /* if (command === "ls") {
-        const entries = await fs.list(pwd);
-        for (const entry of entries) {
-          try {
-            let s = await fs.stat(`${pwd}${entry}`);
-            stdio.write(`${s} ${entry}\n`);
-          } catch {
-            stdio.write(`? ${entry}\n`);
 
-          }
-        }
-      } else if (command === "cd") {
-        if (args[0]) {
-          pwd += args[0];
-          if (!pwd.endsWith('/')) {
-            pwd += '/';
-          }
-        } else {
-          pwd = '/';
-        }
-      } else if (command === "mkdir") {
-        await fs.mkdir(pwd, args[0]);
-      } else if (command === "stat") {
-        try {
-          const stat = await fs.stat(`${pwd}${args[0]}`);
-          stdio.write(`${stat}\n`);
-        } catch (e) {
-          stdio.write(`Error: ${e}\n`);
-        }
-      } else if (command === "get") {
-        try {
-          const stat = await fs.get(`${pwd}${args[0]}`);
-          stdio.write(`${stat}\n`);
-        } catch (e) {
-          stdio.write(`Error: ${e}\n`);
-        }
-      } else if (command === "man") {
-        if (args[0] && manuals[args[0]]) {
-          stdio.write(manuals[args[0]] + "\n");
-        }
-        else {
-          stdio.write("Available manuals:\n");
-          for (const key in manuals) {
-            stdio.write(`- ${key}\n`);
-          }
-        }
-      } else if (command === "set") {
-        try {
-          await fs.set(`${pwd}${args[0]}`, JSON.parse(args.slice(1).join(" ")));
-        } catch (e) {
-          stdio.write(`Error: ${e}\n`);
-        }
-      } else if (command === "cat") {
-        try {
-          const [kind, content] = await fs.get(`${pwd}${args[0]}`);
-          if (kind !== "String") {
-            stdio.write(`Error: Not a String file\n`);
-          }
-
-          stdio.write(content + "\n");
-        } catch (e) {
-          stdio.write(`Error: ${e}\n`);
-        }
-      } else if (command === "load") {
-        try {
-          const [kind, content] = await fs.get(`${pwd}${args[0]}`);
-          if (kind !== "String") {
-            stdio.write(`Error: Not a String file\n`);
-          }
-
-          await editor.load(content);
-        } catch (e) {
-          stdio.write(`Error: ${e}\n`);
-        }
-      } else if (command === "save") {
-        try {
-          const content = await editor.acquire();
-          if (!content) {
-            stdio.write(`Error: No content to save\n`);
-            continue;
-          }
-
-          await fs.set(`${pwd}${args[0]}`, { String: content });
-        } catch (e) {
-          stdio.write(`Error: ${e}\n`);
-        }
-      } else */ if (command === "clear") {
-        stdio.write(`\x1b[2J\x1b[H`);
-      } /* else if (command === "exec") {
-        // Load string from args[0] into 'code'
-        if (args.length === 0) {
-          stdio.write("Usage: exec <filename>\n");
-          continue;
-        }
-        const filename = `${pwd}${args[0]}`;
-        try {
-          const [kind, code] = await fs.get(filename);
-          if (kind !== "String") {
-            stdio.write(`Error: Not a String file\n`);
-            continue;
-          }
-
-          const test_process = new LuaProcess(code);
-          sess.add_process(test_process.kernel_callback.bind(test_process));
-        } catch (e) {
-          stdio.write(`Error: ${e}\n`);
-        }
-      }  */else if (command === "ipc") {
-        stdio.write(sess.get_ipc_names().join("\n") + "\n");
+    if (command === "ls") {
+      const entries = await fs.list(pwd);
+      for (const entry of entries) {
+        let s = await fs.stat(`${pwd}${entry}`);
+        stdio.write(`${s.kind[0]} ${entry}\n`);
       }
-    } catch (e) {
-      stdio.write(`Error: ${e}\n`);
+    } else if (command === "cd") {
+      if (args[0]) {
+        pwd += args[0];
+        if (!pwd.endsWith('/')) {
+          pwd += '/';
+        }
+      } else {
+        pwd = '/';
+      }
+    } else if (command === "mkdir") {
+      await fs.mkdir(pwd, args[0]);
+    } else if (command === "stat") {
+      const stat = await fs.stat(`${pwd}${args[0]}`);
+      stdio.write(`${stat}\n`);
+    } else if (command === "get") {
+      const stat = await fs.get(`${pwd}${args[0]}`);
+      stdio.write(`${stat}\n`);
+    } else if (command === "man") {
+      if (args[0] && manuals[args[0]]) {
+        stdio.write(manuals[args[0]] + "\n");
+      }
+      else {
+        stdio.write("Available manuals:\n");
+        for (const key in manuals) {
+          stdio.write(`- ${key}\n`);
+        }
+      }
+    } else if (command === "set") {
+      await fs.set(`${pwd}${args[0]}`, JSON.parse(args.slice(1).join(" ")));
+    } else if (command === "cat") {
+      const obj = await fs.get(`${pwd}${args[0]}`);
+      if (obj.String === undefined) {
+        stdio.write(`Error: Not a String file\n`);
+      }
+
+      stdio.write(obj.String + "\n");
+    } else if (command === "load") {
+      const obj = await fs.get(`${pwd}${args[0]}`);
+      if (obj.String === undefined) {
+        stdio.write(`Error: Not a String file\n`);
+      }
+
+      await editor.load(obj.String);
+    } else if (command === "save") {
+      const content = await editor.acquire();
+      if (!content) {
+        stdio.write(`Error: No content to save\n`);
+        continue;
+      }
+
+      await fs.set(`${pwd}${args[0]}`, { String: content });
+    } else if (command === "clear") {
+      stdio.write(`\x1b[2J\x1b[H`);
+    } else if (command === "exec") {
+      // Load string from args[0] into 'code'
+      if (args.length === 0) {
+        stdio.write("Usage: exec <filename>\n");
+        continue;
+      }
+      const filename = `${pwd}${args[0]}`;
+      const obj = await fs.get(filename);
+      const code = obj.String;
+      if (code === undefined) {
+        stdio.write(`Error: Not a String file\n`);
+        continue;
+      }
+
+      const test_process = new LuaProcess(code);
+      sess.add_process(test_process.kernel_callback.bind(test_process));
+
+    } else if (command === "ipc") {
+      stdio.write(sess.get_ipc_names().join("\n") + "\n");
     }
+
   }
 
   return 0n;

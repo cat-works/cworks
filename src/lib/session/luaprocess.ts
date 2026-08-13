@@ -1,7 +1,9 @@
 import { LuaEnv, LuaThread } from "../../lua/pkg/lua";
 import lib from "./cworks-loader.lua?raw";
+import json_lib from "./json.lua?raw";
 
 const env = new LuaEnv();
+env.run(json_lib);
 env.run(lib);
 
 export class LuaProcess {
@@ -11,20 +13,32 @@ export class LuaProcess {
     this.thread = env.thread(code);
   }
 
-  kernel_callback(data: Uint8Array): Uint8Array {
-    // Convert Uint8Array to string
-    let dataString = "";
-    for (let i = 0; i < data.length; i++) {
-      dataString += String.fromCharCode(data[i]);
-    }
-
+  kernel_callback(data: any): any {
+    const dataString = JSON.stringify(data, (key, value) => {
+      if (typeof value === "bigint") {
+        return value.toString();
+      }
+      return value;
+    });
     const result = this.thread.yield(dataString);
+    const parsed_obj = JSON.parse(result);
 
-    // Convert the result string back to a Uint8Array
-    const resultArray = new Uint8Array(result.length);
-    for (let i = 0; i < result.length; i++) {
-      resultArray[i] = result.charCodeAt(i);
-    }
-    return resultArray;
+    // transform string back to bigint for handles
+    const transformHandles = (obj: any): any => {
+      if (Array.isArray(obj)) {
+        return obj.map(transformHandles);
+      } else if (obj && typeof obj === "object") {
+        const transformedObj: any = {};
+        for (const key in obj) {
+          transformedObj[key] = transformHandles(obj[key]);
+        }
+        return transformedObj;
+      } else if (typeof obj === "string" && obj.startsWith("$$bi:")) {
+        return BigInt(obj.slice(5));
+      }
+      return obj;
+    };
+
+    return transformHandles(parsed_obj);
   }
 }

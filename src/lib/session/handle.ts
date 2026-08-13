@@ -23,7 +23,6 @@ export class Handle extends EventEmitter {
   private set_data_hander() {
     let this_handle = this;
     this.process.emitter.on("receiving_data", (x: { focus: RawHandle; data: string }) => {
-      console.log(x, this_handle)
       if (x.focus !== this_handle.handle) {
         return false;
       }

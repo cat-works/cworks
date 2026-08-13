@@ -101,6 +101,9 @@ impl Object for FSObjRef {
                 if let Some(obj) = children.get(&part) {
                     return Ok(obj.clone());
                 }
+                if part == "." {
+                    return Ok(self.clone());
+                }
                 if part == ".." {
                     if let Some(parent) = &parent {
                         return parent.get_obj(part);
