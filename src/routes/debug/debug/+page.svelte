@@ -47,12 +47,7 @@
 
       (async () => {
         while (1) {
-          try {
-            session.step();
-          } catch (e) {
-            debugger;
-            throw e;
-          }
+          session.step();
           await new Promise((r) => setTimeout(r, 0));
         }
       })();

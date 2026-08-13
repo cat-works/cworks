@@ -117,9 +117,9 @@ impl RustProcessCore {
 
         let m = self.syscall_data.borrow().clone();
         match m {
-            SyscallData::FSResult(r) => {
+            SyscallData::FSList(r) => {
                 self.set_syscall_data(&SyscallData::None);
-                log::trace!("RustProcessCore::fs_list: returning FSResult: {:?}", r);
+                log::trace!("RustProcessCore::fs_list: returning FSList: {:?}", r);
                 Ok(())
             }
             SyscallData::Fail(ref e) => {
@@ -136,9 +136,9 @@ impl RustProcessCore {
 
         let m = self.syscall_data.borrow().clone();
         match m {
-            SyscallData::FSResult(r) => {
+            SyscallData::FSStat(r) => {
                 self.set_syscall_data(&SyscallData::None);
-                log::trace!("RustProcessCore::fs_stat: returning FSResult: {:?}", r);
+                log::trace!("RustProcessCore::fs_stat: returning FSStat: {:?}", r);
                 Ok(())
             }
             SyscallData::Fail(ref e) => {
@@ -155,9 +155,9 @@ impl RustProcessCore {
 
         let m = self.syscall_data.borrow().clone();
         match m {
-            SyscallData::FSResult(r) => {
+            SyscallData::FSGet(obj) => {
                 self.set_syscall_data(&SyscallData::None);
-                log::trace!("RustProcessCore::fs_get: returning FSResult: {:?}", r);
+                log::trace!("RustProcessCore::fs_get: returning FSGet: {:?}", obj);
                 Ok(())
             }
             SyscallData::Fail(ref e) => {
@@ -174,9 +174,9 @@ impl RustProcessCore {
 
         let m = self.syscall_data.borrow().clone();
         match m {
-            SyscallData::FSResult(r) => {
+            SyscallData::FSSuccess => {
                 self.set_syscall_data(&SyscallData::None);
-                log::trace!("RustProcessCore::fs_set: returning FSResult: {:?}", r);
+                log::trace!("RustProcessCore::fs_set: returning FSSuccess");
                 Ok(())
             }
             SyscallData::Fail(ref e) => {
@@ -193,9 +193,9 @@ impl RustProcessCore {
 
         let m = self.syscall_data.borrow().clone();
         match m {
-            SyscallData::FSResult(r) => {
+            SyscallData::FSSuccess => {
                 self.set_syscall_data(&SyscallData::None);
-                log::trace!("RustProcessCore::fs_mkdir: returning FSResult: {:?}", r);
+                log::trace!("RustProcessCore::fs_mkdir: returning FSSuccess");
                 Ok(())
             }
             SyscallData::Fail(ref e) => {

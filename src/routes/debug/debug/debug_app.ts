@@ -85,10 +85,9 @@ export async function debug_main(p: Process, sess: Session) {
   await editor.init("root");
 
   const fs = new FileSystem(p);
-  await fs.wait_for_ready();
 
   {
-    await fs.set_raw("/test.lua", "String?" + test_proc);
+    await fs.set("/test.lua", { String: test_proc });
 
     await fs.mkdir("/usr", "lib");
   }

@@ -1,8 +1,11 @@
 use super::SyscallError;
-use crate::Handle;
+use crate::{
+    obj_tree::{FSObjRef, FSReturns, FileStat},
+    Handle,
+};
 use serde::Serialize;
 
-#[derive(PartialEq, Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub enum SyscallData {
     #[default]
     None,
@@ -16,5 +19,9 @@ pub enum SyscallData {
         focus: Handle,
         data: String,
     },
-    FSResult(String),
+    FSSuccess,
+    FSGet(FSObjRef),
+    FSError(FSReturns),
+    FSList(Vec<String>),
+    FSStat(FileStat),
 }

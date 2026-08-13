@@ -1,3 +1,6 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum FSReturns {
     InvalidCommandFormat,
     UnsupportedMethod,
@@ -9,8 +12,8 @@ pub enum FSReturns {
 }
 
 impl From<FSReturns> for String {
-    fn from(value: FSReturns) -> Self {
-        match value {
+    fn from(val: FSReturns) -> Self {
+        match val {
             FSReturns::InvalidCommandFormat => "InvalidCommandFormat".to_string(),
             FSReturns::UnsupportedMethod => "UnsupportedMethod".to_string(),
             FSReturns::InvalidHandle => "InvalidHandle".to_string(),
@@ -18,6 +21,20 @@ impl From<FSReturns> for String {
             FSReturns::UnknownError => "UnknownError".to_string(),
             FSReturns::ResourceIsBusy => "ResourceIsBusy".to_string(),
             FSReturns::Ok => "Ok".to_string(),
+        }
+    }
+}
+
+impl From<FSReturns> for Vec<u8> {
+    fn from(val: FSReturns) -> Self {
+        match val {
+            FSReturns::InvalidCommandFormat => vec![0x01],
+            FSReturns::UnsupportedMethod => vec![0x02],
+            FSReturns::InvalidHandle => vec![0x03],
+            FSReturns::UnknownPath => vec![0x04],
+            FSReturns::UnknownError => vec![0x05],
+            FSReturns::ResourceIsBusy => vec![0x06],
+            FSReturns::Ok => vec![0x07],
         }
     }
 }

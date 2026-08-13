@@ -1,38 +1,31 @@
-use super::fs_obj::{CompoundFSObj, FSObjRef};
+use crate::obj_tree::fs_obj::Object;
+
+use super::fs_obj::FSObjRef;
 use super::FSReturns;
 
 fn usr(root: FSObjRef) -> Result<FSObjRef, FSReturns> {
-    let usr: FSObjRef = CompoundFSObj::with_parent(root).into();
+    let usr: FSObjRef = FSObjRef::new_compound(root);
 
-    usr.borrow_mut().add_child(
-        "mime".to_string(),
-        CompoundFSObj::with_parent(usr.clone()).into(),
-    )?;
-    usr.borrow_mut().add_child(
-        "ref".to_string(),
-        CompoundFSObj::with_parent(usr.clone()).into(),
-    )?;
+    usr.add_child("mime".to_string(), FSObjRef::new_compound(usr.clone()))?;
+    usr.add_child("ref".to_string(), FSObjRef::new_compound(usr.clone()))?;
 
     Ok(usr)
 }
 
 fn mnt(root: FSObjRef) -> FSObjRef {
-    CompoundFSObj::with_parent(root).into()
+    FSObjRef::new_compound(root)
 }
 
 fn workspace(root: FSObjRef) -> FSObjRef {
-    CompoundFSObj::with_parent(root).into()
+    FSObjRef::new_compound(root)
 }
 
 fn root() -> Result<FSObjRef, FSReturns> {
-    let root: FSObjRef = CompoundFSObj::default().into();
+    let root: FSObjRef = FSObjRef::empty_compound();
 
-    root.borrow_mut()
-        .add_child("usr".to_string(), usr(root.clone())?)?;
-    root.borrow_mut()
-        .add_child("mnt".to_string(), mnt(root.clone()))?;
-    root.borrow_mut()
-        .add_child("workspace".to_string(), workspace(root.clone()))?;
+    root.add_child("usr".to_string(), usr(root.clone())?)?;
+    root.add_child("mnt".to_string(), mnt(root.clone()))?;
+    root.add_child("workspace".to_string(), workspace(root.clone()))?;
 
     Ok(root)
 }
@@ -42,7 +35,7 @@ pub fn initfs() -> FSObjRef {
         Ok(root) => root,
         Err(_) => {
             log::error!("Failed to initialize filesystem");
-            CompoundFSObj::default().into() // Return an empty filesystem on error
+            FSObjRef::empty_compound() // Return an empty filesystem on error
         }
     }
 }

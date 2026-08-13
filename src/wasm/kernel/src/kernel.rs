@@ -4,7 +4,7 @@ use crate::{
     handle::{HandleData, HandleIssuer},
     ipc::Ipc,
     libs::{timestamp_ms, AutoMap},
-    obj_tree::{initfs, DaemonCommunicable, FSFrontend, FSObjRef},
+    obj_tree::{initfs, FSFrontend, FSObjRef},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
 };
 
@@ -78,7 +78,7 @@ impl Kernel {
                 .pop()
                 .unwrap_or(SyscallData::None);
 
-            if data != SyscallData::None {
+            if !matches!(data, SyscallData::None) {
                 log::debug!("Process<{pid}> Polling with data: {:?}", data)
             };
             let res = p.borrow_mut().process.poll(&data);
@@ -246,51 +246,38 @@ impl Kernel {
                         }
                         Syscall::List(path) => {
                             let res = fs_frontend.list(path);
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(SyscallData::FSResult(
-                                    res.map(|x| x.join("?")).unwrap_or_else(|e| e.into()),
-                                ));
+                            p.borrow_mut().outgoing_data_buffer.push(
+                                res.map(SyscallData::FSList)
+                                    .unwrap_or_else(SyscallData::FSError),
+                            );
                         }
                         Syscall::Stat(path) => {
                             let stat = fs_frontend.stat(path);
-                            let daemon_str = stat.map(|x| x.to_daemon_string());
-                            let str = match daemon_str {
-                                Ok(Ok(s)) => s,
-                                Ok(Err(e)) => e.into(),
-                                Err(e) => e.into(),
-                            };
-                            let str = str.to_string();
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(SyscallData::FSResult(str));
+                            p.borrow_mut().outgoing_data_buffer.push(
+                                stat.map(SyscallData::FSStat)
+                                    .unwrap_or_else(SyscallData::FSError),
+                            );
                         }
                         Syscall::Get(path) => {
-                            let res = fs_frontend.get(path).map(|x| x.borrow().to_daemon_string());
-                            let str = match res {
-                                Ok(Ok(s)) => s.to_string(),
-                                Ok(Err(e)) => e.into(),
-                                Err(e) => e.into(),
-                            };
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(SyscallData::FSResult(str));
+                            let res = fs_frontend.get(path);
+                            p.borrow_mut().outgoing_data_buffer.push(
+                                res.map(SyscallData::FSGet)
+                                    .unwrap_or_else(SyscallData::FSError),
+                            );
                         }
                         Syscall::Set(path, obj) => {
                             let res = fs_frontend.set(path, obj);
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(SyscallData::FSResult(
-                                    res.map(|_| "Ok".to_string()).unwrap_or_else(|e| e.into()),
-                                ));
+                            p.borrow_mut().outgoing_data_buffer.push(
+                                res.map(|_| SyscallData::FSSuccess)
+                                    .unwrap_or_else(SyscallData::FSError),
+                            );
                         }
                         Syscall::Mkdir(path, name) => {
                             let res = fs_frontend.mkdir(path, name);
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(SyscallData::FSResult(
-                                    res.map(|_| "Ok".to_string()).unwrap_or_else(|e| e.into()),
-                                ));
+                            p.borrow_mut().outgoing_data_buffer.push(
+                                res.map(|_| SyscallData::FSSuccess)
+                                    .unwrap_or_else(SyscallData::FSError),
+                            );
                         }
                     }
                 }

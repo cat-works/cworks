@@ -1,66 +1,128 @@
-use std::{cell::RefCell, fmt::Debug, ops::Deref, rc::Rc};
+use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-use crate::obj_tree::{traits::DaemonString, DaemonCommunicable, IntrinsicFSObj};
+use crate::obj_tree::{
+    fs_obj::{object::FileKind, Object},
+    FSReturns, FileStat, IntrinsicFSObj,
+};
 
-use super::Object;
-
-pub struct FSObjRef(Rc<RefCell<Box<dyn Object>>>);
-
-impl<T: Object + 'static> From<T> for FSObjRef {
-    fn from(obj: T) -> Self {
-        FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
-    }
-}
+#[derive(Clone)]
+pub struct FSObjRef(Rc<RefCell<Box<IntrinsicFSObj>>>);
 
 impl Serialize for FSObjRef {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        let obj = self.0.borrow().to_daemon_string();
-        match obj {
-            Ok(s) => serializer.serialize_str(&s),
-            Err(_e) => Err(serde::ser::Error::custom(
-                "Failed to serialize FSObjRef".to_string(),
-            )),
-        }
+        let obj = self.0.borrow();
+        obj.serialize(serializer)
     }
 }
 
-impl<'de> Deserialize<'de> for FSObjRef {
+impl<'de> serde::Deserialize<'de> for FSObjRef {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s: DaemonString = String::deserialize(deserializer)?.into();
-        let obj = IntrinsicFSObj::from_daemon_string(s);
-        match obj {
-            Ok(o) => Ok(FSObjRef(Rc::new(RefCell::new(Box::new(o))))),
-            Err(_e) => Err(serde::de::Error::custom(
-                "Failed to deserialize FSObjRef".to_string(),
-            )),
-        }
+        let obj = IntrinsicFSObj::deserialize(deserializer)?;
+        Ok(FSObjRef(Rc::new(RefCell::new(Box::new(obj)))))
+    }
+}
+
+impl FSObjRef {
+    pub fn new_compound(parent: FSObjRef) -> Self {
+        let obj = IntrinsicFSObj::CompoundFSObj {
+            parent: Some(parent),
+            children: std::collections::HashMap::new(),
+        };
+        FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
+    }
+    pub fn empty_compound() -> Self {
+        let obj = IntrinsicFSObj::CompoundFSObj {
+            parent: None,
+            children: std::collections::HashMap::new(),
+        };
+        FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
+    }
+}
+
+impl From<IntrinsicFSObj> for FSObjRef {
+    fn from(obj: IntrinsicFSObj) -> Self {
+        FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
     }
 }
 
 impl Debug for FSObjRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "FSObjRef({:?})", self.0)
+        Debug::fmt(&self.0, f)
     }
 }
 
-impl Clone for FSObjRef {
-    fn clone(&self) -> Self {
-        FSObjRef(self.0.clone())
+impl Object for FSObjRef {
+    fn stat(&self) -> Result<FileStat, FSReturns> {
+        match **self.0.borrow() {
+            IntrinsicFSObj::CompoundFSObj { .. } => Ok(FileStat {
+                kind: FileKind::Directory,
+            }),
+            _ => Ok(FileStat {
+                kind: FileKind::File,
+            }),
+        }
     }
-}
 
-impl Deref for FSObjRef {
-    type Target = Rc<RefCell<Box<dyn Object>>>;
+    // directory-like methods
+    fn list(&self) -> Result<Vec<String>, FSReturns> {
+        match **self.0.borrow() {
+            IntrinsicFSObj::CompoundFSObj {
+                ref parent,
+                ref children,
+            } => {
+                let mut list = vec![".".to_string()];
+                if parent.is_some() {
+                    list.push("..".to_string());
+                }
+                for child in children.keys() {
+                    list.push(child.clone());
+                }
+                Ok(list)
+            }
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
+            _ => Err(FSReturns::UnsupportedMethod),
+        }
+    }
+
+    fn get_obj(&self, part: String) -> Result<FSObjRef, FSReturns> {
+        match **self.0.borrow() {
+            IntrinsicFSObj::CompoundFSObj {
+                ref parent,
+                ref children,
+            } => {
+                if let Some(obj) = children.get(&part) {
+                    return Ok(obj.clone());
+                }
+                if part == ".." {
+                    if let Some(parent) = &parent {
+                        return parent.get_obj(part);
+                    }
+                }
+                Err(FSReturns::UnknownPath)
+            }
+
+            _ => Err(FSReturns::UnsupportedMethod),
+        }
+    }
+
+    fn add_child(&self, name: String, obj: FSObjRef) -> Result<(), FSReturns> {
+        match **self.0.borrow_mut() {
+            IntrinsicFSObj::CompoundFSObj {
+                ref mut children, ..
+            } => {
+                children.insert(name, obj);
+                Ok(())
+            }
+
+            _ => Err(FSReturns::UnsupportedMethod),
+        }
     }
 }

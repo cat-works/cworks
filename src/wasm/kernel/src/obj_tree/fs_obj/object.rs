@@ -1,47 +1,43 @@
-use crate::obj_tree::{
-    traits::{DaemonCommunicable, DaemonString},
-    FSReturns,
-};
+use serde::{Deserialize, Serialize};
+
+use crate::obj_tree::FSReturns;
 use std::fmt::Debug;
 
 use super::FSObjRef;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub enum FileKind {
     File,
     Directory,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct FileStat {
     pub kind: FileKind,
 }
 
-impl DaemonCommunicable for FileStat {
-    fn to_daemon_string(&self) -> Result<DaemonString, FSReturns> {
-        match self.kind {
-            FileKind::File => Ok("f".into()),
-            FileKind::Directory => Ok("d".into()),
-        }
-    }
-
-    fn from_daemon_string(s: DaemonString) -> Result<Self, FSReturns>
-    where
-        Self: Sized,
-    {
-        match s.as_str() {
-            "f" => Ok(FileStat {
-                kind: FileKind::File,
-            }),
-            "d" => Ok(FileStat {
-                kind: FileKind::Directory,
-            }),
-            _ => Err(FSReturns::UnsupportedMethod),
-        }
+impl From<Vec<u8>> for FileStat {
+    fn from(bytes: Vec<u8>) -> Self {
+        let kind = match bytes.first() {
+            Some(0x66) => FileKind::File,
+            Some(0x64) => FileKind::Directory,
+            _ => FileKind::File, // Default to File if unknown
+        };
+        FileStat { kind }
     }
 }
 
-pub trait Object: Debug + DaemonCommunicable {
+impl From<FileStat> for Vec<u8> {
+    fn from(stat: FileStat) -> Self {
+        let kind_byte = match stat.kind {
+            FileKind::File => 0x66,
+            FileKind::Directory => 0x64,
+        };
+        vec![kind_byte]
+    }
+}
+
+pub trait Object: Debug {
     fn stat(&self) -> Result<FileStat, FSReturns>;
 
     // Directory-like methods
@@ -51,7 +47,7 @@ pub trait Object: Debug + DaemonCommunicable {
     fn get_obj(&self, _part: String) -> Result<FSObjRef, FSReturns> {
         Err(FSReturns::UnsupportedMethod)
     }
-    fn add_child(&mut self, _name: String, _obj: FSObjRef) -> Result<(), FSReturns> {
+    fn add_child(&self, _name: String, _obj: FSObjRef) -> Result<(), FSReturns> {
         Err(FSReturns::UnsupportedMethod)
     }
 
@@ -71,11 +67,7 @@ pub trait Object: Debug + DaemonCommunicable {
         let mut current: FSObjRef = self.get_obj(first.to_string())?;
 
         for part in parts_iter {
-            // Clone the reference to avoid holding the borrow across assignment
-            let next = {
-                let borrowed = current.borrow();
-                borrowed.get_obj(part.to_string())?
-            };
+            let next = current.get_obj(part.to_string())?;
             current = next;
         }
 
@@ -83,7 +75,7 @@ pub trait Object: Debug + DaemonCommunicable {
     }
 }
 
-impl<T: Object + DaemonCommunicable> Object for Box<T> {
+impl<T: Object> Object for Box<T> {
     fn get_obj(&self, part: String) -> Result<FSObjRef, FSReturns> {
         self.as_ref().get_obj(part)
     }

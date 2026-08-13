@@ -1,7 +1,12 @@
-use crate::libs::split_filename;
+use std::collections::HashMap;
+
+use crate::{
+    libs::split_filename,
+    obj_tree::{fs_obj::Object, IntrinsicFSObj},
+};
 
 use super::{
-    fs_obj::{CompoundFSObj, FSObjRef, FileStat},
+    fs_obj::{FSObjRef, FileStat},
     fs_returns::FSReturns,
 };
 
@@ -20,7 +25,7 @@ impl FSFrontend {
             Ok(self.root.clone())
         } else if path.starts_with("/") {
             // Absolute path
-            self.root.borrow().follow(path)
+            self.root.follow(path)
         } else {
             todo!("Relative paths are not supported yet")
         }
@@ -29,7 +34,6 @@ impl FSFrontend {
     pub fn list(&self, path: String) -> Result<Vec<String>, FSReturns> {
         self.resolve_(path)
             .map_err(|_| FSReturns::UnknownPath)?
-            .borrow()
             .list()
             .map_err(|_| FSReturns::UnknownError)
     }
@@ -38,7 +42,6 @@ impl FSFrontend {
         let x = self
             .resolve_(path)
             .map_err(|_| FSReturns::UnknownPath)?
-            .borrow()
             .stat()
             .map_err(|_| FSReturns::UnknownError)?;
 
@@ -54,7 +57,6 @@ impl FSFrontend {
 
         self.resolve_(parent)
             .map_err(|_| FSReturns::UnknownPath)?
-            .borrow_mut()
             .add_child(filename, obj)
             .map_err(|_| FSReturns::UnknownError)?;
 
@@ -64,9 +66,11 @@ impl FSFrontend {
     pub fn mkdir(&self, path: String, name: String) -> Result<(), FSReturns> {
         let parent = self.resolve_(path).map_err(|_| FSReturns::UnknownPath)?;
 
-        let new_dir = CompoundFSObj::with_parent(parent.clone());
+        let new_dir = IntrinsicFSObj::CompoundFSObj {
+            parent: Some(parent.clone()),
+            children: HashMap::default(),
+        };
         parent
-            .borrow_mut()
             .add_child(name, new_dir.into())
             .map_err(|_| FSReturns::UnknownError)?;
 
