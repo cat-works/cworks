@@ -52,7 +52,7 @@ impl Kernel {
             .add_value(RefCell::new(p.into()));
     }
 
-    pub fn step(&self) {
+    pub fn step(&mut self) {
         let mut actions = vec![];
 
         let now = timestamp_ms();
@@ -79,14 +79,17 @@ impl Kernel {
                 .unwrap_or(SyscallData::None);
 
             if !matches!(data, SyscallData::None) {
-                log::debug!("Process<{pid}> Polling with data: {:?}", data)
+                log::debug!("Process<{pid}> <-- {:?}", data)
             };
             let res = p.borrow_mut().process.poll(&data);
+            if !matches!(res, PollResult::Pending) {
+                log::debug!("Process<{pid}> --> {:?}", res);
+            }
 
             match res {
                 PollResult::Pending => (),
                 PollResult::Done(n) => {
-                    log::debug!("Process<{pid}> Returns {n}");
+                    log::debug!("Process<{pid}> ==> {n}");
                     actions.push(KernelAction::ProcessKill(*pid));
 
                     // Lookup for waiting processes
@@ -101,7 +104,6 @@ impl Kernel {
                     }
                 }
                 PollResult::Syscall(s) => {
-                    log::debug!("Process<{pid}> Syscall: {:?}", s);
                     let fs_frontend = FSFrontend::new(self.fs_root.clone());
                     match s {
                         Syscall::Sleep(seconds) => {
@@ -121,10 +123,11 @@ impl Kernel {
                             // TODO: Authority Check
                             let ipc = Rc::new(RefCell::new(Ipc::default()));
 
-                            let handle = self
+                            let hid = self
                                 .handle_issuer
                                 .get_new_handle(*pid, HandleData::IpcServer { ipc: ipc.clone() });
-                            ipc.borrow_mut().set_server_handle(handle.clone());
+                            let handle = self.handle_issuer.get_handle(hid).unwrap();
+                            ipc.borrow_mut().set_server_handle(handle);
 
                             self.ipc_instances
                                 .borrow_mut()
@@ -132,7 +135,7 @@ impl Kernel {
 
                             p.borrow_mut()
                                 .outgoing_data_buffer
-                                .push(SyscallData::Handle(handle));
+                                .push(SyscallData::Handle(hid));
                             continue;
                         }
                         Syscall::IpcConnect(ref name) => {
@@ -145,20 +148,23 @@ impl Kernel {
 
                             let ipc = self.ipc_instances.borrow().get(name).unwrap().clone();
 
-                            let client_handle = self.handle_issuer.get_new_handle(
+                            let client_hid = self.handle_issuer.get_new_handle(
                                 *pid,
                                 HandleData::IpcClient {
                                     server: ipc.clone(),
                                 },
                             );
+                            let client_handler = self.handle_issuer.get_handle(client_hid).unwrap();
 
-                            let server_client_handle = self.handle_issuer.get_new_handle(
+                            let server_client_hid = self.handle_issuer.get_new_handle(
                                 *pid,
                                 HandleData::IpcServerClient {
                                     server: ipc.clone(),
-                                    client: client_handle.clone(),
+                                    client: client_handler,
                                 },
                             );
+                            let server_client_handle =
+                                self.handle_issuer.get_handle(server_client_hid).unwrap();
 
                             {
                                 let mut ipc = ipc.borrow_mut();
@@ -168,61 +174,70 @@ impl Kernel {
                                 actions.push(KernelAction::SendSyscallData(
                                     server.pid,
                                     SyscallData::Connection {
-                                        client: server_client_handle.clone(),
-                                        server: server.clone(),
+                                        client: server_client_hid.clone(),
+                                        server: server.id.clone(),
                                     },
                                 ));
                             }
 
                             p.borrow_mut()
                                 .outgoing_data_buffer
-                                .push(SyscallData::Handle(client_handle));
+                                .push(SyscallData::Handle(client_hid));
                             continue;
                         }
-                        Syscall::Send(ref handle, ref data) => match handle.data {
-                            HandleData::IpcServer { ipc: _ } => {
-                                p.borrow_mut()
-                                    .outgoing_data_buffer
-                                    .push(SyscallData::Fail(SyscallError::UnknownHandle));
-                                continue;
-                            }
-                            HandleData::IpcClient { ref server } => {
-                                let ipc = server.borrow_mut();
-                                let (pid, _) = ipc.send(data.clone(), Some(handle.clone()));
+                        Syscall::Send(ref hid, ref data) => {
+                            let handle = self
+                                .handle_issuer
+                                .get_handle(*hid)
+                                .expect("Syscall::Send failed to get handle");
+                            match handle.clone().data {
+                                HandleData::IpcServer { ipc: _ } => {
+                                    p.borrow_mut()
+                                        .outgoing_data_buffer
+                                        .push(SyscallData::Fail(SyscallError::UnknownHandle));
+                                    continue;
+                                }
+                                HandleData::IpcClient { ref server } => {
+                                    let ipc = server.borrow_mut();
+                                    let (server_pid, _) =
+                                        ipc.send(data.clone(), Some(handle.clone()));
+                                    let server_handle = ipc
+                                        .get_server_side_handle(handle)
+                                        .expect("Syscall::Send failed to get server side handle");
 
-                                let handle = ipc.get_server_side_handle(handle.clone());
-                                let act = KernelAction::SendSyscallData(
-                                    pid,
-                                    SyscallData::ReceivingData {
-                                        focus: handle.unwrap(),
-                                        data: data.to_string(),
-                                    },
-                                );
+                                    let act = KernelAction::SendSyscallData(
+                                        server_pid,
+                                        SyscallData::ReceivingData {
+                                            focus: server_handle.id,
+                                            data: data.to_string(),
+                                        },
+                                    );
 
-                                actions.push(act);
-                            }
-                            HandleData::IpcServerClient {
-                                server: _,
-                                ref client,
-                            } => {
-                                let act = KernelAction::SendSyscallData(
-                                    client.pid,
-                                    SyscallData::ReceivingData {
-                                        focus: client.clone(),
-                                        data: data.to_string(),
-                                    },
-                                );
+                                    actions.push(act);
+                                }
+                                HandleData::IpcServerClient {
+                                    server: _,
+                                    ref client,
+                                } => {
+                                    let act = KernelAction::SendSyscallData(
+                                        client.pid,
+                                        SyscallData::ReceivingData {
+                                            focus: client.id,
+                                            data: data.to_string(),
+                                        },
+                                    );
 
-                                actions.push(act);
-                                continue;
+                                    actions.push(act);
+                                    continue;
+                                }
+                                _ => {
+                                    p.borrow_mut()
+                                        .outgoing_data_buffer
+                                        .push(SyscallData::Fail(SyscallError::UnknownHandle));
+                                    continue;
+                                }
                             }
-                            _ => {
-                                p.borrow_mut()
-                                    .outgoing_data_buffer
-                                    .push(SyscallData::Fail(SyscallError::UnknownHandle));
-                                continue;
-                            }
-                        },
+                        }
                         Syscall::WaitForProcess(waitee) => {
                             if process_keys.contains(&waitee) {
                                 p.borrow_mut().status = ProcessStatus::WaitingForProcess;

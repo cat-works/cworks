@@ -5,6 +5,13 @@ type Listener = (...args) => (boolean | void);
 export class EventEmitter {
   private listeners: { [key: string]: Listener[] } = {};
   private marked_unused: string[] = [];
+  private tag: string = "";
+
+  constructor(tag?: string) {
+    if (tag) {
+      this.tag = tag;
+    }
+  }
 
 
   mark_can_be_unused(event: string) {
@@ -63,7 +70,7 @@ export class EventEmitter {
     }
     if (!this.marked_unused.includes(event)) {
       console.error(
-        `Unhandled Event emitted: ${event} ${args
+        `[${this.tag}] Unhandled Event emitted: ${event} ${args
           .map(my_stringify)
           .join(", ")}`,
       );

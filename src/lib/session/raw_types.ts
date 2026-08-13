@@ -1,6 +1,4 @@
-export type RawHandle = {
-  id: bigint;
-};
+export type RawHandle = bigint;
 
 export type Syscall =
   | { Sleep: number }

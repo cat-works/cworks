@@ -1,7 +1,7 @@
 use super::SyscallError;
 use crate::{
+    handle::HandleRef,
     obj_tree::{FSObjRef, FSReturns, FileStat},
-    Handle,
 };
 use serde::Serialize;
 
@@ -10,13 +10,13 @@ pub enum SyscallData {
     #[default]
     None,
     Fail(SyscallError),
-    Handle(Handle),
+    Handle(HandleRef),
     Connection {
-        client: Handle,
-        server: Handle,
+        client: HandleRef,
+        server: HandleRef,
     },
     ReceivingData {
-        focus: Handle,
+        focus: HandleRef,
         data: String,
     },
     FSSuccess,

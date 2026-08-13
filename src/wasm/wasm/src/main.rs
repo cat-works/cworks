@@ -43,7 +43,7 @@ async fn client(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::builder()
-        .filter_level(log::LevelFilter::Debug)
+        .filter_level(log::LevelFilter::Trace)
         .init();
 
     let mut k = kernel::Kernel::default();

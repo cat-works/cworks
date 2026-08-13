@@ -5,4 +5,5 @@ mod handle_wrapper;
 
 pub use handle_data::HandleData;
 pub use handle_issuer::HandleIssuer;
+pub use handle_issuer::HandleRef;
 pub use handle_wrapper::Handle;

@@ -8,6 +8,7 @@ export async function stdio_main(p: Process, terminal: { stdin: () => Promise<st
   let primary: Handle | undefined = undefined;
 
   server.on("connection", (h: Handle) => {
+    console.debug(`New connection: ${h.handle}`);
     clients_active.push(h);
     if (primary === undefined) {
       primary = h;
@@ -17,9 +18,9 @@ export async function stdio_main(p: Process, terminal: { stdin: () => Promise<st
       // inactive code: \x1b(0
       // active code: \x1b(1
       if (data === "\x1b(0") {
-        clients_active = clients_active.filter((x) => x.handle.id !== h.handle.id);
+        clients_active = clients_active.filter((x) => x.handle !== h.handle);
       } else if (data === "\x1b(1") {
-        clients_active = clients_active.filter((x) => x.handle.id !== h.handle.id);
+        clients_active = clients_active.filter((x) => x.handle !== h.handle);
         clients_active.push(h);
       }
 

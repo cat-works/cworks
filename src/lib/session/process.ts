@@ -3,7 +3,7 @@ import { Handle } from "./handle";
 import type { PollResult, RawHandle, SyscallData, SyscallError } from "./raw_types";
 
 export class Process {
-  public emitter = new EventEmitter();
+  public emitter = new EventEmitter("Process");
   private result_queue: any[] = [];
 
   constructor(process: (p: Process) => Promise<bigint>) {
@@ -49,6 +49,7 @@ export class Process {
     });
     return this.get_syscall_handle();
   }
+
   public ipc_connect(name: string): Promise<Handle> {
     this.result_queue.push({
       "Syscall": {
@@ -89,6 +90,7 @@ export class Process {
 
     return this.pending();
   }
+
   public fs_list(path: string): Promise<string[]> {
     this.result_queue.push({
       "Syscall": {
@@ -108,6 +110,7 @@ export class Process {
       })
     })
   }
+
   public fs_stat(path: string): Promise<any> {
     this.result_queue.push({
       "Syscall": {
@@ -127,6 +130,7 @@ export class Process {
       })
     })
   }
+
   public fs_set(path: string, data: any): Promise<void> {
     this.result_queue.push({
       "Syscall": {
@@ -146,6 +150,7 @@ export class Process {
       })
     })
   }
+
   public fs_mkdir(path: string, name: any): Promise<void> {
     this.result_queue.push({
       "Syscall": {
@@ -168,7 +173,7 @@ export class Process {
 
   kernel_callback(data: any): any {
     if (data !== "None") {
-      console.debug("Kernel callback data", data);
+      // console.debug("Kernel callback data", data);
       let callback_handled = this.emitter.emit("callback", data);
       if (callback_handled === false) {
         if (data.Fail !== undefined) {
@@ -184,40 +189,23 @@ export class Process {
             client: client,
             server: server,
           });
+        } else if (data.ReceivingData !== undefined) {
+          let handle: string = data.ReceivingData.focus;
+          let message = data.ReceivingData.data;
+          this.emitter.emit("receiving_data", {
+            focus: BigInt(handle),
+            data: message
+          });
+
         } else {
           console.error("Unhandled kernel callback:", data);
           return { "Done": -1 };
-
-          const op = data[0];
-          if (0x01 <= op && op <= 0x06) {
-            this.emitter.emit("fail", op);
-          } else if (op == 0x09) { // recv
-            let handle_id = data.slice(1, 17).reduce((acc, byte, index) => {
-              return acc | (BigInt(byte) << BigInt(120 - index * 8));
-            }, 0n);
-            let message = new TextDecoder().decode(data.slice(17));
-            // console.groupCollapsed("Receive event");
-            // console.log("Handle ID:", handle_id);
-            // console.log("Message:", message);
-            // console.log("data:", data);
-            // console.log("  handle array:", data.slice(1, 17));
-            // console.log("  message array:", data.slice(17));
-            // console.groupEnd();
-            this.emitter.emit("receiving_data", {
-              focus: {
-                id: handle_id
-              } as RawHandle,
-              data: message
-            });
-          } else {
-            console.error("Unhandled kernel callback:", data);
-          }
         }
       }
     }
 
     const result = this.result_queue.shift();
-    if (result) { console.debug("Kernel callback result", result) };
+    // if (result) { console.debug("Kernel callback result", result) };
 
     return result || "Pending";
 

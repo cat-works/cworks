@@ -7,14 +7,18 @@ import { manuals } from "./man";
 import test_proc from "./test_proc.lua?raw";
 
 class StdIO {
-  public ipc: Handle | null = null;
-  public stdin_buffer: string = "";
+  private ipc: Handle | null = null;
+  private stdin_buffer: string = "";
 
   constructor(public proc: Process) { }
 
   async init(tag: string) {
-    console.log(`Connecting to system/stdio/${tag}`);
     this.ipc = await this.proc.ipc_connect(`system/stdio/${tag}`);
+    this.ipc.debug = 1;
+    this.ipc.on("message", (data: string) => {
+      this.stdin_buffer += data;
+      return true;
+    });
   }
 
   async readline() {
@@ -81,16 +85,14 @@ export async function debug_main(p: Process, sess: Session) {
   const stdio = new StdIO(p);
   await stdio.init("root");
 
-  const editor = new CodeEditor(p);
-  await editor.init("root");
+  /* const editor = new CodeEditor(p);
+  await editor.init("root"); */
 
-  const fs = new FileSystem(p);
+  // const fs = new FileSystem(p);
 
-  {
-    await fs.set("/test.lua", { String: test_proc });
+  /* await fs.set("/test.lua", { String: test_proc });
+  await fs.mkdir("/usr", "lib"); */
 
-    await fs.mkdir("/usr", "lib");
-  }
 
   stdio.write(`\x1b[1;32mCat OS Shell\x1b[m\n`);
   stdio.write(`Type 'man commands' to see available commands.\n\n`);
@@ -106,7 +108,7 @@ export async function debug_main(p: Process, sess: Session) {
     const [command, ...args] = line.split(" ");
 
     try {
-      if (command === "ls") {
+      /* if (command === "ls") {
         const entries = await fs.list(pwd);
         for (const entry of entries) {
           try {
@@ -154,7 +156,7 @@ export async function debug_main(p: Process, sess: Session) {
         }
       } else if (command === "set") {
         try {
-          await fs.set_raw(`${pwd}${args[0]}`, args.slice(1).join(" "));
+          await fs.set(`${pwd}${args[0]}`, JSON.parse(args.slice(1).join(" ")));
         } catch (e) {
           stdio.write(`Error: ${e}\n`);
         }
@@ -188,13 +190,13 @@ export async function debug_main(p: Process, sess: Session) {
             continue;
           }
 
-          await fs.set_raw(`${pwd}${args[0]}`, "String?" + content);
+          await fs.set(`${pwd}${args[0]}`, { String: content });
         } catch (e) {
           stdio.write(`Error: ${e}\n`);
         }
-      } else if (command === "clear") {
+      } else */ if (command === "clear") {
         stdio.write(`\x1b[2J\x1b[H`);
-      } else if (command === "exec") {
+      } /* else if (command === "exec") {
         // Load string from args[0] into 'code'
         if (args.length === 0) {
           stdio.write("Usage: exec <filename>\n");
@@ -213,7 +215,7 @@ export async function debug_main(p: Process, sess: Session) {
         } catch (e) {
           stdio.write(`Error: ${e}\n`);
         }
-      } else if (command === "ipc") {
+      }  */else if (command === "ipc") {
         stdio.write(sess.get_ipc_names().join("\n") + "\n");
       }
     } catch (e) {

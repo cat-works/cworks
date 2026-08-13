@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-use crate::{obj_tree::FSObjRef, Handle, Syscall, SyscallData, SyscallError};
+use crate::{handle::HandleRef, obj_tree::FSObjRef, Handle, Syscall, SyscallData, SyscallError};
 
 use super::dummy_future::DummyFuture;
 
@@ -30,7 +30,7 @@ impl RustProcessCore {
         *self.syscall.borrow_mut() = Some(syscall);
     }
 
-    async fn return_handle(&self) -> Result<Handle, SyscallError> {
+    async fn return_handle(&self) -> Result<HandleRef, SyscallError> {
         loop {
             {
                 let mut buffer = self.data_buffer.borrow_mut();
@@ -86,13 +86,13 @@ impl RustProcessCore {
         DummyFuture::Started.await;
     }
 
-    pub async fn ipc_create(&self, name: String) -> Result<Handle, SyscallError> {
+    pub async fn ipc_create(&self, name: String) -> Result<HandleRef, SyscallError> {
         self.set_syscall(Syscall::IpcCreate(name));
         DummyFuture::Started.await;
         self.return_handle().await
     }
 
-    pub async fn ipc_send(&self, handle: Handle, data: String) -> Result<(), SyscallError> {
+    pub async fn ipc_send(&self, handle: HandleRef, data: String) -> Result<(), SyscallError> {
         self.set_syscall(Syscall::Send(handle, data));
         DummyFuture::Started.await;
 
@@ -105,7 +105,7 @@ impl RustProcessCore {
             _ => Ok(()),
         }
     }
-    pub async fn ipc_connect(&self, name: String) -> Result<Handle, SyscallError> {
+    pub async fn ipc_connect(&self, name: String) -> Result<HandleRef, SyscallError> {
         self.set_syscall(Syscall::IpcConnect(name));
         DummyFuture::Started.await;
         self.return_handle().await

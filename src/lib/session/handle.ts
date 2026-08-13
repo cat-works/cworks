@@ -12,7 +12,7 @@ export class Handle extends EventEmitter {
   public debug: number = 0; // Debug mode, can be used to log messages
 
   constructor(public handle: RawHandle, private process: Process) {
-    super();
+    super("Handle");
 
     this.receive_buffer = [];
     this.receiving_mode = "event";
@@ -23,7 +23,8 @@ export class Handle extends EventEmitter {
   private set_data_hander() {
     let this_handle = this;
     this.process.emitter.on("receiving_data", (x: { focus: RawHandle; data: string }) => {
-      if (x.focus.id !== this_handle.handle.id) {
+      console.log(x, this_handle)
+      if (x.focus !== this_handle.handle) {
         return false;
       }
 
@@ -41,7 +42,7 @@ export class Handle extends EventEmitter {
     this.process.emitter.on(
       "connection",
       (c: { client: RawHandle; server: RawHandle }) => {
-        if (c.server.id !== this_handle.handle.id) {
+        if (c.server !== this_handle.handle) {
           return false;
         }
         let client = new Handle(c.client, this.process);
@@ -56,7 +57,7 @@ export class Handle extends EventEmitter {
     if (this.receive_buffer.length > 0) {
       let data = this.receive_buffer.shift();
       if (this.debug) {
-        console.log(`{${this.handle.id}} <-- ${data}`);
+        console.log(`{${this.handle}} <-- ${data}`);
       }
       return data || "";
     }
@@ -73,7 +74,7 @@ export class Handle extends EventEmitter {
 
   public send(data: string): Promise<void> {
     if (this.debug) {
-      console.log(`{${this.handle.id}} --> ${data}`);
+      console.log(`{${this.handle}} --> ${data}`);
     }
     return this.process.send(this.handle, data);
   }
