@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::{handle::HandleData, Handle};
 
 #[derive(Debug)]
@@ -6,10 +8,32 @@ pub struct IpcMessage {
     pub message: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Ipc {
     server: Option<Handle>,
     clients: Vec<Handle>,
+}
+impl Debug for Ipc {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Ipc")
+            .field(
+                "server",
+                &self
+                    .server
+                    .as_ref()
+                    .map(|x| format!("Handle<{}>", x.id))
+                    .unwrap_or("None".to_string()),
+            )
+            .field(
+                "clients",
+                &self
+                    .clients
+                    .iter()
+                    .map(|x| format!("Handle<{}>", x.id))
+                    .collect::<Vec<String>>(),
+            )
+            .finish()
+    }
 }
 impl std::fmt::Display for Ipc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
