@@ -24,7 +24,6 @@ local syscall_handlers = {}
 
 ---Interprets the syscall data and dispatch callback or return it
 ---@param data string
----@return integer? handle
 local function dispatch_syscall(data)
   local sc_data = json.parse(data)
   if sc_data == "None" then
@@ -35,6 +34,10 @@ local function dispatch_syscall(data)
     return sc_data["FSList"]
   elseif sc_data["FSStat"] ~= nil then
     return sc_data["FSStat"]
+  elseif sc_data["FSGet"] ~= nil then
+    return sc_data["FSGet"]
+  elseif sc_data == "FSSuccess" then
+    return "FSSuccess"
   elseif sc_data["ReceivingData"] ~= nil then
     local handle = sc_data["ReceivingData"]["focus"]
     local data = sc_data["ReceivingData"]["data"]
@@ -93,6 +96,16 @@ end
 
 function cworks.mkdir(path, name)
   local ret = cworks.do_syscall(json.stringify({ Syscall = { Mkdir = { path, name } } }))
+  return ret
+end
+
+function cworks.get(path)
+  local ret = cworks.do_syscall(json.stringify({ Syscall = { Get = path } }))
+  return ret
+end
+
+function cworks.set(path, data)
+  local ret = cworks.do_syscall(json.stringify({ Syscall = { Set = { path, data } } }))
   return ret
 end
 

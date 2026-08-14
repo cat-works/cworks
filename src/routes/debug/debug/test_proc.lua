@@ -1,4 +1,5 @@
 local cworks = require("cworks");
+local json = require("json");
 
 local io_buf_stdin = "";
 local io_buf_stdin_line = "";
@@ -39,6 +40,35 @@ local function path_join(base, name)
   return result
 end
 
+local editor_load_buffer = "";
+local editor = cworks.ipc_connect("system/textarea/root", function(s)
+  if s:sub(0, 1) == "l" then
+    editor_load_buffer = editor_load_buffer .. s:sub(2)
+  else
+    print("Unknown editor data: " .. s)
+  end
+end)
+local function editor_take()
+  editor_load_buffer = "";
+  cworks.send(editor, "a")
+  while true do
+    if editor_load_buffer == "" then
+      cworks.pending()
+      goto continue
+    end
+
+    break
+    ::continue::
+  end
+
+  local buffer = editor_load_buffer
+  editor_load_buffer = ""
+  return buffer
+end
+
+local function editor_push(path, data)
+  cworks.send(editor, "l" .. data)
+end
 
 cworks.send(io_handle, "\x1b[1;32mCat OS Shell\x1b[m\n")
 cworks.send(io_handle, "Type 'man commands' to see available commands.\n\n")
@@ -94,6 +124,41 @@ while true do
         cworks.send(io_handle, "No such file or directory: " .. path_join(pwd, args) .. "\n")
       end
     end
+  elseif command == "get" then
+    local result_file = path_join(pwd, args)
+    local data = cworks.get(result_file)
+    cworks.send(io_handle, "Content of " .. result_file .. ":\n" .. json.stringify(data) .. "\n")
+  elseif command == "cat" then
+    local result_file = path_join(pwd, args)
+    local data = cworks.get(result_file)
+    if data["String"] == nil then
+      cworks.send(io_handle, "File is not a string: " .. result_file .. "\n")
+    else
+      cworks.send(io_handle, data["String"] .. "\n")
+    end
+  elseif command == "set" then
+    local file_name, content = args:match("^(%S+)%s+(.+)$")
+    if file_name and content then
+      local result_file = path_join(pwd, file_name)
+      cworks.set(result_file, json.parse(content))
+      cworks.send(io_handle, "Set content of " .. result_file .. "\n")
+    else
+      cworks.send(io_handle, "Usage: set <file_name> <content>\n")
+    end
+  elseif command == "take" then
+    local result_file = path_join(pwd, args)
+    local buffer = editor_take()
+    cworks.set(result_file, { String = buffer })
+  elseif command == "push" then
+    local src_file = path_join(pwd, args)
+    local src = cworks.get(src_file)
+        if src["String"] == nil then
+            cworks.send(io_handle, "File is not a string: " .. src_file .. "\n")
+        else
+            editor_push(src_file, src["String"])
+        end
+      elseif command=="clear" then
+        cworks.send(io_handle, "\x1b[2J\x1b[H")
   else
     cworks.send(io_handle, "Unknown command: " .. command .. "\n")
   end

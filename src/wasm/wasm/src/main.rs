@@ -47,14 +47,11 @@ async fn fs_test(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallErro
         .await
         .expect("Failed to set /b");
 
-    session.fs_stat("/".to_string()).await?;
-    session.fs_stat("/workspace".to_string()).await?;
-    session.fs_stat("/mnt".to_string()).await?;
-    session.fs_stat("/usr".to_string()).await?;
-    session.fs_list("/usr".to_string()).await?;
-    session.fs_stat("/usr/.".to_string()).await?;
-    session.fs_stat("/usr/..".to_string()).await?;
-    session.fs_stat("/mnt/..".to_string()).await?;
+    // session.fs_stat("/".to_string()).await?;
+    // session.fs_stat("/usr".to_string()).await?;
+    // session.fs_stat("/usr/.".to_string()).await?;
+    // session.fs_stat("/usr/..".to_string()).await?;
+    session.fs_get("/usr".to_string()).await?;
     exit(0);
 }
 
