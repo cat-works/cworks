@@ -14,7 +14,7 @@ impl FSFrontend {
         Self { root }
     }
 
-    fn resolve_(&self, path: String) -> Result<FSObjRef, FSReturns> {
+    fn resolve_(&self, path: &str) -> Result<FSObjRef, FSReturns> {
         if path == "/" || path.is_empty() {
             // Root path
             Ok(self.root.clone())
@@ -26,29 +26,29 @@ impl FSFrontend {
         }
     }
 
-    pub fn list(&self, path: String) -> Result<Vec<String>, FSReturns> {
+    pub fn list(&self, path: &str) -> Result<Vec<String>, FSReturns> {
         self.resolve_(path)?.list()
     }
 
-    pub fn stat(&self, path: String) -> Result<FileStat, FSReturns> {
+    pub fn stat(&self, path: &str) -> Result<FileStat, FSReturns> {
         Ok(self.resolve_(path)?.stat())
     }
 
-    pub fn get(&self, path: String) -> Result<FSObjRef, FSReturns> {
+    pub fn get(&self, path: &str) -> Result<FSObjRef, FSReturns> {
         self.resolve_(path)
     }
-    pub fn set(&self, path: String, obj: FSObjRef) -> Result<(), FSReturns> {
-        let (parent, filename) = split_filename(&path).ok_or(FSReturns::InvalidCommandFormat)?;
+    pub fn set(&self, path: &str, obj: &FSObjRef) -> Result<(), FSReturns> {
+        let (parent, filename) = split_filename(path).ok_or(FSReturns::InvalidCommandFormat)?;
 
-        self.resolve_(parent)?.add_child(filename, obj)?;
+        self.resolve_(&parent)?.add_child(&filename, obj)?;
 
         Ok(())
     }
 
-    pub fn mkdir(&self, path: String, name: String) -> Result<(), FSReturns> {
+    pub fn mkdir(&self, path: &str, name: &str) -> Result<(), FSReturns> {
         let parent = self.resolve_(path)?;
 
-        if let Ok(x) = parent.get_obj(name.clone()) {
+        if let Ok(x) = parent.get_obj(name) {
             if let Object::CompoundFSObj { .. } = **x.borrow() {
                 return Ok(());
             }
@@ -59,7 +59,7 @@ impl FSFrontend {
             parent: Some(parent.clone()),
             children: HashMap::default(),
         };
-        parent.add_child(name, new_dir.into())?;
+        parent.add_child(name, &new_dir.into())?;
 
         Ok(())
     }

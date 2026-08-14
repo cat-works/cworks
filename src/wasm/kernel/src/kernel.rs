@@ -123,31 +123,31 @@ impl Kernel {
                             }
                         }
                         Syscall::List(path) => {
-                            let res = fs_frontend.list(path);
+                            let res = fs_frontend.list(&path);
                             p.borrow_mut()
                                 .outgoing_data_buffer
                                 .push(res.map_or_else(SyscallData::FSError, SyscallData::FSList));
                         }
                         Syscall::Stat(path) => {
-                            let stat = fs_frontend.stat(path);
+                            let stat = fs_frontend.stat(&path);
                             p.borrow_mut()
                                 .outgoing_data_buffer
                                 .push(stat.map_or_else(SyscallData::FSError, SyscallData::FSStat));
                         }
                         Syscall::Get(path) => {
-                            let res = fs_frontend.get(path);
+                            let res = fs_frontend.get(&path);
                             p.borrow_mut()
                                 .outgoing_data_buffer
                                 .push(res.map_or_else(SyscallData::FSError, SyscallData::FSGet));
                         }
                         Syscall::Set(path, obj) => {
-                            let res = fs_frontend.set(path, obj);
+                            let res = fs_frontend.set(&path, &obj);
                             p.borrow_mut().outgoing_data_buffer.push(
                                 res.map_or_else(SyscallData::FSError, |()| SyscallData::FSSuccess),
                             );
                         }
                         Syscall::Mkdir(path, name) => {
-                            let res = fs_frontend.mkdir(path, name);
+                            let res = fs_frontend.mkdir(&path, &name);
                             p.borrow_mut().outgoing_data_buffer.push(
                                 res.map_or_else(SyscallData::FSError, |()| SyscallData::FSSuccess),
                             );
@@ -157,7 +157,7 @@ impl Kernel {
                                 .ok_or(SyscallData::FSError(FSReturns::InvalidCommandFormat))
                                 .and_then(|(dir, fname)| {
                                     self.fs_root
-                                        .follow(dir)
+                                        .follow(&dir)
                                         .map_err(SyscallData::FSError)
                                         .map(|d| (d, fname))
                                 }) {
@@ -169,11 +169,11 @@ impl Kernel {
                             };
 
                             let func_obj = match dir
-                                .get_obj(fname.clone())
+                                .get_obj(&fname)
                                 .map_err(SyscallData::FSError)
                                 .or_else(|_| {
                                     let obj: FSObjRef = Object::Func { callee_pid: vec![] }.into();
-                                    dir.add_child(fname.clone(), obj.clone())
+                                    dir.add_child(&fname, &obj.clone())
                                         .map(|()| obj)
                                         .map_err(SyscallData::FSError)
                                 }) {
@@ -204,7 +204,7 @@ impl Kernel {
                                 .ok_or(SyscallData::FSError(FSReturns::InvalidCommandFormat))
                                 .and_then(|(dir, fname)| {
                                     self.fs_root
-                                        .follow(dir)
+                                        .follow(&dir)
                                         .map_err(SyscallData::FSError)
                                         .map(|d| (d, fname))
                                 }) {
@@ -216,11 +216,11 @@ impl Kernel {
                             };
 
                             let func_obj = match dir
-                                .get_obj(fname.clone())
+                                .get_obj(&fname)
                                 .map_err(SyscallData::FSError)
                                 .or_else(|_| {
                                     let obj: FSObjRef = Object::Func { callee_pid: vec![] }.into();
-                                    dir.add_child(fname.clone(), obj.clone())
+                                    dir.add_child(&fname, &obj.clone())
                                         .map(|()| obj)
                                         .map_err(SyscallData::FSError)
                                 }) {
@@ -247,7 +247,7 @@ impl Kernel {
                                 .push(SyscallData::FSSuccess);
                         }
                         Syscall::Publish(path, content) => {
-                            let func_obj = match self.fs_root.follow(path.clone()) {
+                            let func_obj = match self.fs_root.follow(&path) {
                                 Ok(obj) => obj,
                                 Err(e) => {
                                     p.borrow_mut()

@@ -4,13 +4,13 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::{PollResult, Process, SyscallData, SyscallError};
+use crate::{PollResult, Process, SyscallData};
 
 use super::process::RustProcessCore;
 
 pub struct RustProcess<'a, F>
 where
-    F: Future<Output = Result<i64, SyscallError>>,
+    F: Future<Output = i64>,
 {
     f: F,
     session: RustProcessCore,
@@ -19,7 +19,7 @@ where
 
 impl<F> RustProcess<'_, F>
 where
-    F: Future<Output = Result<i64, SyscallError>>,
+    F: Future<Output = i64>,
 {
     pub fn new<T>(f: &impl Fn(RustProcessCore, T) -> F, arg: T) -> Self {
         let session = RustProcessCore::default();
@@ -34,7 +34,7 @@ where
 
 impl<F> Process for RustProcess<'_, F>
 where
-    F: Future<Output = Result<i64, SyscallError>>,
+    F: Future<Output = i64>,
 {
     fn poll(&mut self, data: &SyscallData) -> PollResult<i64> {
         let f = unsafe { Pin::new_unchecked(&mut self.f) };
@@ -52,8 +52,7 @@ where
         }
 
         match r {
-            Poll::Ready(Ok(v)) => PollResult::Done(v),
-            Poll::Ready(Err(e)) => PollResult::Done(e.into()),
+            Poll::Ready(v) => PollResult::Done(v),
             Poll::Pending => PollResult::Pending,
         }
     }

@@ -120,13 +120,13 @@ impl FSObjRef {
         }
     }
 
-    pub fn get_obj(&self, part: String) -> Result<Self, FSReturns> {
+    pub fn get_obj(&self, part: &str) -> Result<Self, FSReturns> {
         match **self.0.borrow() {
             Object::CompoundFSObj {
                 ref parent,
                 ref children,
             } => {
-                if let Some(obj) = children.get(&part) {
+                if let Some(obj) = children.get(part) {
                     return Ok(obj.clone());
                 }
                 if part == "." {
@@ -145,12 +145,12 @@ impl FSObjRef {
         }
     }
 
-    pub fn add_child(&self, name: String, obj: Self) -> Result<(), FSReturns> {
+    pub fn add_child(&self, name: &str, obj: &Self) -> Result<(), FSReturns> {
         match **self.0.clone().borrow_mut() {
             Object::CompoundFSObj {
                 ref mut children, ..
             } => {
-                children.insert(name, obj.clone());
+                children.insert(name.to_string(), obj.clone());
             }
 
             _ => return Err(FSReturns::UnsupportedMethod),
@@ -162,13 +162,13 @@ impl FSObjRef {
         Ok(())
     }
 
-    pub fn follow(&self, path: String) -> Result<Self, FSReturns> {
+    pub fn follow(&self, path: &str) -> Result<Self, FSReturns> {
         let parts = path.split('/').filter(|x| !x.is_empty());
 
         let mut current: Self = self.clone();
 
         for part in parts {
-            let next = current.get_obj(part.to_string())?;
+            let next = current.get_obj(part)?;
             current = next;
         }
 

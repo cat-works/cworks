@@ -3,8 +3,8 @@ use super::{FSObjRef, FSReturns};
 fn usr(root: FSObjRef) -> Result<FSObjRef, FSReturns> {
     let usr: FSObjRef = FSObjRef::new_compound(root);
 
-    usr.add_child("mime".to_string(), FSObjRef::new_compound(usr.clone()))?;
-    usr.add_child("ref".to_string(), FSObjRef::new_compound(usr.clone()))?;
+    usr.add_child("mime", &FSObjRef::new_compound(usr.clone()))?;
+    usr.add_child("ref", &FSObjRef::new_compound(usr.clone()))?;
 
     Ok(usr)
 }
@@ -20,9 +20,9 @@ fn workspace(root: FSObjRef) -> FSObjRef {
 fn root() -> Result<FSObjRef, FSReturns> {
     let root: FSObjRef = FSObjRef::empty_compound();
 
-    root.add_child("usr".to_string(), usr(root.clone())?)?;
-    root.add_child("mnt".to_string(), mnt(root.clone()))?;
-    root.add_child("workspace".to_string(), workspace(root.clone()))?;
+    root.add_child("usr", &usr(root.clone())?)?;
+    root.add_child("mnt", &mnt(root.clone()))?;
+    root.add_child("workspace", &workspace(root.clone()))?;
 
     Ok(root)
 }

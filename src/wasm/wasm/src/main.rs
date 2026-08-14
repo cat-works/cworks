@@ -1,14 +1,15 @@
-use std::process::exit;
-
-use kernel::{obj_tree::Object, RustProcess, RustProcessCore, SyscallData, SyscallError};
+use kernel::{obj_tree::Object, RustProcess, RustProcessCore, SyscallData};
 
 mod generator;
 mod js_process;
 mod session;
 extern crate kernel;
 
-async fn server(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError> {
-    session.subscribe("/the-sock.ch".to_string()).await?;
+async fn server(session: RustProcessCore, _arg: u32) -> i64 {
+    if let Err(e) = session.subscribe("/the-sock.ch".to_string()).await {
+        log::error!("Server failed to subscribe: {e:?}");
+        return 0;
+    }
 
     loop {
         let data = session.get_syscall_data().await;
@@ -20,14 +21,17 @@ async fn server(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError
     }
 }
 
-async fn client(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError> {
+async fn client(session: RustProcessCore, _arg: u32) -> i64 {
     session.sleep(0.2).await;
-    session.publish("/the-sock.ch".to_string(), None).await?;
+    if let Err(e) = session.publish("/the-sock.ch".to_string(), None).await {
+        log::error!("Client failed to publish: {e:?}");
+        return 0;
+    }
     session.sleep(0.2).await;
 
-    exit(0);
+    0
 }
-async fn fs_test(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError> {
+async fn fs_test(session: RustProcessCore, _arg: u32) -> i64 {
     session
         .fs_set("/b".to_string(), Object::Int(1).into())
         .await
@@ -37,8 +41,12 @@ async fn fs_test(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallErro
     // session.fs_stat("/usr".to_string()).await?;
     // session.fs_stat("/usr/.".to_string()).await?;
     // session.fs_stat("/usr/..".to_string()).await?;
-    session.fs_get("/usr".to_string()).await?;
-    exit(0);
+    if let Err(e) = session.fs_get("/usr".to_string()).await {
+        log::error!("Failed to get /usr: {e:?}");
+        return 0;
+    }
+
+    0
 }
 
 fn main() {
@@ -53,5 +61,4 @@ fn main() {
     k.register_process(Box::new(RustProcess::new(&fs_test, 0)));
 
     k.start();
-    ()
 }
