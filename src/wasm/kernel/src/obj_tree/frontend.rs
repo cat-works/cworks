@@ -31,7 +31,7 @@ impl FSFrontend {
     }
 
     pub fn stat(&self, path: String) -> Result<FileStat, FSReturns> {
-        self.resolve_(path)?.stat()
+        Ok(self.resolve_(path)?.stat())
     }
 
     pub fn get(&self, path: String) -> Result<FSObjRef, FSReturns> {

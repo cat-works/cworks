@@ -84,17 +84,18 @@ impl Display for FSObjRef {
 }
 
 impl FSObjRef {
-    pub fn stat(&self) -> Result<FileStat, FSReturns> {
+    #[must_use]
+    pub fn stat(&self) -> FileStat {
         match **self.0.borrow() {
-            Object::CompoundFSObj { .. } => Ok(FileStat {
+            Object::CompoundFSObj { .. } => FileStat {
                 kind: FileKind::Directory,
-            }),
-            Object::Func { .. } => Ok(FileStat {
+            },
+            Object::Func { .. } => FileStat {
                 kind: FileKind::Function,
-            }),
-            _ => Ok(FileStat {
+            },
+            _ => FileStat {
                 kind: FileKind::File,
-            }),
+            },
         }
     }
 
