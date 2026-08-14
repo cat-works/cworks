@@ -2,8 +2,6 @@ export type RawHandle = bigint;
 
 export type Syscall =
   | { Sleep: number }
-  | { IpcCreate: string }
-  | { IpcConnect: string }
   | { Send: [RawHandle, string] };
 
 export type SyscallError =

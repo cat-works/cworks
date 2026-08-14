@@ -3,9 +3,7 @@ use super::{Process, SyscallData};
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProcessStatus {
     Running,
-    Sleeping(i64), // TODO: Rename to WaitSeconds
-
-    // TODO: WaitIPCCreate(String)
+    Sleeping(i64),     // TODO: Rename to WaitSeconds
     WaitingForProcess, // PID of the process to wait for
 }
 

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-use crate::{handle::HandleRef, obj_tree::FSObjRef, Syscall, SyscallData, SyscallError};
+use crate::{obj_tree::FSObjRef, Syscall, SyscallData, SyscallError};
 
 use super::dummy_future::DummyFuture;
 
@@ -30,37 +30,6 @@ impl RustProcessCore {
         *self.syscall.borrow_mut() = Some(syscall);
     }
 
-    async fn return_handle(&self) -> Result<HandleRef, SyscallError> {
-        loop {
-            {
-                let mut buffer = self.data_buffer.borrow_mut();
-
-                if let Some(x) = buffer.pop_front() {
-                    match *x {
-                        SyscallData::Handle(ref e) => {
-                            log::trace!(
-                                "RustProcessCore::return_handle: returning handle from buffer: {e:?}",
-                            );
-                            return Ok(*e);
-                        }
-                        SyscallData::Fail(ref e) => {
-                            log::trace!(
-                                "RustProcessCore::return_handle: returning error from buffer: {e:?}",
-                            );
-                            return Err(e.clone());
-                        }
-                        _ => {
-                            buffer.push_back(x);
-                        }
-                    }
-                }
-            }
-
-            self.poll_syscall_data();
-            DummyFuture::Started.await;
-        }
-    }
-
     pub async fn get_syscall_data(&self) -> SyscallData {
         loop {
             let f = self
@@ -84,31 +53,6 @@ impl RustProcessCore {
     pub async fn sleep(&self, seconds: f32) {
         self.set_syscall(Syscall::Sleep(seconds));
         DummyFuture::Started.await;
-    }
-
-    pub async fn ipc_create(&self, name: String) -> Result<HandleRef, SyscallError> {
-        self.set_syscall(Syscall::IpcCreate(name));
-        DummyFuture::Started.await;
-        self.return_handle().await
-    }
-
-    pub async fn ipc_send(&self, handle: HandleRef, data: String) -> Result<(), SyscallError> {
-        self.set_syscall(Syscall::Send(handle, data));
-        DummyFuture::Started.await;
-
-        let m = self.syscall_data.borrow().clone();
-        match m {
-            SyscallData::Fail(ref e) => {
-                self.set_syscall_data(&SyscallData::None);
-                Err(e.clone())
-            }
-            _ => Ok(()),
-        }
-    }
-    pub async fn ipc_connect(&self, name: String) -> Result<HandleRef, SyscallError> {
-        self.set_syscall(Syscall::IpcConnect(name));
-        DummyFuture::Started.await;
-        self.return_handle().await
     }
 
     pub async fn subscribe(&self, name: String) -> Result<(), SyscallError> {

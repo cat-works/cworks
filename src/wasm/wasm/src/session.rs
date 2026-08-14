@@ -35,8 +35,4 @@ impl Session {
         }
         self.kernel.borrow_mut().step();
     }
-
-    pub fn get_ipc_names(&self) -> Vec<String> {
-        self.kernel.borrow().get_ipc_names()
-    }
 }

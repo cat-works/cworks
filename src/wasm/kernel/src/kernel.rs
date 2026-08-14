@@ -1,8 +1,6 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
-    handle::{HandleData, HandleIssuer},
-    ipc::Ipc,
     libs::{split_filename, timestamp_ms, AutoMap},
     obj_tree::{initfs, FSFrontend, FSObjRef, FSReturns, Object},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
@@ -23,8 +21,6 @@ struct PWaitingPair {
 
 pub struct Kernel {
     processes: RefCell<AutoMap<RefCell<KernelProcess>>>,
-    ipc_instances: RefCell<HashMap<String, Rc<RefCell<Ipc>>>>,
-    handle_issuer: HandleIssuer,
     waiting_pairs: RefCell<HashMap<u128, Vec<PWaitingPair>>>,
     fs_root: FSObjRef,
 }
@@ -33,8 +29,6 @@ impl Default for Kernel {
     fn default() -> Kernel {
         Kernel {
             processes: RefCell::new(AutoMap::new()),
-            ipc_instances: RefCell::new(HashMap::new()),
-            handle_issuer: HandleIssuer::default(),
             waiting_pairs: RefCell::new(HashMap::new()),
             fs_root: initfs(),
         }
@@ -42,10 +36,6 @@ impl Default for Kernel {
 }
 
 impl Kernel {
-    pub fn get_ipc_names(&self) -> Vec<String> {
-        self.ipc_instances.borrow().keys().cloned().collect()
-    }
-
     pub fn register_process(&self, p: Box<dyn Process>) {
         self.processes
             .borrow_mut()
@@ -112,131 +102,6 @@ impl Kernel {
                             /* log::debug!(
                                 "Process<{pid}> Sleeps for {seconds:6.4} seconds since {now:6.4}"
                             ); */
-                        }
-                        Syscall::IpcCreate(ref name) => {
-                            if self.ipc_instances.borrow().contains_key(name) {
-                                p.borrow_mut()
-                                    .outgoing_data_buffer
-                                    .push(SyscallData::Fail(SyscallError::AlreadyExists));
-                                continue;
-                            }
-                            // TODO: Authority Check
-                            let ipc = Rc::new(RefCell::new(Ipc::default()));
-
-                            let hid = self
-                                .handle_issuer
-                                .get_new_handle(*pid, HandleData::IpcServer { ipc: ipc.clone() });
-                            let handle = self.handle_issuer.get_handle(hid).unwrap();
-                            ipc.borrow_mut().set_server_handle(handle);
-
-                            self.ipc_instances
-                                .borrow_mut()
-                                .insert(name.clone(), ipc.clone());
-
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(SyscallData::Handle(hid));
-                            continue;
-                        }
-                        Syscall::IpcConnect(ref name) => {
-                            if !self.ipc_instances.borrow().contains_key(name) {
-                                p.borrow_mut()
-                                    .outgoing_data_buffer
-                                    .push(SyscallData::Fail(SyscallError::NoSuchEntry));
-                                continue;
-                            }
-
-                            let ipc = self.ipc_instances.borrow().get(name).unwrap().clone();
-
-                            let client_hid = self.handle_issuer.get_new_handle(
-                                *pid,
-                                HandleData::IpcClient {
-                                    server: ipc.clone(),
-                                },
-                            );
-                            let client_handler = self.handle_issuer.get_handle(client_hid).unwrap();
-
-                            let server_client_hid = self.handle_issuer.get_new_handle(
-                                *pid,
-                                HandleData::IpcServerClient {
-                                    server: ipc.clone(),
-                                    client: client_handler,
-                                },
-                            );
-                            let server_client_handle =
-                                self.handle_issuer.get_handle(server_client_hid).unwrap();
-
-                            {
-                                let mut ipc = ipc.borrow_mut();
-
-                                ipc.connect(server_client_handle.clone());
-                                let server = ipc.get_server_handle().as_ref().unwrap();
-                                actions.push(KernelAction::SendSyscallData(
-                                    server.pid,
-                                    SyscallData::Connection {
-                                        client: server_client_hid,
-                                        server: server.id,
-                                    },
-                                ));
-                            }
-
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(SyscallData::Handle(client_hid));
-                            continue;
-                        }
-                        Syscall::Send(ref hid, ref data) => {
-                            let handle = self
-                                .handle_issuer
-                                .get_handle(*hid)
-                                .expect("Syscall::Send failed to get handle");
-                            match handle.clone().data {
-                                HandleData::IpcServer { ipc: _ } => {
-                                    p.borrow_mut()
-                                        .outgoing_data_buffer
-                                        .push(SyscallData::Fail(SyscallError::UnknownHandle));
-                                    continue;
-                                }
-                                HandleData::IpcClient { ref server } => {
-                                    let ipc = server.borrow_mut();
-                                    let (server_pid, _) =
-                                        ipc.send(data.clone(), Some(handle.clone()));
-                                    let server_handle = ipc
-                                        .get_server_side_handle(handle)
-                                        .expect("Syscall::Send failed to get server side handle");
-
-                                    let act = KernelAction::SendSyscallData(
-                                        server_pid,
-                                        SyscallData::ReceivingData {
-                                            focus: server_handle.id,
-                                            data: data.to_string(),
-                                        },
-                                    );
-
-                                    actions.push(act);
-                                }
-                                HandleData::IpcServerClient {
-                                    server: _,
-                                    ref client,
-                                } => {
-                                    let act = KernelAction::SendSyscallData(
-                                        client.pid,
-                                        SyscallData::ReceivingData {
-                                            focus: client.id,
-                                            data: data.to_string(),
-                                        },
-                                    );
-
-                                    actions.push(act);
-                                    continue;
-                                }
-                                _ => {
-                                    p.borrow_mut()
-                                        .outgoing_data_buffer
-                                        .push(SyscallData::Fail(SyscallError::UnknownHandle));
-                                    continue;
-                                }
-                            }
                         }
                         Syscall::WaitForProcess(waitee) => {
                             if process_keys.contains(&waitee) {

@@ -41,24 +41,6 @@ export class Process {
     });
   }
 
-  public ipc_create(name: string): Promise<Handle> {
-    this.result_queue.push({
-      "Syscall": {
-        "IpcCreate": name
-      }
-    });
-    return this.get_syscall_handle();
-  }
-
-  public ipc_connect(name: string): Promise<Handle> {
-    this.result_queue.push({
-      "Syscall": {
-        "IpcConnect": name
-      }
-    });
-    return this.get_syscall_handle();
-  }
-
   public send(handle: RawHandle, data: string): Promise<void> {
     this.result_queue.push({
       "Syscall": {

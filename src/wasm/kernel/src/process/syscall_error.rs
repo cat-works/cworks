@@ -2,7 +2,7 @@ use serde::Serialize;
 
 #[derive(PartialEq, Debug, Clone, Serialize)]
 pub enum SyscallError {
-    NoSuchEntry,   // no such entry(like file, socket or ipc)
+    NoSuchEntry,   // no such entry
     AlreadyExists, // entry already exists
 
     UnknownHandle, // not created handle or invalid handle

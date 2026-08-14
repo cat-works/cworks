@@ -31,8 +31,6 @@ export async function debug_main(p: Process, sess: Session) {
       const test_process = new LuaProcess(code);
       sess.add_process(test_process.kernel_callback.bind(test_process));
 
-    } else if (command === "ipc") {
-      stdio.write(sess.get_ipc_names().join("\n") + "\n");
     }
   } */
 

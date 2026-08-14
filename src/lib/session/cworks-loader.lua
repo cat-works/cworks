@@ -76,17 +76,6 @@ function cworks.send(handle, data)
   cworks.do_syscall(json.stringify({ Syscall = { Send = { "$$bi:" .. handle, data } } }))
 end
 
-function cworks.ipc_connect(socket_name, data_callback)
-  local handle = cworks.do_syscall(json.stringify({ Syscall = { IpcConnect = socket_name } }))
-  if handle then
-    syscall_handlers[handle] = data_callback
-    return handle
-  else
-    print("Failed to connect to IPC socket: " .. socket_name)
-    return 0
-  end
-end
-
 function cworks.pending()
   cworks.do_syscall("\"Pending\"")
 end
