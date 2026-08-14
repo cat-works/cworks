@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    libs::split_filename,
-    obj_tree::{fs_obj::Object, IntrinsicFSObj},
-};
+use crate::{libs::split_filename, obj_tree::IntrinsicFSObj};
 
 use super::{
     fs_obj::{FSObjRef, FileStat},
@@ -32,47 +29,33 @@ impl FSFrontend {
     }
 
     pub fn list(&self, path: String) -> Result<Vec<String>, FSReturns> {
-        self.resolve_(path)
-            .map_err(|_| FSReturns::UnknownPath)?
-            .list()
-            .map_err(|_| FSReturns::UnknownError)
+        self.resolve_(path)?.list()
     }
 
     pub fn stat(&self, path: String) -> Result<FileStat, FSReturns> {
-        let x = self
-            .resolve_(path)
-            .map_err(|_| FSReturns::UnknownPath)?
-            .stat()
-            .map_err(|_| FSReturns::UnknownError)?;
-
-        Ok(x)
+        self.resolve_(path)?.stat()
     }
 
     pub fn get(&self, path: String) -> Result<FSObjRef, FSReturns> {
-        self.resolve_(path).map_err(|_| FSReturns::UnknownPath)
+        self.resolve_(path)
     }
     pub fn set(&self, path: String, obj: FSObjRef) -> Result<(), FSReturns> {
         let (parent, filename) =
             split_filename(path.clone()).ok_or(FSReturns::InvalidCommandFormat)?;
 
-        self.resolve_(parent)
-            .map_err(|_| FSReturns::UnknownPath)?
-            .add_child(filename, obj)
-            .map_err(|_| FSReturns::UnknownError)?;
+        self.resolve_(parent)?.add_child(filename, obj)?;
 
         Ok(())
     }
 
     pub fn mkdir(&self, path: String, name: String) -> Result<(), FSReturns> {
-        let parent = self.resolve_(path).map_err(|_| FSReturns::UnknownPath)?;
+        let parent = self.resolve_(path)?;
 
         let new_dir = IntrinsicFSObj::CompoundFSObj {
             parent: Some(parent.clone()),
             children: HashMap::default(),
         };
-        parent
-            .add_child(name, new_dir.into())
-            .map_err(|_| FSReturns::UnknownError)?;
+        parent.add_child(name, new_dir.into())?;
 
         Ok(())
     }

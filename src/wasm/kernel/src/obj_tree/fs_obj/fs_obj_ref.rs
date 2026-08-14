@@ -1,11 +1,12 @@
-use std::{cell::RefCell, fmt::Debug, rc::Rc};
+use std::{
+    cell::RefCell,
+    fmt::{Debug, Display},
+    rc::Rc,
+};
 
 use serde::Serialize;
 
-use crate::obj_tree::{
-    fs_obj::{object::FileKind, Object},
-    FSReturns, FileStat, IntrinsicFSObj,
-};
+use crate::obj_tree::{fs_obj::object::FileKind, FSReturns, FileStat, IntrinsicFSObj};
 
 #[derive(Clone)]
 pub struct FSObjRef(Rc<RefCell<Box<IntrinsicFSObj>>>);
@@ -45,6 +46,10 @@ impl FSObjRef {
         };
         FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
     }
+
+    pub fn as_ptr(&self) -> *const RefCell<Box<IntrinsicFSObj>> {
+        Rc::as_ptr(&self.0)
+    }
 }
 
 impl From<IntrinsicFSObj> for FSObjRef {
@@ -55,12 +60,18 @@ impl From<IntrinsicFSObj> for FSObjRef {
 
 impl Debug for FSObjRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Debug::fmt(&self.0, f)
+        Debug::fmt(self.0.borrow().as_ref(), f)
     }
 }
 
-impl Object for FSObjRef {
-    fn stat(&self) -> Result<FileStat, FSReturns> {
+impl Display for FSObjRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(self.0.borrow().as_ref(), f)
+    }
+}
+
+impl FSObjRef {
+    pub fn stat(&self) -> Result<FileStat, FSReturns> {
         match **self.0.borrow() {
             IntrinsicFSObj::CompoundFSObj { .. } => Ok(FileStat {
                 kind: FileKind::Directory,
@@ -72,7 +83,7 @@ impl Object for FSObjRef {
     }
 
     // directory-like methods
-    fn list(&self) -> Result<Vec<String>, FSReturns> {
+    pub fn list(&self) -> Result<Vec<String>, FSReturns> {
         match **self.0.borrow() {
             IntrinsicFSObj::CompoundFSObj {
                 ref parent,
@@ -92,7 +103,7 @@ impl Object for FSObjRef {
         }
     }
 
-    fn get_obj(&self, part: String) -> Result<FSObjRef, FSReturns> {
+    pub fn get_obj(&self, part: String) -> Result<FSObjRef, FSReturns> {
         match **self.0.borrow() {
             IntrinsicFSObj::CompoundFSObj {
                 ref parent,
@@ -106,9 +117,10 @@ impl Object for FSObjRef {
                 }
                 if part == ".." {
                     if let Some(parent) = &parent {
-                        return parent.get_obj(part);
+                        return Ok(parent.clone());
                     }
                 }
+
                 Err(FSReturns::UnknownPath)
             }
 
@@ -116,16 +128,33 @@ impl Object for FSObjRef {
         }
     }
 
-    fn add_child(&self, name: String, obj: FSObjRef) -> Result<(), FSReturns> {
-        match **self.0.borrow_mut() {
+    pub fn add_child(&self, name: String, obj: FSObjRef) -> Result<(), FSReturns> {
+        match **self.0.clone().borrow_mut() {
             IntrinsicFSObj::CompoundFSObj {
                 ref mut children, ..
             } => {
-                children.insert(name, obj);
-                Ok(())
+                children.insert(name, obj.clone());
             }
 
-            _ => Err(FSReturns::UnsupportedMethod),
+            _ => return Err(FSReturns::UnsupportedMethod),
         }
+        if let IntrinsicFSObj::CompoundFSObj { ref mut parent, .. } = **obj.0.clone().borrow_mut() {
+            *parent = Some(self.clone());
+        }
+
+        Ok(())
+    }
+
+    pub fn follow(&self, path: String) -> Result<FSObjRef, FSReturns> {
+        let parts = path.split('/').filter(|x| !x.is_empty());
+
+        let mut current: FSObjRef = self.clone();
+
+        for part in parts {
+            let next = current.get_obj(part.to_string())?;
+            current = next;
+        }
+
+        Ok(current)
     }
 }

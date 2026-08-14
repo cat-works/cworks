@@ -1,6 +1,5 @@
 mod object;
 pub use object::FileStat;
-pub use object::Object;
 
 mod intrinsic_fs_obj;
 pub use intrinsic_fs_obj::IntrinsicFSObj;

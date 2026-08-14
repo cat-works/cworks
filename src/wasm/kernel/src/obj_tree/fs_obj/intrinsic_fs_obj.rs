@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
+    rc::Rc,
 };
 
 use serde::{Deserialize, Serialize};
@@ -33,10 +34,16 @@ impl Display for IntrinsicFSObj {
             IntrinsicFSObj::Bytes(x) => write!(f, "{x:?}"),
             IntrinsicFSObj::Null => write!(f, "Null"),
             IntrinsicFSObj::CompoundFSObj { parent, children } => {
+                let parent_ptr = parent.as_ref().map(|x| x.as_ptr() as usize);
+                let children = children
+                    .iter()
+                    .map(|(k, v)| format!("{}: {}", k, v))
+                    .collect::<Vec<String>>()
+                    .join(", ");
                 write!(
                     f,
-                    "CompoundFSObj {{ parent: {:?}, children: {:?} }}",
-                    parent, children
+                    "CompoundFSObj {{ parent: {:?}, children: {} }}",
+                    parent_ptr, children
                 )
             }
         }
