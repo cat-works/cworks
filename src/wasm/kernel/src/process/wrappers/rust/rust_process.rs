@@ -17,7 +17,7 @@ where
     ctx: Context<'a>,
 }
 
-impl<'a, F> RustProcess<'a, F>
+impl<F> RustProcess<'_, F>
 where
     F: Future<Output = Result<i64, SyscallError>>,
 {
@@ -32,7 +32,7 @@ where
     }
 }
 
-impl<'a, F> Process for RustProcess<'a, F>
+impl<F> Process for RustProcess<'_, F>
 where
     F: Future<Output = Result<i64, SyscallError>>,
 {

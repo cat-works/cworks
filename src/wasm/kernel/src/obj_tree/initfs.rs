@@ -28,11 +28,8 @@ fn root() -> Result<FSObjRef, FSReturns> {
 }
 
 pub fn initfs() -> FSObjRef {
-    match root() {
-        Ok(root) => root,
-        Err(_) => {
-            log::error!("Failed to initialize filesystem");
-            FSObjRef::empty_compound() // Return an empty filesystem on error
-        }
-    }
+    root().unwrap_or_else(|_| {
+        log::error!("Failed to initialize filesystem");
+        FSObjRef::empty_compound() // Return an empty filesystem on error
+    })
 }

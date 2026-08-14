@@ -1,4 +1,4 @@
-pub fn split_filename(path: String) -> Option<(String, String)> {
+pub fn split_filename(path: &str) -> Option<(String, String)> {
     // /a/b/c -> ("/a/b", "c")
     // /a/b/c/ -> ("/a/b", "c")
     // / -> None

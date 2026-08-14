@@ -26,8 +26,8 @@ pub struct Kernel {
 }
 
 impl Default for Kernel {
-    fn default() -> Kernel {
-        Kernel {
+    fn default() -> Self {
+        Self {
             processes: RefCell::new(AutoMap::new()),
             waiting_pairs: RefCell::new(HashMap::new()),
             fs_root: initfs(),
@@ -46,16 +46,14 @@ impl Kernel {
         let mut actions = vec![];
 
         let now = timestamp_ms();
-        let process_keys: Vec<u128> = self.processes.borrow().keys().cloned().collect();
+        let process_keys: Vec<u128> = self.processes.borrow().keys().copied().collect();
 
         for (pid, p) in self.processes.borrow().iter() {
             if let ProcessStatus::Sleeping(t) = p.borrow().status {
                 if t >= now {
                     continue;
-                } else {
-                    /* debug!("Waking up Process<{pid}> ({now:6.4} <= {t:6.4})"); */
-                    actions.push(KernelAction::WakeUp(*pid));
                 }
+                actions.push(KernelAction::WakeUp(*pid));
             }
 
             if p.borrow().status != ProcessStatus::Running {
@@ -69,11 +67,11 @@ impl Kernel {
                 .unwrap_or(SyscallData::None);
 
             if !matches!(data, SyscallData::None) {
-                log::debug!("Process<{pid}> <-- {:?}", data)
-            };
+                log::debug!("Process<{pid}> <-- {data:?}");
+            }
             let res = p.borrow_mut().process.poll(&data);
             if !matches!(res, PollResult::Pending) {
-                log::debug!("Process<{pid}> --> {:?}", res);
+                log::debug!("Process<{pid}> --> {res:?}");
             }
 
             match res {
@@ -126,41 +124,36 @@ impl Kernel {
                         }
                         Syscall::List(path) => {
                             let res = fs_frontend.list(path);
-                            p.borrow_mut().outgoing_data_buffer.push(
-                                res.map(SyscallData::FSList)
-                                    .unwrap_or_else(SyscallData::FSError),
-                            );
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(res.map_or_else(SyscallData::FSError, SyscallData::FSList));
                         }
                         Syscall::Stat(path) => {
                             let stat = fs_frontend.stat(path);
-                            p.borrow_mut().outgoing_data_buffer.push(
-                                stat.map(SyscallData::FSStat)
-                                    .unwrap_or_else(SyscallData::FSError),
-                            );
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(stat.map_or_else(SyscallData::FSError, SyscallData::FSStat));
                         }
                         Syscall::Get(path) => {
                             let res = fs_frontend.get(path);
-                            p.borrow_mut().outgoing_data_buffer.push(
-                                res.map(SyscallData::FSGet)
-                                    .unwrap_or_else(SyscallData::FSError),
-                            );
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(res.map_or_else(SyscallData::FSError, SyscallData::FSGet));
                         }
                         Syscall::Set(path, obj) => {
                             let res = fs_frontend.set(path, obj);
                             p.borrow_mut().outgoing_data_buffer.push(
-                                res.map(|_| SyscallData::FSSuccess)
-                                    .unwrap_or_else(SyscallData::FSError),
+                                res.map_or_else(SyscallData::FSError, |()| SyscallData::FSSuccess),
                             );
                         }
                         Syscall::Mkdir(path, name) => {
                             let res = fs_frontend.mkdir(path, name);
                             p.borrow_mut().outgoing_data_buffer.push(
-                                res.map(|_| SyscallData::FSSuccess)
-                                    .unwrap_or_else(SyscallData::FSError),
+                                res.map_or_else(SyscallData::FSError, |()| SyscallData::FSSuccess),
                             );
                         }
                         Syscall::Subscribe(path) => {
-                            let (dir, fname) = match split_filename(path)
+                            let (dir, fname) = match split_filename(&path)
                                 .ok_or(SyscallData::FSError(FSReturns::InvalidCommandFormat))
                                 .and_then(|(dir, fname)| {
                                     self.fs_root
@@ -181,7 +174,7 @@ impl Kernel {
                                 .or_else(|_| {
                                     let obj: FSObjRef = Object::Func { callee_pid: vec![] }.into();
                                     dir.add_child(fname.clone(), obj.clone())
-                                        .map(|_| obj)
+                                        .map(|()| obj)
                                         .map_err(SyscallData::FSError)
                                 }) {
                                 Ok(obj) => obj,
@@ -207,7 +200,7 @@ impl Kernel {
                                 .push(SyscallData::FSSuccess);
                         }
                         Syscall::Unsubscribe(path) => {
-                            let (dir, fname) = match split_filename(path)
+                            let (dir, fname) = match split_filename(&path)
                                 .ok_or(SyscallData::FSError(FSReturns::InvalidCommandFormat))
                                 .and_then(|(dir, fname)| {
                                     self.fs_root
@@ -228,7 +221,7 @@ impl Kernel {
                                 .or_else(|_| {
                                     let obj: FSObjRef = Object::Func { callee_pid: vec![] }.into();
                                     dir.add_child(fname.clone(), obj.clone())
-                                        .map(|_| obj)
+                                        .map(|()| obj)
                                         .map_err(SyscallData::FSError)
                                 }) {
                                 Ok(obj) => obj,

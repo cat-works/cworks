@@ -15,14 +15,9 @@ pub struct RustProcessCore {
 impl RustProcessCore {
     fn poll_syscall_data(&self) {
         let m = self.syscall_data.borrow().clone();
-        match m {
-            SyscallData::None => {}
-            _ => {
-                log::trace!("RustProcessCore::poll_syscall_data: pushing data to buffer: {m:?}",);
-                self.data_buffer
-                    .borrow_mut()
-                    .push_back(Rc::new((m).clone()));
-            }
+        if !matches!(m, SyscallData::None) {
+            log::trace!("RustProcessCore::poll_syscall_data: pushing data to buffer: {m:?}");
+            self.data_buffer.borrow_mut().push_back(Rc::new(m));
         }
     }
 
@@ -38,15 +33,11 @@ impl RustProcessCore {
                 .pop_front()
                 .map(|x| (*x).clone());
             if let Some(x) = f {
-                log::trace!(
-                    "RustProcessCore::get_syscall_data: returning data from buffer: {:?}",
-                    x
-                );
+                log::trace!("RustProcessCore::get_syscall_data: returning data from buffer: {x:?}");
                 return x;
-            } else {
-                self.poll_syscall_data();
-                DummyFuture::Started.await;
             }
+            self.poll_syscall_data();
+            DummyFuture::Started.await;
         }
     }
 
@@ -105,7 +96,7 @@ impl RustProcessCore {
         match m {
             SyscallData::FSList(r) => {
                 self.set_syscall_data(&SyscallData::None);
-                log::trace!("RustProcessCore::fs_list: returning FSList: {:?}", r);
+                log::trace!("RustProcessCore::fs_list: returning FSList: {r:?}");
                 Ok(())
             }
             SyscallData::Fail(ref e) => {
@@ -124,7 +115,7 @@ impl RustProcessCore {
         match m {
             SyscallData::FSStat(r) => {
                 self.set_syscall_data(&SyscallData::None);
-                log::trace!("RustProcessCore::fs_stat: returning FSStat: {:?}", r);
+                log::trace!("RustProcessCore::fs_stat: returning FSStat: {r:?}");
                 Ok(())
             }
             SyscallData::Fail(ref e) => {
@@ -143,7 +134,7 @@ impl RustProcessCore {
         match m {
             SyscallData::FSGet(obj) => {
                 self.set_syscall_data(&SyscallData::None);
-                log::trace!("RustProcessCore::fs_get: returning FSGet: {:?}", obj);
+                log::trace!("RustProcessCore::fs_get: returning FSGet: {obj:?}");
                 Ok(())
             }
             SyscallData::Fail(ref e) => {

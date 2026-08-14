@@ -12,11 +12,11 @@ async fn server(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError
 
     loop {
         let data = session.get_syscall_data().await;
-        if let SyscallData::None = data {
+        if matches!(data, SyscallData::None) {
             continue;
         }
 
-        log::info!("Server received data: {:?}", data);
+        log::info!("Server received data: {data:?}");
     }
 }
 
@@ -41,7 +41,7 @@ async fn fs_test(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallErro
     exit(0);
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Trace)
         .init();
@@ -50,8 +50,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     k.register_process(Box::new(RustProcess::new(&server, 0)));
     k.register_process(Box::new(RustProcess::new(&client, 0)));
-    // k.register_process(Box::new(RustProcess::new(&fs_test, 0)));
+    k.register_process(Box::new(RustProcess::new(&fs_test, 0)));
 
     k.start();
-    Ok(())
+    ()
 }

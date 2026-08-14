@@ -28,26 +28,30 @@ impl<'de> serde::Deserialize<'de> for FSObjRef {
         D: serde::Deserializer<'de>,
     {
         let obj = Object::deserialize(deserializer)?;
-        Ok(FSObjRef(Rc::new(RefCell::new(Box::new(obj)))))
+        Ok(Self(Rc::new(RefCell::new(Box::new(obj)))))
     }
 }
 
 impl FSObjRef {
-    pub fn new_compound(parent: FSObjRef) -> Self {
+    #[must_use]
+    pub fn new_compound(parent: Self) -> Self {
         let obj = Object::CompoundFSObj {
             parent: Some(parent),
             children: std::collections::HashMap::new(),
         };
-        FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
+        Self(Rc::new(RefCell::new(Box::new(obj))))
     }
+
+    #[must_use]
     pub fn empty_compound() -> Self {
         let obj = Object::CompoundFSObj {
             parent: None,
             children: std::collections::HashMap::new(),
         };
-        FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
+        Self(Rc::new(RefCell::new(Box::new(obj))))
     }
 
+    #[must_use]
     pub fn as_ptr(&self) -> *const RefCell<Box<Object>> {
         Rc::as_ptr(&self.0)
     }
@@ -55,7 +59,7 @@ impl FSObjRef {
 
 impl From<Object> for FSObjRef {
     fn from(obj: Object) -> Self {
-        FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
+        Self(Rc::new(RefCell::new(Box::new(obj))))
     }
 }
 
@@ -115,7 +119,7 @@ impl FSObjRef {
         }
     }
 
-    pub fn get_obj(&self, part: String) -> Result<FSObjRef, FSReturns> {
+    pub fn get_obj(&self, part: String) -> Result<Self, FSReturns> {
         match **self.0.borrow() {
             Object::CompoundFSObj {
                 ref parent,
@@ -140,7 +144,7 @@ impl FSObjRef {
         }
     }
 
-    pub fn add_child(&self, name: String, obj: FSObjRef) -> Result<(), FSReturns> {
+    pub fn add_child(&self, name: String, obj: Self) -> Result<(), FSReturns> {
         match **self.0.clone().borrow_mut() {
             Object::CompoundFSObj {
                 ref mut children, ..
@@ -150,17 +154,17 @@ impl FSObjRef {
 
             _ => return Err(FSReturns::UnsupportedMethod),
         }
-        if let Object::CompoundFSObj { ref mut parent, .. } = **obj.0.clone().borrow_mut() {
+        if let Object::CompoundFSObj { ref mut parent, .. } = **obj.0.borrow_mut() {
             *parent = Some(self.clone());
         }
 
         Ok(())
     }
 
-    pub fn follow(&self, path: String) -> Result<FSObjRef, FSReturns> {
+    pub fn follow(&self, path: String) -> Result<Self, FSReturns> {
         let parts = path.split('/').filter(|x| !x.is_empty());
 
-        let mut current: FSObjRef = self.clone();
+        let mut current: Self = self.clone();
 
         for part in parts {
             let next = current.get_obj(part.to_string())?;

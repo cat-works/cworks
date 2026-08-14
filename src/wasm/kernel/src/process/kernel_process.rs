@@ -1,6 +1,6 @@
 use super::{Process, SyscallData};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProcessStatus {
     Running,
     Sleeping(i64),     // TODO: Rename to WaitSeconds
@@ -16,7 +16,7 @@ pub struct KernelProcess {
 
 impl From<Box<dyn Process>> for KernelProcess {
     fn from(p: Box<dyn Process>) -> Self {
-        KernelProcess {
+        Self {
             parent_pid: 0,
             process: p,
             outgoing_data_buffer: vec![],

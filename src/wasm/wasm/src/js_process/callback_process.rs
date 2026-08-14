@@ -8,7 +8,7 @@ pub struct CallbackProcess {
 }
 
 impl CallbackProcess {
-    pub fn new(callback: js_sys::Function) -> Self {
+    pub const fn new(callback: js_sys::Function) -> Self {
         Self { callback }
     }
 }

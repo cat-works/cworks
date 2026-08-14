@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-#[derive(PartialEq, Debug, Clone, Serialize)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize)]
 pub enum SyscallError {
     NoSuchEntry,   // no such entry
     AlreadyExists, // entry already exists
@@ -15,7 +15,7 @@ pub enum SyscallError {
 }
 
 impl From<SyscallError> for i64 {
-    fn from(x: SyscallError) -> i64 {
+    fn from(x: SyscallError) -> Self {
         match x {
             SyscallError::NoSuchEntry => -1,
             SyscallError::AlreadyExists => -2,
@@ -28,6 +28,6 @@ impl From<SyscallError> for i64 {
 }
 impl std::fmt::Display for SyscallError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }

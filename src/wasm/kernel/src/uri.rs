@@ -14,16 +14,16 @@ impl std::fmt::Display for Uri {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}://", self.scheme)?;
         if let Some(ref r) = self.connection_argument {
-            write!(f, "{}@", r)?;
+            write!(f, "{r}@")?;
         }
         write!(f, "{}", self.host)?;
         if let Some(p) = self.port {
-            write!(f, ":{}", p)?;
+            write!(f, ":{p}")?;
         }
 
         write!(f, "{}", self.path)?;
         if let Some(ref r) = self.request_argument {
-            write!(f, "?{}", r)?;
+            write!(f, "?{r}")?;
         }
         Ok(())
     }
@@ -50,13 +50,11 @@ impl TryFrom<String> for Uri {
         }
         let r = r.unwrap();
 
-        let m = if let Some(m) = r.captures(&s) {
-            m
-        } else {
+        let Some(m) = r.captures(&s) else {
             return Err("Invalid URI".to_string());
         };
 
-        let uri = Uri {
+        let uri = Self {
             scheme: m.name("scheme").unwrap().as_str().to_string(),
             connection_argument: m
                 .name("connection_argument")

@@ -9,7 +9,8 @@ pub struct FSFrontend {
 }
 
 impl FSFrontend {
-    pub fn new(root: FSObjRef) -> Self {
+    #[must_use]
+    pub const fn new(root: FSObjRef) -> Self {
         Self { root }
     }
 
@@ -17,7 +18,7 @@ impl FSFrontend {
         if path == "/" || path.is_empty() {
             // Root path
             Ok(self.root.clone())
-        } else if path.starts_with("/") {
+        } else if path.starts_with('/') {
             // Absolute path
             self.root.follow(path)
         } else {
@@ -37,8 +38,7 @@ impl FSFrontend {
         self.resolve_(path)
     }
     pub fn set(&self, path: String, obj: FSObjRef) -> Result<(), FSReturns> {
-        let (parent, filename) =
-            split_filename(path.clone()).ok_or(FSReturns::InvalidCommandFormat)?;
+        let (parent, filename) = split_filename(&path).ok_or(FSReturns::InvalidCommandFormat)?;
 
         self.resolve_(parent)?.add_child(filename, obj)?;
 
@@ -51,9 +51,8 @@ impl FSFrontend {
         if let Ok(x) = parent.get_obj(name.clone()) {
             if let Object::CompoundFSObj { .. } = **x.borrow() {
                 return Ok(());
-            } else {
-                return Err(FSReturns::InvalidCommandFormat);
             }
+            return Err(FSReturns::InvalidCommandFormat);
         }
 
         let new_dir = Object::CompoundFSObj {

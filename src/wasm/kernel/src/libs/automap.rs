@@ -6,8 +6,8 @@ use std::{
 pub struct AutoMap<T>(HashMap<u128, T>);
 
 impl<T> AutoMap<T> {
-    pub fn new() -> AutoMap<T> {
-        AutoMap(HashMap::new())
+    pub fn new() -> Self {
+        Self(HashMap::new())
     }
     fn find_free_id(&self) -> u128 {
         let mut i: u128 = 0;
