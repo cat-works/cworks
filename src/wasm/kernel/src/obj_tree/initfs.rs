@@ -1,5 +1,4 @@
-use super::fs_obj::FSObjRef;
-use super::FSReturns;
+use super::{FSObjRef, FSReturns};
 
 fn usr(root: FSObjRef) -> Result<FSObjRef, FSReturns> {
     let usr: FSObjRef = FSObjRef::new_compound(root);

@@ -1,11 +1,8 @@
 use std::collections::HashMap;
 
-use crate::{libs::split_filename, obj_tree::IntrinsicFSObj};
+use crate::libs::split_filename;
 
-use super::{
-    fs_obj::{FSObjRef, FileStat},
-    fs_returns::FSReturns,
-};
+use super::{FSObjRef, FSReturns, FileStat, Object};
 
 pub struct FSFrontend {
     pub root: FSObjRef,
@@ -51,7 +48,7 @@ impl FSFrontend {
     pub fn mkdir(&self, path: String, name: String) -> Result<(), FSReturns> {
         let parent = self.resolve_(path)?;
 
-        let new_dir = IntrinsicFSObj::CompoundFSObj {
+        let new_dir = Object::CompoundFSObj {
             parent: Some(parent.clone()),
             children: HashMap::default(),
         };

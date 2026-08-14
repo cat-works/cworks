@@ -1,13 +1,7 @@
-use std::cell::RefCell;
-
+use super::HandleData;
 use crate::Handle;
 
-use super::HandleData;
-
 pub type HandleRef = u128;
-
-// TODO: Handle recycling
-// 1. Process exits, handle is freed
 
 #[derive(Default)]
 pub struct HandleIssuer {

@@ -6,10 +6,10 @@ use std::{
 
 use serde::Serialize;
 
-use crate::obj_tree::{fs_obj::object::FileKind, FSReturns, FileStat, IntrinsicFSObj};
+use super::{FSReturns, FileKind, FileStat, Object};
 
 #[derive(Clone)]
-pub struct FSObjRef(Rc<RefCell<Box<IntrinsicFSObj>>>);
+pub struct FSObjRef(Rc<RefCell<Box<Object>>>);
 
 impl Serialize for FSObjRef {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -26,34 +26,34 @@ impl<'de> serde::Deserialize<'de> for FSObjRef {
     where
         D: serde::Deserializer<'de>,
     {
-        let obj = IntrinsicFSObj::deserialize(deserializer)?;
+        let obj = Object::deserialize(deserializer)?;
         Ok(FSObjRef(Rc::new(RefCell::new(Box::new(obj)))))
     }
 }
 
 impl FSObjRef {
     pub fn new_compound(parent: FSObjRef) -> Self {
-        let obj = IntrinsicFSObj::CompoundFSObj {
+        let obj = Object::CompoundFSObj {
             parent: Some(parent),
             children: std::collections::HashMap::new(),
         };
         FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
     }
     pub fn empty_compound() -> Self {
-        let obj = IntrinsicFSObj::CompoundFSObj {
+        let obj = Object::CompoundFSObj {
             parent: None,
             children: std::collections::HashMap::new(),
         };
         FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
     }
 
-    pub fn as_ptr(&self) -> *const RefCell<Box<IntrinsicFSObj>> {
+    pub fn as_ptr(&self) -> *const RefCell<Box<Object>> {
         Rc::as_ptr(&self.0)
     }
 }
 
-impl From<IntrinsicFSObj> for FSObjRef {
-    fn from(obj: IntrinsicFSObj) -> Self {
+impl From<Object> for FSObjRef {
+    fn from(obj: Object) -> Self {
         FSObjRef(Rc::new(RefCell::new(Box::new(obj))))
     }
 }
@@ -73,7 +73,7 @@ impl Display for FSObjRef {
 impl FSObjRef {
     pub fn stat(&self) -> Result<FileStat, FSReturns> {
         match **self.0.borrow() {
-            IntrinsicFSObj::CompoundFSObj { .. } => Ok(FileStat {
+            Object::CompoundFSObj { .. } => Ok(FileStat {
                 kind: FileKind::Directory,
             }),
             _ => Ok(FileStat {
@@ -85,7 +85,7 @@ impl FSObjRef {
     // directory-like methods
     pub fn list(&self) -> Result<Vec<String>, FSReturns> {
         match **self.0.borrow() {
-            IntrinsicFSObj::CompoundFSObj {
+            Object::CompoundFSObj {
                 ref parent,
                 ref children,
             } => {
@@ -105,7 +105,7 @@ impl FSObjRef {
 
     pub fn get_obj(&self, part: String) -> Result<FSObjRef, FSReturns> {
         match **self.0.borrow() {
-            IntrinsicFSObj::CompoundFSObj {
+            Object::CompoundFSObj {
                 ref parent,
                 ref children,
             } => {
@@ -130,7 +130,7 @@ impl FSObjRef {
 
     pub fn add_child(&self, name: String, obj: FSObjRef) -> Result<(), FSReturns> {
         match **self.0.clone().borrow_mut() {
-            IntrinsicFSObj::CompoundFSObj {
+            Object::CompoundFSObj {
                 ref mut children, ..
             } => {
                 children.insert(name, obj.clone());
@@ -138,7 +138,7 @@ impl FSObjRef {
 
             _ => return Err(FSReturns::UnsupportedMethod),
         }
-        if let IntrinsicFSObj::CompoundFSObj { ref mut parent, .. } = **obj.0.clone().borrow_mut() {
+        if let Object::CompoundFSObj { ref mut parent, .. } = **obj.0.clone().borrow_mut() {
             *parent = Some(self.clone());
         }
 

@@ -174,8 +174,8 @@ impl Kernel {
                                 actions.push(KernelAction::SendSyscallData(
                                     server.pid,
                                     SyscallData::Connection {
-                                        client: server_client_hid.clone(),
-                                        server: server.id.clone(),
+                                        client: server_client_hid,
+                                        server: server.id,
                                     },
                                 ));
                             }

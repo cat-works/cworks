@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-use crate::{handle::HandleRef, obj_tree::FSObjRef, Handle, Syscall, SyscallData, SyscallError};
+use crate::{handle::HandleRef, obj_tree::FSObjRef, Syscall, SyscallData, SyscallError};
 
 use super::dummy_future::DummyFuture;
 
@@ -41,7 +41,7 @@ impl RustProcessCore {
                             log::trace!(
                                 "RustProcessCore::return_handle: returning handle from buffer: {e:?}",
                             );
-                            return Ok(e.clone());
+                            return Ok(*e);
                         }
                         SyscallData::Fail(ref e) => {
                             log::trace!(

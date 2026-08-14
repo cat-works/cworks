@@ -1,7 +1,6 @@
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
-    rc::Rc,
 };
 
 use serde::{Deserialize, Serialize};
@@ -9,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::obj_tree::FSObjRef;
 
 #[derive(Serialize, Deserialize)]
-pub enum IntrinsicFSObj {
+pub enum Object {
     Int(i128),
     String(String),
     Boolean(bool),
@@ -24,17 +23,17 @@ pub enum IntrinsicFSObj {
     },
 }
 
-impl Debug for IntrinsicFSObj {
+impl Debug for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            IntrinsicFSObj::Int(x) => write!(f, "Int({x})"),
-            IntrinsicFSObj::String(x) => write!(f, "String(\"{x}\")"),
-            IntrinsicFSObj::Boolean(x) => write!(f, "Boolean({x:#})"),
-            IntrinsicFSObj::Float(x) => write!(f, "Float({x})"),
-            IntrinsicFSObj::Double(x) => write!(f, "Double({x})"),
-            IntrinsicFSObj::Bytes(x) => write!(f, "Bytes({x:?})"),
-            IntrinsicFSObj::Null => write!(f, "Null"),
-            IntrinsicFSObj::CompoundFSObj { parent, children } => {
+            Object::Int(x) => write!(f, "Int({x})"),
+            Object::String(x) => write!(f, "String(\"{x}\")"),
+            Object::Boolean(x) => write!(f, "Boolean({x:#})"),
+            Object::Float(x) => write!(f, "Float({x})"),
+            Object::Double(x) => write!(f, "Double({x})"),
+            Object::Bytes(x) => write!(f, "Bytes({x:?})"),
+            Object::Null => write!(f, "Null"),
+            Object::CompoundFSObj { parent, children } => {
                 let parent_ptr = parent.as_ref().map(|x| x.as_ptr() as usize);
                 let children = children
                     .iter()
@@ -51,17 +50,17 @@ impl Debug for IntrinsicFSObj {
     }
 }
 
-impl Display for IntrinsicFSObj {
+impl Display for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            IntrinsicFSObj::Int(x) => write!(f, "{x}"),
-            IntrinsicFSObj::String(x) => write!(f, "\"{x}\""),
-            IntrinsicFSObj::Boolean(x) => write!(f, "{x:#}"),
-            IntrinsicFSObj::Float(x) => write!(f, "{x}"),
-            IntrinsicFSObj::Double(x) => write!(f, "{x}"),
-            IntrinsicFSObj::Bytes(x) => write!(f, "{x:?}"),
-            IntrinsicFSObj::Null => write!(f, "Null"),
-            IntrinsicFSObj::CompoundFSObj { parent, children } => {
+            Object::Int(x) => write!(f, "{x}"),
+            Object::String(x) => write!(f, "\"{x}\""),
+            Object::Boolean(x) => write!(f, "{x:#}"),
+            Object::Float(x) => write!(f, "{x}"),
+            Object::Double(x) => write!(f, "{x}"),
+            Object::Bytes(x) => write!(f, "{x:?}"),
+            Object::Null => write!(f, "Null"),
+            Object::CompoundFSObj { parent, children } => {
                 let parent_ptr = parent.as_ref().map(|x| x.as_ptr() as usize);
                 let children = children
                     .iter()

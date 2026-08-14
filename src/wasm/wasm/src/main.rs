@@ -1,6 +1,6 @@
 use std::process::exit;
 
-use kernel::{obj_tree::IntrinsicFSObj, RustProcess, RustProcessCore, SyscallData, SyscallError};
+use kernel::{obj_tree::Object, RustProcess, RustProcessCore, SyscallData, SyscallError};
 
 mod generator;
 mod js_process;
@@ -27,7 +27,7 @@ async fn client(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError
     session.ipc_send(ipc, "Hello".to_string()).await?;
 
     session
-        .fs_set("/b".to_string(), IntrinsicFSObj::Int(1).into())
+        .fs_set("/b".to_string(), Object::Int(1).into())
         .await
         .expect("Failed to set /b");
 
@@ -43,7 +43,7 @@ async fn client(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError
 }
 async fn fs_test(session: RustProcessCore, _arg: u32) -> Result<i64, SyscallError> {
     session
-        .fs_set("/b".to_string(), IntrinsicFSObj::Int(1).into())
+        .fs_set("/b".to_string(), Object::Int(1).into())
         .await
         .expect("Failed to set /b");
 
