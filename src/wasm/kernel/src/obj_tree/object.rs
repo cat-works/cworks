@@ -21,6 +21,10 @@ pub enum Object {
         parent: Option<FSObjRef>,
         children: HashMap<String, FSObjRef>,
     },
+    #[serde(skip_serializing)]
+    Func {
+        callee_pid: Vec<u128>,
+    },
 }
 
 impl Debug for Object {
@@ -46,6 +50,10 @@ impl Debug for Object {
                     parent_ptr, children
                 )
             }
+            Object::Func { callee_pid } => f
+                .debug_struct("Func")
+                .field("callee_pid", callee_pid)
+                .finish(),
         }
     }
 }
@@ -72,6 +80,9 @@ impl Display for Object {
                     "CompoundFSObj {{ parent: {:?}, children: {} }}",
                     parent_ptr, children
                 )
+            }
+            Object::Func { callee_pid } => {
+                write!(f, "Func(owned by {:?})", callee_pid)
             }
         }
     }

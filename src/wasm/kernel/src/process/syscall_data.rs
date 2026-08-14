@@ -24,4 +24,9 @@ pub enum SyscallData {
     FSError(FSReturns),
     FSList(Vec<String>),
     FSStat(FileStat),
+    Invoke {
+        caller_pid: u128,
+        path: String,
+        arg: Option<FSObjRef>,
+    },
 }

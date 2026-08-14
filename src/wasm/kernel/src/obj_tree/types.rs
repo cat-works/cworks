@@ -5,6 +5,7 @@ use std::fmt::Debug;
 pub enum FileKind {
     File,
     Directory,
+    Function,
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]

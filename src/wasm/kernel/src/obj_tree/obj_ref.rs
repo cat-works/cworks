@@ -1,6 +1,7 @@
 use std::{
     cell::RefCell,
     fmt::{Debug, Display},
+    ops::Deref,
     rc::Rc,
 };
 
@@ -58,6 +59,14 @@ impl From<Object> for FSObjRef {
     }
 }
 
+impl Deref for FSObjRef {
+    type Target = RefCell<Box<Object>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 impl Debug for FSObjRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Debug::fmt(self.0.borrow().as_ref(), f)
@@ -75,6 +84,9 @@ impl FSObjRef {
         match **self.0.borrow() {
             Object::CompoundFSObj { .. } => Ok(FileStat {
                 kind: FileKind::Directory,
+            }),
+            Object::Func { .. } => Ok(FileStat {
+                kind: FileKind::Function,
             }),
             _ => Ok(FileStat {
                 kind: FileKind::File,

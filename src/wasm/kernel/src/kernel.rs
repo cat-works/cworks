@@ -3,8 +3,8 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use crate::{
     handle::{HandleData, HandleIssuer},
     ipc::Ipc,
-    libs::{timestamp_ms, AutoMap},
-    obj_tree::{initfs, FSFrontend, FSObjRef},
+    libs::{split_filename, timestamp_ms, AutoMap},
+    obj_tree::{initfs, FSFrontend, FSObjRef, FSReturns, Object},
     process::{ProcessStatus, Syscall, SyscallData, SyscallError},
 };
 
@@ -293,6 +293,124 @@ impl Kernel {
                                 res.map(|_| SyscallData::FSSuccess)
                                     .unwrap_or_else(SyscallData::FSError),
                             );
+                        }
+                        Syscall::Subscribe(path) => {
+                            let (dir, fname) = match split_filename(path)
+                                .ok_or(SyscallData::FSError(FSReturns::InvalidCommandFormat))
+                                .and_then(|(dir, fname)| {
+                                    self.fs_root
+                                        .follow(dir)
+                                        .map_err(SyscallData::FSError)
+                                        .map(|d| (d, fname))
+                                }) {
+                                Ok(a) => a,
+                                Err(e) => {
+                                    p.borrow_mut().outgoing_data_buffer.push(e);
+                                    continue;
+                                }
+                            };
+
+                            let func_obj = match dir
+                                .get_obj(fname.clone())
+                                .map_err(SyscallData::FSError)
+                                .or_else(|_| {
+                                    let obj: FSObjRef = Object::Func { callee_pid: vec![] }.into();
+                                    dir.add_child(fname.clone(), obj.clone())
+                                        .map(|_| obj)
+                                        .map_err(SyscallData::FSError)
+                                }) {
+                                Ok(obj) => obj,
+                                Err(e) => {
+                                    p.borrow_mut().outgoing_data_buffer.push(e);
+                                    continue;
+                                }
+                            };
+                            let mut callee_pid = {
+                                let Object::Func { ref callee_pid } = **func_obj.borrow() else {
+                                    p.borrow_mut()
+                                        .outgoing_data_buffer
+                                        .push(SyscallData::FSError(FSReturns::UnsupportedMethod));
+                                    continue;
+                                };
+                                callee_pid.clone()
+                            };
+                            callee_pid.push(*pid);
+                            **func_obj.borrow_mut() = Object::Func { callee_pid };
+                        }
+                        Syscall::Unsubscribe(path) => {
+                            let (dir, fname) = match split_filename(path)
+                                .ok_or(SyscallData::FSError(FSReturns::InvalidCommandFormat))
+                                .and_then(|(dir, fname)| {
+                                    self.fs_root
+                                        .follow(dir)
+                                        .map_err(SyscallData::FSError)
+                                        .map(|d| (d, fname))
+                                }) {
+                                Ok(a) => a,
+                                Err(e) => {
+                                    p.borrow_mut().outgoing_data_buffer.push(e);
+                                    continue;
+                                }
+                            };
+
+                            let func_obj = match dir
+                                .get_obj(fname.clone())
+                                .map_err(SyscallData::FSError)
+                                .or_else(|_| {
+                                    let obj: FSObjRef = Object::Func { callee_pid: vec![] }.into();
+                                    dir.add_child(fname.clone(), obj.clone())
+                                        .map(|_| obj)
+                                        .map_err(SyscallData::FSError)
+                                }) {
+                                Ok(obj) => obj,
+                                Err(e) => {
+                                    p.borrow_mut().outgoing_data_buffer.push(e);
+                                    continue;
+                                }
+                            };
+                            let mut callee_pid = {
+                                let Object::Func { ref callee_pid } = **func_obj.borrow() else {
+                                    p.borrow_mut()
+                                        .outgoing_data_buffer
+                                        .push(SyscallData::FSError(FSReturns::UnsupportedMethod));
+                                    continue;
+                                };
+                                callee_pid.clone()
+                            };
+                            callee_pid.retain(|&x| x != *pid);
+                            **func_obj.borrow_mut() = Object::Func { callee_pid };
+                        }
+                        Syscall::Publish(path, content) => {
+                            let func_obj = match self.fs_root.follow(path.clone()) {
+                                Ok(obj) => obj,
+                                Err(e) => {
+                                    p.borrow_mut()
+                                        .outgoing_data_buffer
+                                        .push(SyscallData::FSError(e));
+                                    continue;
+                                }
+                            };
+
+                            let callee_pid = {
+                                let Object::Func { ref callee_pid } = **func_obj.borrow() else {
+                                    p.borrow_mut()
+                                        .outgoing_data_buffer
+                                        .push(SyscallData::FSError(FSReturns::UnsupportedMethod));
+                                    continue;
+                                };
+                                callee_pid.clone()
+                            };
+
+                            for pid in callee_pid {
+                                actions.push(KernelAction::SendSyscallData(
+                                    pid,
+                                    SyscallData::Invoke {
+                                        caller_pid: pid,
+                                        path: path.clone(),
+                                        arg: content.clone(),
+                                    },
+                                ));
+                            }
                         }
                     }
                 }

@@ -111,6 +111,24 @@ impl RustProcessCore {
         self.return_handle().await
     }
 
+    pub async fn subscribe(&self, name: String) -> Result<(), SyscallError> {
+        self.set_syscall(Syscall::Subscribe(name));
+        DummyFuture::Started.await;
+        Ok(())
+    }
+
+    pub async fn unsubscribe(&self, name: String) -> Result<(), SyscallError> {
+        self.set_syscall(Syscall::Unsubscribe(name));
+        DummyFuture::Started.await;
+        Ok(())
+    }
+
+    pub async fn publish(&self, name: String, data: Option<FSObjRef>) -> Result<(), SyscallError> {
+        self.set_syscall(Syscall::Publish(name, data));
+        DummyFuture::Started.await;
+        Ok(())
+    }
+
     pub async fn fs_list(&self, path: String) -> Result<(), SyscallError> {
         self.set_syscall(Syscall::List(path));
         DummyFuture::Started.await;

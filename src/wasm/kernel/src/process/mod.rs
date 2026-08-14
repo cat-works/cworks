@@ -28,6 +28,9 @@ pub enum Syscall {
     Get(String),
     Set(String, FSObjRef),
     Mkdir(String, String),
+    Subscribe(String),
+    Unsubscribe(String),
+    Publish(String, Option<FSObjRef>),
 }
 
 pub trait Process {
