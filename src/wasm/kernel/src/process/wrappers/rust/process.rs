@@ -114,13 +114,37 @@ impl RustProcessCore {
     pub async fn subscribe(&self, name: String) -> Result<(), SyscallError> {
         self.set_syscall(Syscall::Subscribe(name));
         DummyFuture::Started.await;
-        Ok(())
+        let m = self.syscall_data.borrow().clone();
+        match m {
+            SyscallData::FSSuccess => {
+                self.set_syscall_data(&SyscallData::None);
+                log::trace!("RustProcessCore::fs_set: returning FSSuccess");
+                Ok(())
+            }
+            SyscallData::Fail(ref e) => {
+                self.set_syscall_data(&SyscallData::None);
+                Err(e.clone())
+            }
+            _ => Ok(()),
+        }
     }
 
     pub async fn unsubscribe(&self, name: String) -> Result<(), SyscallError> {
         self.set_syscall(Syscall::Unsubscribe(name));
         DummyFuture::Started.await;
-        Ok(())
+        let m = self.syscall_data.borrow().clone();
+        match m {
+            SyscallData::FSSuccess => {
+                self.set_syscall_data(&SyscallData::None);
+                log::trace!("RustProcessCore::fs_set: returning FSSuccess");
+                Ok(())
+            }
+            SyscallData::Fail(ref e) => {
+                self.set_syscall_data(&SyscallData::None);
+                Err(e.clone())
+            }
+            _ => Ok(()),
+        }
     }
 
     pub async fn publish(&self, name: String, data: Option<FSObjRef>) -> Result<(), SyscallError> {

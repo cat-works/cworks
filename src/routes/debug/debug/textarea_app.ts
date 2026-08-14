@@ -2,27 +2,31 @@ import type { Handle, Process } from "$lib/session";
 
 
 export async function textarea_main(p: Process, textarea: HTMLTextAreaElement) {
-  const server = await p.ipc_create("system/textarea/root");
+  await p.fs_mkdir("/", "srv");
+  await p.fs_mkdir("/srv", "textarea");
+  await p.fs_mkdir("/srv/textarea", "root");
 
-  let client: Handle = await new Promise((resolve) => {
-    server.on("connection", (h: Handle) => {
-      resolve(h);
-      return true;
-    });
+
+  await p.fs_subscribe("/srv/textarea/root/push", (caller_pid: bigint, data: any) => {
+    if (typeof data.String === "string") {
+      textarea.value = data.String;
+    } else {
+      console.log("Invalid data received on /srv/textarea/root/push:", data);
+    }
+    return true;
+  });
+
+  await p.fs_subscribe("/srv/textarea/root/take", (caller_pid: bigint, data: any) => {
+    if (typeof data.String !== "string") {
+      console.log("Invalid pointer received on /srv/textarea/root/take:", data);
+    } else {
+      p.fs_publish(data.String, { String: textarea.value });
+    }
+    return true;
   });
 
   while (1) {
-    const data = await client.recv();
-    const [op, ...payload] = data.split("");
-
-    switch (op) {
-      case 'l': // load
-        textarea.value = payload.join("");
-        break;
-      case 'a': // acquire
-        client.send(`l${textarea.value}`);
-        break;
-    }
+    await p.pending();
   }
 
   return 0n;

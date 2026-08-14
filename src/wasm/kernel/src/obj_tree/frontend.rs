@@ -48,6 +48,14 @@ impl FSFrontend {
     pub fn mkdir(&self, path: String, name: String) -> Result<(), FSReturns> {
         let parent = self.resolve_(path)?;
 
+        if let Ok(x) = parent.get_obj(name.clone()) {
+            if let Object::CompoundFSObj { .. } = **x.borrow() {
+                return Ok(());
+            } else {
+                return Err(FSReturns::InvalidCommandFormat);
+            }
+        }
+
         let new_dir = Object::CompoundFSObj {
             parent: Some(parent.clone()),
             children: HashMap::default(),

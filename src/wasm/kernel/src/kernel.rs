@@ -336,6 +336,10 @@ impl Kernel {
                             };
                             callee_pid.push(*pid);
                             **func_obj.borrow_mut() = Object::Func { callee_pid };
+
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::FSSuccess);
                         }
                         Syscall::Unsubscribe(path) => {
                             let (dir, fname) = match split_filename(path)
@@ -379,6 +383,10 @@ impl Kernel {
                             };
                             callee_pid.retain(|&x| x != *pid);
                             **func_obj.borrow_mut() = Object::Func { callee_pid };
+
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::FSSuccess);
                         }
                         Syscall::Publish(path, content) => {
                             let func_obj = match self.fs_root.follow(path.clone()) {
@@ -411,6 +419,10 @@ impl Kernel {
                                     },
                                 ));
                             }
+
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::FSSuccess);
                         }
                     }
                 }

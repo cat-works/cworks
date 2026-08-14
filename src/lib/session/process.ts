@@ -192,9 +192,82 @@ export class Process {
     })
   }
 
+  public fs_subscribe(path: string, callback: (caller_pid: bigint, data: any) => void): Promise<void> {
+    this.result_queue.push({
+      "Syscall": {
+        "Subscribe": path
+      }
+    });
+
+    this.emitter.on("invoke", (data: { caller_pid: bigint, path: string, arg: any }) => {
+      if (data.path === path) {
+        callback(data.caller_pid, data.arg);
+        return true;
+      }
+    });
+
+    return new Promise((resolve, reject) => {
+      this.emitter.once("callback", (s: any) => {
+        if (s.FSError !== undefined) {
+          reject(s.FSError);
+          return true;
+        } else if (s === "FSSuccess") {
+          resolve();
+          return true;
+        } else {
+          return false;
+        }
+      })
+    })
+  }
+
+  public fs_unsubscribe(path: string): Promise<void> {
+    this.result_queue.push({
+      "Syscall": {
+        "Unsubscribe": path
+      }
+    });
+
+    return new Promise((resolve, reject) => {
+      this.emitter.once("callback", (s: any) => {
+        if (s.FSError !== undefined) {
+          reject(s.FSError);
+          return true;
+        } else if (s === "FSSuccess") {
+          resolve();
+          return true;
+        } else {
+          return false;
+        }
+      })
+    })
+  }
+
+  public fs_publish(path: string, data: any): Promise<void> {
+    this.result_queue.push({
+      "Syscall": {
+        "Publish": [path, data]
+      }
+    });
+
+    return new Promise((resolve, reject) => {
+      this.emitter.once("callback", (s: any) => {
+        if (s.FSError !== undefined) {
+          reject(s.FSError);
+          return true;
+        } else if (s === "FSSuccess") {
+          resolve();
+          return true;
+        } else {
+          return false;
+        }
+      })
+    })
+  }
+
+
   kernel_callback(data: any): any {
     if (data !== "None") {
-      // console.debug("Kernel callback data", data);
       let callback_handled = this.emitter.emit("callback", data);
       if (callback_handled === false) {
         if (data.Fail !== undefined) {
@@ -211,11 +284,20 @@ export class Process {
             server: server,
           });
         } else if (data.ReceivingData !== undefined) {
-          let handle: string = data.ReceivingData.focus;
+          let handle = data.ReceivingData.focus;
           let message = data.ReceivingData.data;
           this.emitter.emit("receiving_data", {
-            focus: BigInt(handle),
+            focus: handle,
             data: message
+          });
+        } else if (data.Invoke !== undefined) {
+          let caller_pid = data.Invoke.caller_pid;
+          let path: string = data.Invoke.path;
+          let arg = data.Invoke.arg;
+          this.emitter.emit("invoke", {
+            caller_pid: caller_pid,
+            path: path,
+            arg: arg
           });
 
         } else {

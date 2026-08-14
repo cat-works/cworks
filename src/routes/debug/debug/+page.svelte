@@ -72,7 +72,6 @@
   function onKey(data: { key: string; domEvent: KeyboardEvent }) {}
 
   async function onLoad() {
-    // FitAddon Usage
     const fitAddon = new (await XtermAddon.FitAddon()).FitAddon();
     terminal.loadAddon(fitAddon);
     fitAddon.fit();
@@ -98,6 +97,8 @@
       }),
     );
     session.add_process(stdio_process.kernel_callback.bind(stdio_process));
+
+    await sleep(100);
 
     const textarea_process = new Process((p) =>
       textarea_main(p, code_editor as HTMLTextAreaElement),

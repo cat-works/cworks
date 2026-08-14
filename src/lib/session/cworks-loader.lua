@@ -22,6 +22,8 @@ end
 ---@type table<integer, function>
 local syscall_handlers = {}
 
+local channel_handlers = {} ---@type table<string, function>
+
 ---Interprets the syscall data and dispatch callback or return it
 ---@param data string
 local function dispatch_syscall(data)
@@ -45,6 +47,15 @@ local function dispatch_syscall(data)
       syscall_handlers[handle](data)
     else
       print("No handler for handle: " .. handle)
+    end
+  elseif sc_data["Invoke"] ~= nil then
+    local caller = sc_data["Invoke"]["caller_pid"]
+    local path = sc_data["Invoke"]["path"]
+    local arg = sc_data["Invoke"]["arg"]
+    if channel_handlers[path] then
+      channel_handlers[path](caller, arg)
+    else
+      print("No handler for path: " .. path)
     end
   else
     print("Unknown syscall data: " .. data)
@@ -106,6 +117,23 @@ end
 
 function cworks.set(path, data)
   local ret = cworks.do_syscall(json.stringify({ Syscall = { Set = { path, data } } }))
+  return ret
+end
+
+function cworks.subscribe(path, callback)
+  channel_handlers[path] = callback
+  local ret = cworks.do_syscall(json.stringify({ Syscall = { Subscribe = path } }))
+  return ret
+end
+
+function cworks.unsubscribe(path)
+  channel_handlers[path] = nil
+  local ret = cworks.do_syscall(json.stringify({ Syscall = { Unsubscribe = path } }))
+  return ret
+end
+
+function cworks.publish(path, data)
+  local ret = cworks.do_syscall(json.stringify({ Syscall = { Publish = { path, data } } }))
   return ret
 end
 
