@@ -1,5 +1,5 @@
 use super::SyscallError;
-use crate::obj_tree::{FSObjRef, FSReturns, FileStat};
+use crate::obj_tree::{FSObjRef, FileStat};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -9,7 +9,6 @@ pub enum SyscallData {
     Fail(SyscallError),
     FSSuccess,
     FSGet(FSObjRef),
-    FSError(FSReturns),
     FSList(Vec<String>),
     FSStat(FileStat),
     Invoke {

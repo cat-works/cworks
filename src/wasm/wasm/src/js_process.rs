@@ -14,7 +14,7 @@ impl CallbackProcess {
 }
 
 impl Process for CallbackProcess {
-    fn poll(&mut self, data: &kernel::SyscallData) -> kernel::PollResult<i64> {
+    fn poll(&mut self, data: &kernel::SyscallData) -> kernel::PollResult {
         let data = serde_wasm_bindgen::to_value(data);
         if data.is_err() {
             error!("Failed to serialize SyscallData: {:?}", data.err());
@@ -30,7 +30,7 @@ impl Process for CallbackProcess {
         }
         let ret = ret.unwrap();
 
-        let result = serde_wasm_bindgen::from_value::<PollResult<i64>>(ret);
+        let result = serde_wasm_bindgen::from_value::<PollResult>(ret);
         if result.is_err() {
             error!("Failed to deserialize PollResult: {:?}", result.err());
             return PollResult::Done(-1);

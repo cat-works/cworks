@@ -18,15 +18,10 @@ function cworks.hexdump(s)
   return table.concat(out, " ")
 end
 
----Table to store syscall handlers
----@type table<integer, function>
-local syscall_handlers = {}
-
 local channel_handlers = {} ---@type table<string, function>
 
----Interprets the syscall data and dispatch callback or return it
 ---@param data string
-local function dispatch_syscall(data)
+local function dispatch(data)
   local sc_data = json.parse(data)
   if sc_data == "None" then
     return nil
@@ -40,14 +35,6 @@ local function dispatch_syscall(data)
     return sc_data["FSGet"]
   elseif sc_data == "FSSuccess" then
     return "FSSuccess"
-  elseif sc_data["ReceivingData"] ~= nil then
-    local handle = sc_data["ReceivingData"]["focus"]
-    local data = sc_data["ReceivingData"]["data"]
-    if syscall_handlers[handle] then
-      syscall_handlers[handle](data)
-    else
-      print("No handler for handle: " .. handle)
-    end
   elseif sc_data["Invoke"] ~= nil then
     local caller = sc_data["Invoke"]["caller_pid"]
     local path = sc_data["Invoke"]["path"]
@@ -58,71 +45,71 @@ local function dispatch_syscall(data)
       print("No handler for path: " .. path)
     end
   else
-    print("Unknown syscall data: " .. data)
+    print("Unknown data from kernel: " .. data)
   end
 
   return nil
 end
 
-function cworks.do_syscall(data)
-  return dispatch_syscall(coroutine.yield(data))
+function cworks.pass_poll_result(data)
+  return dispatch(coroutine.yield(data))
 end
 
 function cworks.exit(retval)
-  cworks.do_syscall(json.stringify({ Done = retval }))
+  cworks.pass_poll_result(json.stringify({ Done = retval }))
 end
 
 function cworks.send(handle, data)
-  cworks.do_syscall(json.stringify({ Syscall = { Send = { "$$bi:" .. handle, data } } }))
+  cworks.pass_poll_result(json.stringify({ Send = { "$$bi:" .. handle, data } }))
 end
 
 function cworks.pending()
-  cworks.do_syscall("\"Pending\"")
+  cworks.pass_poll_result("\"Pending\"")
 end
 
 function cworks.sleep(seconds)
-  cworks.do_syscall(json.stringify({ Syscall = { Sleep = seconds } }))
+  cworks.pass_poll_result(json.stringify({ Sleep = seconds }))
 end
 
 function cworks.list(path)
-  local ret = cworks.do_syscall(json.stringify({ Syscall = { List = path } }))
+  local ret = cworks.pass_poll_result(json.stringify({ List = path }))
   return ret
 end
 
 function cworks.stat(path)
-  local ret = cworks.do_syscall(json.stringify({ Syscall = { Stat = path } }))
+  local ret = cworks.pass_poll_result(json.stringify({ Stat = path }))
   return ret
 end
 
 function cworks.mkdir(path, name)
-  local ret = cworks.do_syscall(json.stringify({ Syscall = { Mkdir = { path, name } } }))
+  local ret = cworks.pass_poll_result(json.stringify({ Mkdir = { path, name } }))
   return ret
 end
 
 function cworks.get(path)
-  local ret = cworks.do_syscall(json.stringify({ Syscall = { Get = path } }))
+  local ret = cworks.pass_poll_result(json.stringify({ Get = path }))
   return ret
 end
 
 function cworks.set(path, data)
-  local ret = cworks.do_syscall(json.stringify({ Syscall = { Set = { path, data } } }))
+  local ret = cworks.pass_poll_result(json.stringify({ Set = { path, data } }))
   return ret
 end
 
 function cworks.subscribe(path, callback)
   channel_handlers[path] = callback
-  local ret = cworks.do_syscall(json.stringify({ Syscall = { Subscribe = path } }))
+  local ret = cworks.pass_poll_result(json.stringify({ Subscribe = path }))
   return ret
 end
 
 function cworks.unsubscribe(path)
   channel_handlers[path] = nil
-  local ret = cworks.do_syscall(json.stringify({ Syscall = { Unsubscribe = path } }))
+  local ret = cworks.pass_poll_result(json.stringify({ Unsubscribe = path }))
   return ret
 end
 
 function cworks.publish(path, data)
-  local ret = cworks.do_syscall(json.stringify({ Syscall = { Publish = { path, data } } }))
+  local ret = cworks.pass_poll_result(json.stringify({ Publish = { path, data } }))
   return ret
 end
 

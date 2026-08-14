@@ -6,6 +6,8 @@ import test_proc from "./test_proc.lua?raw";
 
 
 export async function debug_main(p: Process, sess: Session) {
+  await p.fs_set("/a.txt", { String: "a" });
+
   const test_process = new LuaProcess(test_proc);
   sess.add_process(test_process.kernel_callback.bind(test_process));
 

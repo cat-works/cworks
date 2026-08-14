@@ -1,12 +1,12 @@
 use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
-use crate::{obj_tree::FSObjRef, Syscall, SyscallData, SyscallError};
+use crate::{obj_tree::FSObjRef, PollResult, SyscallData, SyscallError};
 
 use super::dummy_future::DummyFuture;
 
 #[derive(Clone, Default)]
 pub struct RustProcessCore {
-    pub(crate) syscall: Rc<RefCell<Option<Syscall>>>,
+    pub(crate) result: Rc<RefCell<PollResult>>,
     pub(crate) syscall_data: Rc<RefCell<SyscallData>>,
 
     data_buffer: RefCell<VecDeque<Rc<SyscallData>>>,
@@ -21,8 +21,8 @@ impl RustProcessCore {
         }
     }
 
-    fn set_syscall(&self, syscall: Syscall) {
-        *self.syscall.borrow_mut() = Some(syscall);
+    fn set_syscall(&self, syscall: PollResult) {
+        *self.result.borrow_mut() = syscall;
     }
 
     pub async fn get_syscall_data(&self) -> SyscallData {
@@ -42,12 +42,12 @@ impl RustProcessCore {
     }
 
     pub async fn sleep(&self, seconds: f32) {
-        self.set_syscall(Syscall::Sleep(seconds));
+        self.set_syscall(PollResult::Sleep(seconds));
         DummyFuture::Started.await;
     }
 
     pub async fn subscribe(&self, name: String) -> Result<(), SyscallError> {
-        self.set_syscall(Syscall::Subscribe(name));
+        self.set_syscall(PollResult::Subscribe(name));
         DummyFuture::Started.await;
         let m = self.syscall_data.borrow().clone();
         match m {
@@ -65,7 +65,7 @@ impl RustProcessCore {
     }
 
     pub async fn unsubscribe(&self, name: String) -> Result<(), SyscallError> {
-        self.set_syscall(Syscall::Unsubscribe(name));
+        self.set_syscall(PollResult::Unsubscribe(name));
         DummyFuture::Started.await;
         let m = self.syscall_data.borrow().clone();
         match m {
@@ -83,13 +83,13 @@ impl RustProcessCore {
     }
 
     pub async fn publish(&self, name: String, data: Option<FSObjRef>) -> Result<(), SyscallError> {
-        self.set_syscall(Syscall::Publish(name, data));
+        self.set_syscall(PollResult::Publish(name, data));
         DummyFuture::Started.await;
         Ok(())
     }
 
     pub async fn fs_list(&self, path: String) -> Result<(), SyscallError> {
-        self.set_syscall(Syscall::List(path));
+        self.set_syscall(PollResult::List(path));
         DummyFuture::Started.await;
 
         let m = self.syscall_data.borrow().clone();
@@ -108,7 +108,7 @@ impl RustProcessCore {
     }
 
     pub async fn fs_stat(&self, path: String) -> Result<(), SyscallError> {
-        self.set_syscall(Syscall::Stat(path));
+        self.set_syscall(PollResult::Stat(path));
         DummyFuture::Started.await;
 
         let m = self.syscall_data.borrow().clone();
@@ -127,7 +127,7 @@ impl RustProcessCore {
     }
 
     pub async fn fs_get(&self, path: String) -> Result<(), SyscallError> {
-        self.set_syscall(Syscall::Get(path));
+        self.set_syscall(PollResult::Get(path));
         DummyFuture::Started.await;
 
         let m = self.syscall_data.borrow().clone();
@@ -146,7 +146,7 @@ impl RustProcessCore {
     }
 
     pub async fn fs_set(&self, path: String, data: FSObjRef) -> Result<(), SyscallError> {
-        self.set_syscall(Syscall::Set(path, data));
+        self.set_syscall(PollResult::Set(path, data));
         DummyFuture::Started.await;
 
         let m = self.syscall_data.borrow().clone();
@@ -165,7 +165,7 @@ impl RustProcessCore {
     }
 
     pub async fn fs_mkdir(&self, path: String, name: String) -> Result<(), SyscallError> {
-        self.set_syscall(Syscall::Mkdir(path, name));
+        self.set_syscall(PollResult::Mkdir(path, name));
         DummyFuture::Started.await;
 
         let m = self.syscall_data.borrow().clone();

@@ -85,6 +85,14 @@ end
 
 local function ls_rec(dir, depth)
   local list = cworks.list(dir)
+
+  if depth == 0 then
+    write_stdout("/\n")
+  else
+    local indent = string.rep("  ", depth - 1) .. "- "
+    write_stdout(indent .. "" .. dir .. "\n")
+  end
+
   for _, item in ipairs(list) do
     if item == "." or item == ".." then
       goto continue
@@ -92,28 +100,23 @@ local function ls_rec(dir, depth)
     local st = cworks.stat(dir .. "/" .. item)
     local kind = st["kind"] ---@type string
 
-    local type_char = "?"
-    if kind == "Directory" then
-      type_char = "d"
-    elseif kind == "File" then
-      type_char = "f"
-    elseif kind == "Function" then
-      type_char = "x"
-    end
-
     local indent = string.rep("  ", depth) .. "- "
 
-    write_stdout(indent .. type_char .. " " .. item .. "\n")
-    if kind == "Directory" then
+    if kind == "Channel" then
+      write_stdout(indent .. "\x1b[36m" .. item .. "\x1b[m\n")
+    elseif kind == "File" then
+      write_stdout(indent .. "\x1b[33m" .. item .. "\x1b[m\n")
+    elseif kind == "Directory" then
       ls_rec(dir .. "/" .. item, depth + 1)
+    else
+      write_stdout(indent .. item .. "\n")
     end
     ::continue::
   end
 end
 write_stdout("\x1b[1;32mCat OS Shell\x1b[m\n")
 
-write_stdout("d /\n")
-ls_rec("/", 0)
+ls_rec("", 0)
 
 local pwd = "/"
 while true do

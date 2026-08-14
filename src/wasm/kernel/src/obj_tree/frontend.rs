@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::libs::split_filename;
+use crate::{libs::split_filename, SyscallError};
 
-use super::{FSObjRef, FSReturns, FileStat, Object};
+use super::{FSObjRef, FileStat, Object};
 
 pub struct FSFrontend {
     pub root: FSObjRef,
@@ -14,7 +14,7 @@ impl FSFrontend {
         Self { root }
     }
 
-    fn resolve_(&self, path: &str) -> Result<FSObjRef, FSReturns> {
+    fn resolve_(&self, path: &str) -> Result<FSObjRef, SyscallError> {
         if path == "/" || path.is_empty() {
             // Root path
             Ok(self.root.clone())
@@ -26,33 +26,33 @@ impl FSFrontend {
         }
     }
 
-    pub fn list(&self, path: &str) -> Result<Vec<String>, FSReturns> {
+    pub fn list(&self, path: &str) -> Result<Vec<String>, SyscallError> {
         self.resolve_(path)?.list()
     }
 
-    pub fn stat(&self, path: &str) -> Result<FileStat, FSReturns> {
+    pub fn stat(&self, path: &str) -> Result<FileStat, SyscallError> {
         Ok(self.resolve_(path)?.stat())
     }
 
-    pub fn get(&self, path: &str) -> Result<FSObjRef, FSReturns> {
+    pub fn get(&self, path: &str) -> Result<FSObjRef, SyscallError> {
         self.resolve_(path)
     }
-    pub fn set(&self, path: &str, obj: &FSObjRef) -> Result<(), FSReturns> {
-        let (parent, filename) = split_filename(path).ok_or(FSReturns::InvalidCommandFormat)?;
+    pub fn set(&self, path: &str, obj: &FSObjRef) -> Result<(), SyscallError> {
+        let (parent, filename) = split_filename(path).ok_or(SyscallError::InvalidRequest)?;
 
         self.resolve_(&parent)?.add_child(&filename, obj)?;
 
         Ok(())
     }
 
-    pub fn mkdir(&self, path: &str, name: &str) -> Result<(), FSReturns> {
+    pub fn mkdir(&self, path: &str, name: &str) -> Result<(), SyscallError> {
         let parent = self.resolve_(path)?;
 
         if let Ok(x) = parent.get_obj(name) {
             if let Object::CompoundFSObj { .. } = **x.borrow() {
                 return Ok(());
             }
-            return Err(FSReturns::InvalidCommandFormat);
+            return Err(SyscallError::InvalidRequest);
         }
 
         let new_dir = Object::CompoundFSObj {

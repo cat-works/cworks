@@ -2,8 +2,8 @@ use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
     libs::{split_filename, timestamp_ms, AutoMap},
-    obj_tree::{initfs, FSFrontend, FSObjRef, FSReturns, Object},
-    process::{ProcessStatus, Syscall, SyscallData, SyscallError},
+    obj_tree::{initfs, FSFrontend, FSObjRef, Object},
+    process::{ProcessStatus, SyscallData, SyscallError},
 };
 
 use super::process::{KernelProcess, PollResult, Process};
@@ -74,6 +74,8 @@ impl Kernel {
                 log::debug!("Process<{pid}> --> {res:?}");
             }
 
+            let fs_frontend = FSFrontend::new(self.fs_root.clone());
+
             match res {
                 PollResult::Pending => (),
                 PollResult::Done(n) => {
@@ -91,198 +93,187 @@ impl Kernel {
                         }
                     }
                 }
-                PollResult::Syscall(s) => {
-                    let fs_frontend = FSFrontend::new(self.fs_root.clone());
-                    match s {
-                        Syscall::Sleep(seconds) => {
-                            let duration_ms = (seconds * 1000.0) as i64;
-                            p.borrow_mut().status = ProcessStatus::Sleeping(now + duration_ms);
-                            /* log::debug!(
-                                "Process<{pid}> Sleeps for {seconds:6.4} seconds since {now:6.4}"
-                            ); */
-                        }
-                        Syscall::WaitForProcess(waitee) => {
-                            if process_keys.contains(&waitee) {
-                                p.borrow_mut().status = ProcessStatus::WaitingForProcess;
+                PollResult::Sleep(seconds) => {
+                    let duration_ms = (seconds * 1000.0) as i64;
+                    p.borrow_mut().status = ProcessStatus::Sleeping(now + duration_ms);
+                    /* log::debug!(
+                        "Process<{pid}> Sleeps for {seconds:6.4} seconds since {now:6.4}"
+                    ); */
+                }
+                PollResult::WaitForProcess(waitee) => {
+                    if process_keys.contains(&waitee) {
+                        p.borrow_mut().status = ProcessStatus::WaitingForProcess;
 
-                                let pair = PWaitingPair {
-                                    waitee,
-                                    waiter: *pid,
-                                };
-                                if let Some(waiters) =
-                                    self.waiting_pairs.borrow_mut().get_mut(&waitee)
-                                {
-                                    waiters.push(pair);
-                                } else {
-                                    self.waiting_pairs.borrow_mut().insert(waitee, vec![pair]);
-                                }
-                            } else {
-                                p.borrow_mut()
-                                    .outgoing_data_buffer
-                                    .push(SyscallData::Fail(SyscallError::NoSuchEntry));
-                            }
+                        let pair = PWaitingPair {
+                            waitee,
+                            waiter: *pid,
+                        };
+                        if let Some(waiters) = self.waiting_pairs.borrow_mut().get_mut(&waitee) {
+                            waiters.push(pair);
+                        } else {
+                            self.waiting_pairs.borrow_mut().insert(waitee, vec![pair]);
                         }
-                        Syscall::List(path) => {
-                            let res = fs_frontend.list(&path);
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(res.map_or_else(SyscallData::FSError, SyscallData::FSList));
-                        }
-                        Syscall::Stat(path) => {
-                            let stat = fs_frontend.stat(&path);
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(stat.map_or_else(SyscallData::FSError, SyscallData::FSStat));
-                        }
-                        Syscall::Get(path) => {
-                            let res = fs_frontend.get(&path);
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(res.map_or_else(SyscallData::FSError, SyscallData::FSGet));
-                        }
-                        Syscall::Set(path, obj) => {
-                            let res = fs_frontend.set(&path, &obj);
-                            p.borrow_mut().outgoing_data_buffer.push(
-                                res.map_or_else(SyscallData::FSError, |()| SyscallData::FSSuccess),
-                            );
-                        }
-                        Syscall::Mkdir(path, name) => {
-                            let res = fs_frontend.mkdir(&path, &name);
-                            p.borrow_mut().outgoing_data_buffer.push(
-                                res.map_or_else(SyscallData::FSError, |()| SyscallData::FSSuccess),
-                            );
-                        }
-                        Syscall::Subscribe(path) => {
-                            let (dir, fname) = match split_filename(&path)
-                                .ok_or(SyscallData::FSError(FSReturns::InvalidCommandFormat))
-                                .and_then(|(dir, fname)| {
-                                    self.fs_root
-                                        .follow(&dir)
-                                        .map_err(SyscallData::FSError)
-                                        .map(|d| (d, fname))
-                                }) {
-                                Ok(a) => a,
-                                Err(e) => {
-                                    p.borrow_mut().outgoing_data_buffer.push(e);
-                                    continue;
-                                }
-                            };
-
-                            let func_obj = match dir
-                                .get_obj(&fname)
-                                .map_err(SyscallData::FSError)
-                                .or_else(|_| {
-                                    let obj: FSObjRef = Object::Func { callee_pid: vec![] }.into();
-                                    dir.add_child(&fname, &obj.clone())
-                                        .map(|()| obj)
-                                        .map_err(SyscallData::FSError)
-                                }) {
-                                Ok(obj) => obj,
-                                Err(e) => {
-                                    p.borrow_mut().outgoing_data_buffer.push(e);
-                                    continue;
-                                }
-                            };
-                            let mut callee_pid = {
-                                let Object::Func { ref callee_pid } = **func_obj.borrow() else {
-                                    p.borrow_mut()
-                                        .outgoing_data_buffer
-                                        .push(SyscallData::FSError(FSReturns::UnsupportedMethod));
-                                    continue;
-                                };
-                                callee_pid.clone()
-                            };
-                            callee_pid.push(*pid);
-                            **func_obj.borrow_mut() = Object::Func { callee_pid };
-
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(SyscallData::FSSuccess);
-                        }
-                        Syscall::Unsubscribe(path) => {
-                            let (dir, fname) = match split_filename(&path)
-                                .ok_or(SyscallData::FSError(FSReturns::InvalidCommandFormat))
-                                .and_then(|(dir, fname)| {
-                                    self.fs_root
-                                        .follow(&dir)
-                                        .map_err(SyscallData::FSError)
-                                        .map(|d| (d, fname))
-                                }) {
-                                Ok(a) => a,
-                                Err(e) => {
-                                    p.borrow_mut().outgoing_data_buffer.push(e);
-                                    continue;
-                                }
-                            };
-
-                            let func_obj = match dir
-                                .get_obj(&fname)
-                                .map_err(SyscallData::FSError)
-                                .or_else(|_| {
-                                    let obj: FSObjRef = Object::Func { callee_pid: vec![] }.into();
-                                    dir.add_child(&fname, &obj.clone())
-                                        .map(|()| obj)
-                                        .map_err(SyscallData::FSError)
-                                }) {
-                                Ok(obj) => obj,
-                                Err(e) => {
-                                    p.borrow_mut().outgoing_data_buffer.push(e);
-                                    continue;
-                                }
-                            };
-                            let mut callee_pid = {
-                                let Object::Func { ref callee_pid } = **func_obj.borrow() else {
-                                    p.borrow_mut()
-                                        .outgoing_data_buffer
-                                        .push(SyscallData::FSError(FSReturns::UnsupportedMethod));
-                                    continue;
-                                };
-                                callee_pid.clone()
-                            };
-                            callee_pid.retain(|&x| x != *pid);
-                            **func_obj.borrow_mut() = Object::Func { callee_pid };
-
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(SyscallData::FSSuccess);
-                        }
-                        Syscall::Publish(path, content) => {
-                            let func_obj = match self.fs_root.follow(&path) {
-                                Ok(obj) => obj,
-                                Err(e) => {
-                                    p.borrow_mut()
-                                        .outgoing_data_buffer
-                                        .push(SyscallData::FSError(e));
-                                    continue;
-                                }
-                            };
-
-                            let callee_pid = {
-                                let Object::Func { ref callee_pid } = **func_obj.borrow() else {
-                                    p.borrow_mut()
-                                        .outgoing_data_buffer
-                                        .push(SyscallData::FSError(FSReturns::UnsupportedMethod));
-                                    continue;
-                                };
-                                callee_pid.clone()
-                            };
-
-                            for pid in callee_pid {
-                                actions.push(KernelAction::SendSyscallData(
-                                    pid,
-                                    SyscallData::Invoke {
-                                        caller_pid: pid,
-                                        path: path.clone(),
-                                        arg: content.clone(),
-                                    },
-                                ));
-                            }
-
-                            p.borrow_mut()
-                                .outgoing_data_buffer
-                                .push(SyscallData::FSSuccess);
-                        }
+                    } else {
+                        p.borrow_mut()
+                            .outgoing_data_buffer
+                            .push(SyscallData::Fail(SyscallError::NoSuchEntry));
                     }
+                }
+                PollResult::List(path) => {
+                    let res = fs_frontend.list(&path);
+                    p.borrow_mut()
+                        .outgoing_data_buffer
+                        .push(res.map_or_else(SyscallData::Fail, SyscallData::FSList));
+                }
+                PollResult::Stat(path) => {
+                    let stat = fs_frontend.stat(&path);
+                    p.borrow_mut()
+                        .outgoing_data_buffer
+                        .push(stat.map_or_else(SyscallData::Fail, SyscallData::FSStat));
+                }
+                PollResult::Get(path) => {
+                    let res = fs_frontend.get(&path);
+                    p.borrow_mut()
+                        .outgoing_data_buffer
+                        .push(res.map_or_else(SyscallData::Fail, SyscallData::FSGet));
+                }
+                PollResult::Set(path, obj) => {
+                    let res = fs_frontend.set(&path, &obj);
+                    p.borrow_mut()
+                        .outgoing_data_buffer
+                        .push(res.map_or_else(SyscallData::Fail, |()| SyscallData::FSSuccess));
+                }
+                PollResult::Mkdir(path, name) => {
+                    let res = fs_frontend.mkdir(&path, &name);
+                    p.borrow_mut()
+                        .outgoing_data_buffer
+                        .push(res.map_or_else(SyscallData::Fail, |()| SyscallData::FSSuccess));
+                }
+                PollResult::Subscribe(path) => {
+                    let (dir, fname) = match split_filename(&path)
+                        .ok_or(SyscallData::Fail(SyscallError::InvalidRequest))
+                        .and_then(|(dir, fname)| {
+                            self.fs_root
+                                .follow(&dir)
+                                .map_err(SyscallData::Fail)
+                                .map(|d| (d, fname))
+                        }) {
+                        Ok(a) => a,
+                        Err(e) => {
+                            p.borrow_mut().outgoing_data_buffer.push(e);
+                            continue;
+                        }
+                    };
+
+                    let func_obj =
+                        match dir.get_obj(&fname).map_err(SyscallData::Fail).or_else(|_| {
+                            let obj: FSObjRef = Object::Func { callee_pid: vec![] }.into();
+                            dir.add_child(&fname, &obj)
+                                .map(|()| obj)
+                                .map_err(SyscallData::Fail)
+                        }) {
+                            Ok(obj) => obj,
+                            Err(e) => {
+                                p.borrow_mut().outgoing_data_buffer.push(e);
+                                continue;
+                            }
+                        };
+                    let mut callee_pid = {
+                        let Object::Func { ref callee_pid } = **func_obj.borrow() else {
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::Fail(SyscallError::InvalidRequest));
+                            continue;
+                        };
+                        callee_pid.clone()
+                    };
+                    callee_pid.push(*pid);
+                    **func_obj.borrow_mut() = Object::Func { callee_pid };
+
+                    p.borrow_mut()
+                        .outgoing_data_buffer
+                        .push(SyscallData::FSSuccess);
+                }
+                PollResult::Unsubscribe(path) => {
+                    let (dir, fname) = match split_filename(&path)
+                        .ok_or(SyscallData::Fail(SyscallError::InvalidRequest))
+                        .and_then(|(dir, fname)| {
+                            self.fs_root
+                                .follow(&dir)
+                                .map_err(SyscallData::Fail)
+                                .map(|d| (d, fname))
+                        }) {
+                        Ok(a) => a,
+                        Err(e) => {
+                            p.borrow_mut().outgoing_data_buffer.push(e);
+                            continue;
+                        }
+                    };
+
+                    let func_obj =
+                        match dir.get_obj(&fname).map_err(SyscallData::Fail).or_else(|_| {
+                            let obj: FSObjRef = Object::Func { callee_pid: vec![] }.into();
+                            dir.add_child(&fname, &obj.clone())
+                                .map(|()| obj)
+                                .map_err(SyscallData::Fail)
+                        }) {
+                            Ok(obj) => obj,
+                            Err(e) => {
+                                p.borrow_mut().outgoing_data_buffer.push(e);
+                                continue;
+                            }
+                        };
+                    let mut callee_pid = {
+                        let Object::Func { ref callee_pid } = **func_obj.borrow() else {
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::Fail(SyscallError::InvalidRequest));
+                            continue;
+                        };
+                        callee_pid.clone()
+                    };
+                    callee_pid.retain(|&x| x != *pid);
+                    **func_obj.borrow_mut() = Object::Func { callee_pid };
+
+                    p.borrow_mut()
+                        .outgoing_data_buffer
+                        .push(SyscallData::FSSuccess);
+                }
+                PollResult::Publish(path, content) => {
+                    let func_obj = match self.fs_root.follow(&path) {
+                        Ok(obj) => obj,
+                        Err(e) => {
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::Fail(e));
+                            continue;
+                        }
+                    };
+
+                    let callee_pid = {
+                        let Object::Func { ref callee_pid } = **func_obj.borrow() else {
+                            p.borrow_mut()
+                                .outgoing_data_buffer
+                                .push(SyscallData::Fail(SyscallError::InvalidRequest));
+                            continue;
+                        };
+                        callee_pid.clone()
+                    };
+
+                    for pid in callee_pid {
+                        actions.push(KernelAction::SendSyscallData(
+                            pid,
+                            SyscallData::Invoke {
+                                caller_pid: pid,
+                                path: path.clone(),
+                                arg: content.clone(),
+                            },
+                        ));
+                    }
+
+                    p.borrow_mut()
+                        .outgoing_data_buffer
+                        .push(SyscallData::FSSuccess);
                 }
             }
         }

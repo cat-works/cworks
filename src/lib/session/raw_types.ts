@@ -1,9 +1,5 @@
 export type RawHandle = bigint;
 
-export type Syscall =
-  | { Sleep: number }
-  | { Send: [RawHandle, string] };
-
 export type SyscallError =
   | "NoSuchEntry"
   | "AlreadyExists"
@@ -19,4 +15,4 @@ export type SyscallData =
   | { ReceivingData: { focus: RawHandle; data: string } }
   | "None";
 
-export type PollResult = "Pending" | { Syscall: Syscall } | { Done: bigint };
+export type PollResult = "Pending" | { Done: bigint };

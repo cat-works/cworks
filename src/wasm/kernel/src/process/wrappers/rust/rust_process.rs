@@ -36,24 +36,20 @@ impl<F> Process for RustProcess<'_, F>
 where
     F: Future<Output = i64>,
 {
-    fn poll(&mut self, data: &SyscallData) -> PollResult<i64> {
+    fn poll(&mut self, data: &SyscallData) -> PollResult {
         let f = unsafe { Pin::new_unchecked(&mut self.f) };
 
         self.session.set_syscall_data(data);
         let r = f.poll(&mut self.ctx);
 
-        {
-            let mut syscall = self.session.syscall.borrow_mut();
-            if syscall.is_some() {
-                let r = PollResult::Syscall(syscall.take().unwrap());
-                *syscall = None;
-                return r;
-            }
+        match r {
+            Poll::Ready(v) => return PollResult::Done(v),
+            Poll::Pending => {}
         }
 
-        match r {
-            Poll::Ready(v) => PollResult::Done(v),
-            Poll::Pending => PollResult::Pending,
-        }
+        let res = self.session.result.borrow().clone();
+        self.session.result.replace(PollResult::Pending);
+
+        res
     }
 }

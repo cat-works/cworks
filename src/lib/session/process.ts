@@ -1,6 +1,6 @@
 import { EventEmitter } from "../event_emitter";
 import { Handle } from "./handle";
-import type { PollResult, RawHandle, SyscallData, SyscallError } from "./raw_types";
+import type { PollResult, RawHandle, SyscallError } from "./raw_types";
 
 export class Process {
   public emitter = new EventEmitter("Process");
@@ -42,11 +42,7 @@ export class Process {
   }
 
   public send(handle: RawHandle, data: string): Promise<void> {
-    this.result_queue.push({
-      "Syscall": {
-        "Send": [handle, data]
-      }
-    });
+    this.result_queue.push({ "Send": [handle, data] });
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: Uint8Array) => {
         const op = s[0];
@@ -64,21 +60,13 @@ export class Process {
   }
 
   public sleep(time: number): Promise<void> {
-    this.result_queue.push({
-      "Syscall": {
-        Sleep: time
-      }
-    });
+    this.result_queue.push({ Sleep: time });
 
     return this.pending();
   }
 
   public fs_list(path: string): Promise<string[]> {
-    this.result_queue.push({
-      "Syscall": {
-        "List": path
-      }
-    });
+    this.result_queue.push({ "List": path });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -94,11 +82,7 @@ export class Process {
   }
 
   public fs_stat(path: string): Promise<{ kind: "Directory" | "File" }> {
-    this.result_queue.push({
-      "Syscall": {
-        "Stat": path
-      }
-    });
+    this.result_queue.push({ "Stat": path });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -114,11 +98,7 @@ export class Process {
   }
 
   public fs_set(path: string, data: any): Promise<void> {
-    this.result_queue.push({
-      "Syscall": {
-        "Set": [path, data]
-      }
-    });
+    this.result_queue.push({ "Set": [path, data] });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -134,11 +114,7 @@ export class Process {
   }
 
   public fs_get(path: string): Promise<any> {
-    this.result_queue.push({
-      "Syscall": {
-        "Get": path
-      }
-    });
+    this.result_queue.push({ "Get": path });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -155,11 +131,7 @@ export class Process {
   }
 
   public fs_mkdir(path: string, name: any): Promise<void> {
-    this.result_queue.push({
-      "Syscall": {
-        "Mkdir": [path, name]
-      }
-    });
+    this.result_queue.push({ "Mkdir": [path, name] });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -175,11 +147,7 @@ export class Process {
   }
 
   public fs_subscribe(path: string, callback: (caller_pid: bigint, data: any) => void): Promise<void> {
-    this.result_queue.push({
-      "Syscall": {
-        "Subscribe": path
-      }
-    });
+    this.result_queue.push({ "Subscribe": path });
 
     this.emitter.on("invoke", (data: { caller_pid: bigint, path: string, arg: any }) => {
       if (data.path === path) {
@@ -190,8 +158,8 @@ export class Process {
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
-        if (s.FSError !== undefined) {
-          reject(s.FSError);
+        if (s.Fail !== undefined) {
+          reject(s.Fail);
           return true;
         } else if (s === "FSSuccess") {
           resolve();
@@ -204,16 +172,12 @@ export class Process {
   }
 
   public fs_unsubscribe(path: string): Promise<void> {
-    this.result_queue.push({
-      "Syscall": {
-        "Unsubscribe": path
-      }
-    });
+    this.result_queue.push({ "Unsubscribe": path });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
-        if (s.FSError !== undefined) {
-          reject(s.FSError);
+        if (s.Fail !== undefined) {
+          reject(s.Fail);
           return true;
         } else if (s === "FSSuccess") {
           resolve();
@@ -226,16 +190,12 @@ export class Process {
   }
 
   public fs_publish(path: string, data: any): Promise<void> {
-    this.result_queue.push({
-      "Syscall": {
-        "Publish": [path, data]
-      }
-    });
+    this.result_queue.push({ "Publish": [path, data] });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
-        if (s.FSError !== undefined) {
-          reject(s.FSError);
+        if (s.Fail !== undefined) {
+          reject(s.Fail);
           return true;
         } else if (s === "FSSuccess") {
           resolve();

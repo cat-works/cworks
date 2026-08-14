@@ -7,7 +7,9 @@ use std::{
 
 use serde::Serialize;
 
-use super::{FSReturns, FileKind, FileStat, Object};
+use crate::SyscallError;
+
+use super::{FileKind, FileStat, Object};
 
 #[derive(Clone)]
 pub struct FSObjRef(Rc<RefCell<Box<Object>>>);
@@ -91,7 +93,7 @@ impl FSObjRef {
                 kind: FileKind::Directory,
             },
             Object::Func { .. } => FileStat {
-                kind: FileKind::Function,
+                kind: FileKind::Channel,
             },
             _ => FileStat {
                 kind: FileKind::File,
@@ -100,7 +102,7 @@ impl FSObjRef {
     }
 
     // directory-like methods
-    pub fn list(&self) -> Result<Vec<String>, FSReturns> {
+    pub fn list(&self) -> Result<Vec<String>, SyscallError> {
         match **self.0.borrow() {
             Object::CompoundFSObj {
                 ref parent,
@@ -116,11 +118,11 @@ impl FSObjRef {
                 Ok(list)
             }
 
-            _ => Err(FSReturns::UnsupportedMethod),
+            _ => Err(SyscallError::InvalidRequest),
         }
     }
 
-    pub fn get_obj(&self, part: &str) -> Result<Self, FSReturns> {
+    pub fn get_obj(&self, part: &str) -> Result<Self, SyscallError> {
         match **self.0.borrow() {
             Object::CompoundFSObj {
                 ref parent,
@@ -138,14 +140,14 @@ impl FSObjRef {
                     }
                 }
 
-                Err(FSReturns::UnknownPath)
+                Err(SyscallError::NoSuchEntry)
             }
 
-            _ => Err(FSReturns::UnsupportedMethod),
+            _ => Err(SyscallError::UnsupportedMethod),
         }
     }
 
-    pub fn add_child(&self, name: &str, obj: &Self) -> Result<(), FSReturns> {
+    pub fn add_child(&self, name: &str, obj: &Self) -> Result<(), SyscallError> {
         match **self.0.clone().borrow_mut() {
             Object::CompoundFSObj {
                 ref mut children, ..
@@ -153,7 +155,7 @@ impl FSObjRef {
                 children.insert(name.to_string(), obj.clone());
             }
 
-            _ => return Err(FSReturns::UnsupportedMethod),
+            _ => return Err(SyscallError::InvalidRequest),
         }
         if let Object::CompoundFSObj { ref mut parent, .. } = **obj.0.borrow_mut() {
             *parent = Some(self.clone());
@@ -162,7 +164,7 @@ impl FSObjRef {
         Ok(())
     }
 
-    pub fn follow(&self, path: &str) -> Result<Self, FSReturns> {
+    pub fn follow(&self, path: &str) -> Result<Self, SyscallError> {
         let parts = path.split('/').filter(|x| !x.is_empty());
 
         let mut current: Self = self.clone();

@@ -1,6 +1,8 @@
-use super::{FSObjRef, FSReturns};
+use crate::SyscallError;
 
-fn usr(root: FSObjRef) -> Result<FSObjRef, FSReturns> {
+use super::FSObjRef;
+
+fn usr(root: FSObjRef) -> Result<FSObjRef, SyscallError> {
     let usr: FSObjRef = FSObjRef::new_compound(root);
 
     usr.add_child("mime", &FSObjRef::new_compound(usr.clone()))?;
@@ -17,7 +19,7 @@ fn workspace(root: FSObjRef) -> FSObjRef {
     FSObjRef::new_compound(root)
 }
 
-fn root() -> Result<FSObjRef, FSReturns> {
+fn root() -> Result<FSObjRef, SyscallError> {
     let root: FSObjRef = FSObjRef::empty_compound();
 
     root.add_child("usr", &usr(root.clone())?)?;
