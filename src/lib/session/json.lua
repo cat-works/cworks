@@ -65,7 +65,17 @@ local function escape_str(s)
   for i, c in ipairs(in_char) do
     s = s:gsub(c, '\\' .. out_char[i])
   end
-  return s
+
+  local result = ""
+  for i = 1, #s do
+    local c = s:sub(i, i)
+    if c:byte() < 32 then
+      result = result .. string.format("\\u%04x", c:byte())
+    else
+      result = result .. c
+    end
+  end
+  return result
 end
 
 -- Returns pos, did_find; there are two cases:

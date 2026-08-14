@@ -1,9 +1,11 @@
 local json = require("json")
 
+local cworks = {}
+
 ---Dumps the text in hex format
 ---@param s string
 ---@return string
-local function hexdump(s)
+function cworks.hexdump(s)
   local out = {}
   for i = 1, #s do
     local c = s:sub(i, i)
@@ -16,40 +18,6 @@ local function hexdump(s)
   return table.concat(out, " ")
 end
 
----Escapes string for JSON
----@param s string
----@return string
-local function json_escape(s)
-  local result = ""
-  for i = 1, #s do
-    local c = s:sub(i, i)
-    if c == '"' then
-      result = result .. '\\"'
-    elseif c == '\\' then
-      result = result .. '\\\\'
-    elseif c == '\b' then
-      result = result .. '\\b'
-    elseif c == '\f' then
-      result = result .. '\\f'
-    elseif c == '\n' then
-      result = result .. '\\n'
-    elseif c == '\r' then
-      result = result .. '\\r'
-    elseif c == '\t' then
-      result = result .. '\\t'
-    else
-      local byte = string.byte(c)
-      if byte < 32 or byte > 126 then
-        result = result .. string.format("\\u%04x", byte)
-      else
-        result = result .. c
-      end
-    end
-  end
-  return result
-end
-
-
 ---Table to store syscall handlers
 ---@type table<integer, function>
 local syscall_handlers = {}
@@ -59,11 +27,22 @@ local syscall_handlers = {}
 ---@return integer? handle
 local function dispatch_syscall(data)
   local sc_data = json.parse(data)
-  local syscall_type = -50
-  if sc_data == "None" then            -- none
+  if sc_data == "None" then
     return nil
-  elseif sc_data["Handle"] ~= nil then -- handle
+  elseif sc_data["Handle"] ~= nil then
     return sc_data["Handle"]
+  elseif sc_data["FSList"] ~= nil then
+    return sc_data["FSList"]
+  elseif sc_data["FSStat"] ~= nil then
+    return sc_data["FSStat"]
+  elseif sc_data["ReceivingData"] ~= nil then
+    local handle = sc_data["ReceivingData"]["focus"]
+    local data = sc_data["ReceivingData"]["data"]
+    if syscall_handlers[handle] then
+      syscall_handlers[handle](data)
+    else
+      print("No handler for handle: " .. handle)
+    end
   else
     print("Unknown syscall data: " .. data)
   end
@@ -71,29 +50,20 @@ local function dispatch_syscall(data)
   return nil
 end
 
----do_syscall
----@param data string
-local function do_syscall(data)
+function cworks.do_syscall(data)
   return dispatch_syscall(coroutine.yield(data))
 end
 
-local function exit(retval)
-  do_syscall("{\"Done\": " .. retval .. "}")
+function cworks.exit(retval)
+  cworks.do_syscall(json.stringify({ Done = retval }))
 end
 
----Sends data to specified handle
----@param handle integer
----@param data string
-local function send(handle, data)
-  do_syscall("{\"Syscall\":{\"Send\":[\"$$bi:" .. handle .. "\", \"" .. json_escape(data) .. "\"]}}")
+function cworks.send(handle, data)
+  cworks.do_syscall(json.stringify({ Syscall = { Send = { "$$bi:" .. handle, data } } }))
 end
 
----Connects to the IPC socket
----@param socket_name string
----@param data_callback function
----@return integer handle
-local function ipc_connect(socket_name, data_callback)
-  local handle = do_syscall("{\"Syscall\":{\"IpcConnect\":\"" .. socket_name .. "\"}}")
+function cworks.ipc_connect(socket_name, data_callback)
+  local handle = cworks.do_syscall(json.stringify({ Syscall = { IpcConnect = socket_name } }))
   if handle then
     syscall_handlers[handle] = data_callback
     return handle
@@ -103,28 +73,27 @@ local function ipc_connect(socket_name, data_callback)
   end
 end
 
-local function pending()
-  do_syscall("Pending")
+function cworks.pending()
+  cworks.do_syscall("\"Pending\"")
 end
 
----Sleeps specified amount of time
----@param seconds number
-local function sleep(seconds)
-  do_syscall("{\"Syscall\":{\"Sleep\":" .. seconds .. "}}")
+function cworks.sleep(seconds)
+  cworks.do_syscall(json.stringify({ Syscall = { Sleep = seconds } }))
 end
 
-package.loaded["cworks"] = {
-  -- misc
-  hexdump = hexdump,
+function cworks.list(path)
+  local ret = cworks.do_syscall(json.stringify({ Syscall = { List = path } }))
+  return ret
+end
 
-  -- syscall layer
-  dispatch_syscall = dispatch_syscall,
-  do_syscall = do_syscall,
+function cworks.stat(path)
+  local ret = cworks.do_syscall(json.stringify({ Syscall = { Stat = path } }))
+  return ret
+end
 
-  -- syscall
-  exit = exit,
-  send = send,
-  ipc_connect = ipc_connect,
-  pending = pending,
-  sleep = sleep,
-}
+function cworks.mkdir(path, name)
+  local ret = cworks.do_syscall(json.stringify({ Syscall = { Mkdir = { path, name } } }))
+  return ret
+end
+
+package.loaded["cworks"] = cworks

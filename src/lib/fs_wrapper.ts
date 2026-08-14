@@ -1,26 +1,7 @@
 import type { Handle, Process } from "./session";
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export class FileSystem {
   constructor(private proc: Process) { }
-
-  private handle_error(ret: string): void {
-    if (
-      [
-        "InvalidCommandFormat",
-        "UnsupportedMethod",
-        "InvalidHandle",
-        "UnknownPath",
-        "UnknownError",
-      ].includes(ret)
-    ) {
-      throw ret;
-    }
-  }
-
 
   public async list(path: string): Promise<string[]> {
     return await this.proc.fs_list(path);

@@ -20,7 +20,9 @@ export class LuaProcess {
       }
       return value;
     });
+    if (dataString != "\"None\"") { console.debug("lp <--", dataString) };
     const result = this.thread.yield(dataString);
+    if (result != "\"Pending\"") { console.debug("lp -->", result) };
     const parsed_obj = JSON.parse(result);
 
     // transform string back to bigint for handles
@@ -38,6 +40,7 @@ export class LuaProcess {
       }
       return obj;
     };
+    if (parsed_obj !== "Pending") { console.debug("lp ==>", transformHandles(parsed_obj)) };
 
     return transformHandles(parsed_obj);
   }

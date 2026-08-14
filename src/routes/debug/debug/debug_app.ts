@@ -81,56 +81,18 @@ class CodeEditor {
 }
 
 export async function debug_main(p: Process, sess: Session) {
-  const stdio = new StdIO(p);
-  await stdio.init("root");
-
-  const editor = new CodeEditor(p);
-  await editor.init("root");
-
   const fs = new FileSystem(p);
-
   await fs.set("/test.lua", { String: test_proc });
-  await fs.mkdir("/usr", "lib");
 
   const test_process = new LuaProcess(test_proc);
   sess.add_process(test_process.kernel_callback.bind(test_process));
 
 
-  stdio.write(`\x1b[1;32mCat OS Shell\x1b[m\n`);
-  stdio.write(`Type 'man commands' to see available commands.\n\n`);
-
-
+  /*
   let pwd = '/';
 
   while (1) {
-    stdio.write(`\x1b[1;32m${pwd}\x1b[m\n`);
-    stdio.write(`\x1b[2m$\x1b[m `);
-    const line = await stdio.readline();
-
-    const [command, ...args] = line.split(" ");
-
-
-    if (command === "ls") {
-      const entries = await fs.list(pwd);
-      for (const entry of entries) {
-        let s = await fs.stat(`${pwd}${entry}`);
-        stdio.write(`${s.kind[0]} ${entry}\n`);
-      }
-    } else if (command === "cd") {
-      if (args[0]) {
-        pwd += args[0];
-        if (!pwd.endsWith('/')) {
-          pwd += '/';
-        }
-      } else {
-        pwd = '/';
-      }
-    } else if (command === "mkdir") {
-      await fs.mkdir(pwd, args[0]);
-    } else if (command === "stat") {
-      const stat = await fs.stat(`${pwd}${args[0]}`);
-      stdio.write(`${stat}\n`);
-    } else if (command === "get") {
+    if (command === "get") {
       const stat = await fs.get(`${pwd}${args[0]}`);
       stdio.write(`${stat}\n`);
     } else if (command === "man") {
@@ -190,7 +152,7 @@ export async function debug_main(p: Process, sess: Session) {
       stdio.write(sess.get_ipc_names().join("\n") + "\n");
     }
 
-  }
+  } */
 
   return 0n;
 }
