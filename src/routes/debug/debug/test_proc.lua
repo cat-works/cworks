@@ -118,6 +118,7 @@ write_stdout("\x1b[1;32mCat OS Shell\x1b[m\n")
 
 ls_rec("", 0)
 
+
 local pwd = "/"
 while true do
   write_stdout("\n\x1b[1;32m" .. pwd .. "\x1b[m\n");
@@ -197,6 +198,14 @@ while true do
     end
   elseif command == "clear" then
     write_stdout("\x1b[2J\x1b[H")
+  elseif command == "exec" then
+    local lua_path = path_join(pwd, args)
+    local lua_code = cworks.get(lua_path)
+    if lua_code["String"] == nil then
+      write_stdout("File is not a string: " .. lua_path .. "\n")
+    else
+      cworks.publish("/run/sys/exec-lua", { String = lua_code["String"] })
+    end
   else
     write_stdout("Unknown command: " .. command .. "\n")
   end

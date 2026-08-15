@@ -10,6 +10,7 @@
   import { stdio_main } from "./stdio_app";
   import { debug_main } from "./debug_app";
   import { textarea_main } from "./textarea_app";
+  import { lua_launcher } from "./lua_launcher";
 
   function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -105,6 +106,11 @@
     );
     session.add_process(
       textarea_process.kernel_callback.bind(textarea_process),
+    );
+
+    const lua_launcher_process = new Process((p) => lua_launcher(p, session));
+    session.add_process(
+      lua_launcher_process.kernel_callback.bind(lua_launcher_process),
     );
 
     await sleep(100);
