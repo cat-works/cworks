@@ -1,4 +1,4 @@
-import type { Handle, Process } from "$lib/session";
+import type { Process } from "$lib/session";
 import { LuaProcess } from "$lib/session/luaprocess";
 import type { Session } from "../../../wasm/pkg/wasm";
 

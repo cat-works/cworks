@@ -1,6 +1,5 @@
 import { EventEmitter } from "../event_emitter";
-import { Handle } from "./handle";
-import type { PollResult, RawHandle, SyscallError } from "./raw_types";
+import type { RawHandle } from "./raw_types";
 
 export class Process {
   public emitter = new EventEmitter("Process");
@@ -15,19 +14,6 @@ export class Process {
     }).catch((e) => {
       this.result_queue.push({ Done: -1 });
       throw e;
-    });
-  }
-
-  public get_syscall_handle(): Promise<Handle> {
-    return new Promise((resolve, reject) => {
-      this.emitter.once_or(["handle", "fail"], (event: string, x: RawHandle | SyscallError) => {
-        if (event === "fail") {
-          reject(x as SyscallError);
-        } else {
-          resolve(new Handle(x as RawHandle, this));
-        }
-        return true;
-      });
     });
   }
 
@@ -214,24 +200,6 @@ export class Process {
       if (callback_handled === false) {
         if (data.Fail !== undefined) {
           this.emitter.emit("fail", data.Fail);
-        } else if (data.Handle !== undefined) {
-          this.emitter.emit("handle",
-            data.Handle
-          );
-        } else if (data.Connection !== undefined) {
-          let client = data.Connection.client;
-          let server = data.Connection.server;
-          this.emitter.emit("connection", {
-            client: client,
-            server: server,
-          });
-        } else if (data.ReceivingData !== undefined) {
-          let handle = data.ReceivingData.focus;
-          let message = data.ReceivingData.data;
-          this.emitter.emit("receiving_data", {
-            focus: handle,
-            data: message
-          });
         } else if (data.Invoke !== undefined) {
           let caller_pid = data.Invoke.caller_pid;
           let path: string = data.Invoke.path;

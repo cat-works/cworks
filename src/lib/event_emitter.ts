@@ -1,6 +1,6 @@
 import { my_stringify } from "./console-utils";
 
-type Listener = (...args) => (boolean | void);
+type Listener = (...args: any[]) => (boolean | void);
 
 export class EventEmitter {
   private listeners: { [key: string]: Listener[] } = {};

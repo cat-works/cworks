@@ -1,4 +1,4 @@
-import type { Handle, Process } from "$lib/session";
+import type { Process } from "$lib/session";
 
 
 export async function textarea_main(p: Process, textarea: HTMLTextAreaElement) {

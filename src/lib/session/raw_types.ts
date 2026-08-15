@@ -10,9 +10,6 @@ export type SyscallError =
 
 export type SyscallData =
   | { Fail: SyscallError }
-  | { Handle: RawHandle }
-  | { Connection: { client: RawHandle; server: RawHandle } }
-  | { ReceivingData: { focus: RawHandle; data: string } }
   | "None";
 
 export type PollResult = "Pending" | { Done: bigint };

@@ -1,4 +1,4 @@
-import type { Handle, Process } from "./session";
+import type { Process } from "./session";
 
 export class FileSystem {
   constructor(private proc: Process) { }

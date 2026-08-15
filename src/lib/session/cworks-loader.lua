@@ -25,8 +25,6 @@ local function dispatch(data)
   local sc_data = json.parse(data)
   if sc_data == "None" then
     return nil
-  elseif sc_data["Handle"] ~= nil then
-    return sc_data["Handle"]
   elseif sc_data["FSList"] ~= nil then
     return sc_data["FSList"]
   elseif sc_data["FSStat"] ~= nil then
