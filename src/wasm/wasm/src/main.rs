@@ -1,24 +1,33 @@
-use kernel::{obj_tree::Object, RustProcess, RustProcessCore, SyscallData};
+use std::rc::Rc;
+
+use kernel::{obj_tree::Object, RustProcess, RustProcessCore};
 
 mod generator;
 mod js_process;
 mod session;
 extern crate kernel;
 
-async fn server(session: RustProcessCore, _arg: u32) -> i64 {
-    if let Err(e) = session.subscribe("/the-sock.ch".to_string()).await {
+async fn server(mut session: RustProcessCore, _arg: u32) -> i64 {
+    if let Err(e) = session
+        .subscribe(
+            "/the-sock.ch".to_string(),
+            Rc::new(Box::new(|data| {
+                log::info!("Server received data: {data:?}");
+                Ok(())
+            })),
+        )
+        .await
+    {
         log::error!("Server failed to subscribe: {e:?}");
         return 0;
     }
 
-    loop {
-        let data = session.get_syscall_data().await;
-        if matches!(data, SyscallData::None) {
-            continue;
-        }
+    session
+        .wait_for_event()
+        .await
+        .expect("Failed to wait for event");
 
-        log::info!("Server received data: {data:?}");
-    }
+    0
 }
 
 async fn client(session: RustProcessCore, _arg: u32) -> i64 {

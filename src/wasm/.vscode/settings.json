@@ -2,7 +2,7 @@
   "saveAndRun": {
     "commands": [
       {
-        "cmd": "RUST_BACKTRACE=1 cargo run"
+        "cmd": " clear; RUST_BACKTRACE=1 cargo run"
       }
     ]
   }

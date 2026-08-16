@@ -4,8 +4,6 @@ use std::{
     task::{Context, Poll},
 };
 
-use log::Level::Trace;
-
 use crate::{PollResult, Process, SyscallData};
 
 use super::process::RustProcessCore;
@@ -43,8 +41,6 @@ where
 
         self.session.set_syscall_data(data);
         let r = f.poll(&mut self.ctx);
-
-        log::trace!("RustProcess::poll: data: {data:?}, result: {r:?}");
 
         match r {
             Poll::Ready(v) => return PollResult::Done(v),

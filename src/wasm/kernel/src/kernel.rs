@@ -77,12 +77,13 @@ impl Kernel {
             let fs_frontend = FSFrontend::new(self.fs_root.clone());
 
             match res {
+                PollResult::WaitForEvent => {
+                    p.borrow_mut().status = ProcessStatus::WaitingForEvent;
+                }
                 PollResult::Pending => (),
                 PollResult::Done(n) => {
-                    log::debug!("Process<{pid}> ==> {n}");
                     actions.push(KernelAction::ProcessKill(*pid));
 
-                    // Lookup for waiting processes
                     let pairs = self.waiting_pairs.borrow_mut().remove(pid);
                     if let Some(pairs) = pairs {
                         for pair in pairs {
@@ -289,6 +290,7 @@ impl Kernel {
                     match process {
                         Some(process) => {
                             process.borrow_mut().outgoing_data_buffer.push(data);
+                            process.borrow_mut().status = ProcessStatus::Running;
                         }
                         None => {
                             log::warn!("Process {pid} not found! (ignored)");
@@ -306,6 +308,18 @@ impl Kernel {
                     }
                 }
             }
+        }
+
+        let is_any_process_running = self
+            .processes
+            .borrow()
+            .values()
+            .map(|p| p.borrow().status.clone())
+            .any(|status| {
+                status == ProcessStatus::Running || matches!(status, ProcessStatus::Sleeping(_))
+            });
+        if !is_any_process_running {
+            *self.processes.borrow_mut() = AutoMap::new();
         }
     }
     pub fn start(&mut self) {

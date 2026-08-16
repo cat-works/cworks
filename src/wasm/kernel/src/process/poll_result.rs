@@ -4,6 +4,7 @@ use crate::obj_tree::FSObjRef;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub enum PollResult {
+    WaitForEvent,
     #[default]
     Pending,
     Done(i64),
