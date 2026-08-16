@@ -16,9 +16,9 @@ export async function lua_launcher(p: Process, sess: Session) {
   });
 
   while (1) {
-    await p.pending();
+    await p.wait_for_event();
   }
 
 
-  return 0n;
+  return;
 }

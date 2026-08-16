@@ -81,7 +81,7 @@ impl Kernel {
                     p.borrow_mut().status = ProcessStatus::WaitingForEvent;
                 }
                 PollResult::Pending => (),
-                PollResult::Done(n) => {
+                PollResult::Done => {
                     actions.push(KernelAction::ProcessKill(*pid));
 
                     let pairs = self.waiting_pairs.borrow_mut().remove(pid);

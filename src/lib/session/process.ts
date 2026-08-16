@@ -5,14 +5,14 @@ export class Process {
   public emitter = new EventEmitter("Process");
   private result_queue: any[] = [];
 
-  constructor(process: (p: Process) => Promise<bigint>) {
+  constructor(process: (p: Process) => Promise<void>) {
 
     this.emitter.mark_can_be_unused("callback");
 
-    process(this).then((n) => {
-      this.result_queue.push({ Done: n });
+    process(this).then(() => {
+      this.result_queue.push("Done");
     }).catch((e) => {
-      this.result_queue.push({ Done: -1 });
+      this.result_queue.push("Done");
       throw e;
     });
   }
@@ -47,6 +47,12 @@ export class Process {
 
   public sleep(time: number): Promise<void> {
     this.result_queue.push({ Sleep: time });
+
+    return this.pending();
+  }
+
+  public wait_for_event(): Promise<void> {
+    this.result_queue.push("WaitForEvent");
 
     return this.pending();
   }
@@ -212,7 +218,7 @@ export class Process {
 
         } else {
           console.error("Unhandled kernel callback:", data);
-          return { "Done": -1 };
+          return "Done";
         }
       }
     }

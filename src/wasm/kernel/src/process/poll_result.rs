@@ -7,7 +7,7 @@ pub enum PollResult {
     WaitForEvent,
     #[default]
     Pending,
-    Done(i64),
+    Done,
     Sleep(f32),
     WaitForProcess(u128),
     List(String),

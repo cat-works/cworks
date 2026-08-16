@@ -19,14 +19,8 @@ cworks.subscribe("/srv/stdio/root/in", function(caller, data)
 end)
 
 local function readline()
-  while true do
-    if io_buf_stdin_line == "" then
-      cworks.pending()
-      goto continue
-    end
-
-    break
-    ::continue::
+  while io_buf_stdin_line == "" do
+    cworks.wait_for_event()
   end
 
   local line = io_buf_stdin_line
@@ -64,14 +58,8 @@ end)
 local function editor_take()
   editor_load_buffer = "";
   cworks.publish("/srv/textarea/root/take", { String = "/srv/shell/root/push" })
-  while true do
-    if editor_load_buffer == "" then
-      cworks.pending()
-      goto continue
-    end
-
-    break
-    ::continue::
+  while editor_load_buffer == "" do
+    cworks.wait_for_event()
   end
 
   local buffer = editor_load_buffer

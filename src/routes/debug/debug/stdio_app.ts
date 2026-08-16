@@ -21,7 +21,4 @@ export async function stdio_main(p: Process, terminal: { stdin: () => Promise<st
 
     p.fs_publish("/srv/stdio/root/in", { String: key });
   }
-
-
-  return 0n;
 }

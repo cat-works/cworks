@@ -10,7 +10,7 @@ use super::process::RustProcessCore;
 
 pub struct RustProcess<'a, F>
 where
-    F: Future<Output = i64>,
+    F: Future<Output = ()>,
 {
     f: F,
     session: RustProcessCore,
@@ -19,7 +19,7 @@ where
 
 impl<F> RustProcess<'_, F>
 where
-    F: Future<Output = i64>,
+    F: Future<Output = ()>,
 {
     pub fn new<T>(f: &impl Fn(RustProcessCore, T) -> F, arg: T) -> Self {
         let session = RustProcessCore::default();
@@ -34,7 +34,7 @@ where
 
 impl<F> Process for RustProcess<'_, F>
 where
-    F: Future<Output = i64>,
+    F: Future<Output = ()>,
 {
     fn poll(&mut self, data: &SyscallData) -> PollResult {
         let f = unsafe { Pin::new_unchecked(&mut self.f) };
@@ -43,7 +43,7 @@ where
         let r = f.poll(&mut self.ctx);
 
         match r {
-            Poll::Ready(v) => return PollResult::Done(v),
+            Poll::Ready(()) => return PollResult::Done,
             Poll::Pending => {}
         }
 

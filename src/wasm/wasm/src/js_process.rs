@@ -18,7 +18,7 @@ impl Process for CallbackProcess {
         let data = serde_wasm_bindgen::to_value(data);
         if data.is_err() {
             error!("Failed to serialize SyscallData: {:?}", data.err());
-            return PollResult::Done(-1);
+            return PollResult::Done;
         }
         let data = data.unwrap();
 
@@ -26,14 +26,14 @@ impl Process for CallbackProcess {
         let ret: Result<JsValue, JsValue> = self.callback.call1(&this, &data);
         if ret.is_err() {
             error!("Failed to call callback: {:?}", ret.err());
-            return PollResult::Done(-1);
+            return PollResult::Done;
         }
         let ret = ret.unwrap();
 
         let result = serde_wasm_bindgen::from_value::<PollResult>(ret);
         if result.is_err() {
             error!("Failed to deserialize PollResult: {:?}", result.err());
-            return PollResult::Done(-1);
+            return PollResult::Done;
         }
 
         result.unwrap()

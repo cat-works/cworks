@@ -42,6 +42,8 @@ local function dispatch(data)
     else
       print("No handler for path: " .. path)
     end
+
+    return dispatch("Pending")
   else
     print("Unknown data from kernel: " .. data)
   end
@@ -53,16 +55,12 @@ function cworks.pass_poll_result(data)
   return dispatch(coroutine.yield(data))
 end
 
-function cworks.exit(retval)
-  cworks.pass_poll_result(json.stringify({ Done = retval }))
+function cworks.exit()
+  cworks.pass_poll_result(json.stringify("Done"))
 end
 
-function cworks.send(handle, data)
-  cworks.pass_poll_result(json.stringify({ Send = { "$$bi:" .. handle, data } }))
-end
-
-function cworks.pending()
-  cworks.pass_poll_result("\"Pending\"")
+function cworks.wait_for_event()
+  cworks.pass_poll_result("\"WaitForEvent\"")
 end
 
 function cworks.sleep(seconds)
@@ -70,45 +68,37 @@ function cworks.sleep(seconds)
 end
 
 function cworks.list(path)
-  local ret = cworks.pass_poll_result(json.stringify({ List = path }))
-  return ret
+  return cworks.pass_poll_result(json.stringify({ List = path }))
 end
 
 function cworks.stat(path)
-  local ret = cworks.pass_poll_result(json.stringify({ Stat = path }))
-  return ret
+  return cworks.pass_poll_result(json.stringify({ Stat = path }))
 end
 
 function cworks.mkdir(path, name)
-  local ret = cworks.pass_poll_result(json.stringify({ Mkdir = { path, name } }))
-  return ret
+  return cworks.pass_poll_result(json.stringify({ Mkdir = { path, name } }))
 end
 
 function cworks.get(path)
-  local ret = cworks.pass_poll_result(json.stringify({ Get = path }))
-  return ret
+  return cworks.pass_poll_result(json.stringify({ Get = path }))
 end
 
 function cworks.set(path, data)
-  local ret = cworks.pass_poll_result(json.stringify({ Set = { path, data } }))
-  return ret
+  return cworks.pass_poll_result(json.stringify({ Set = { path, data } }))
 end
 
 function cworks.subscribe(path, callback)
   channel_handlers[path] = callback
-  local ret = cworks.pass_poll_result(json.stringify({ Subscribe = path }))
-  return ret
+  return cworks.pass_poll_result(json.stringify({ Subscribe = path }))
 end
 
 function cworks.unsubscribe(path)
   channel_handlers[path] = nil
-  local ret = cworks.pass_poll_result(json.stringify({ Unsubscribe = path }))
-  return ret
+  return cworks.pass_poll_result(json.stringify({ Unsubscribe = path }))
 end
 
 function cworks.publish(path, data)
-  local ret = cworks.pass_poll_result(json.stringify({ Publish = { path, data } }))
-  return ret
+  return cworks.pass_poll_result(json.stringify({ Publish = { path, data } }))
 end
 
 package.loaded["cworks"] = cworks

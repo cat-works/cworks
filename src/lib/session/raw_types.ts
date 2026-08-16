@@ -12,4 +12,4 @@ export type SyscallData =
   | { Fail: SyscallError }
   | "None";
 
-export type PollResult = "Pending" | { Done: bigint };
+export type PollResult = "Pending" | "Done";

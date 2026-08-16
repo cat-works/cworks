@@ -26,8 +26,6 @@ export async function textarea_main(p: Process, textarea: HTMLTextAreaElement) {
   });
 
   while (1) {
-    await p.pending();
+    await p.wait_for_event();
   }
-
-  return 0n;
 }
