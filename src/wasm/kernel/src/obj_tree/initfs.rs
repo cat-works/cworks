@@ -7,6 +7,8 @@ fn usr(root: FSObjRef) -> Result<FSObjRef, SyscallError> {
 
     usr.add_child("mime", &FSObjRef::new_compound(usr.clone()))?;
     usr.add_child("ref", &FSObjRef::new_compound(usr.clone()))?;
+    usr.add_child("bin", &FSObjRef::new_compound(usr.clone()))?;
+    usr.add_child("lib", &FSObjRef::new_compound(usr.clone()))?;
 
     Ok(usr)
 }

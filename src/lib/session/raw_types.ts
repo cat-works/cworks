@@ -1,5 +1,3 @@
-export type RawHandle = bigint;
-
 export type SyscallError =
   | "NoSuchEntry"
   | "AlreadyExists"

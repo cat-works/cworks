@@ -1,6 +1,4 @@
 import { EventEmitter } from "../event_emitter";
-import type { RawHandle } from "./raw_types";
-
 export class Process {
   public emitter = new EventEmitter("Process");
   private result_queue: any[] = [];
@@ -25,24 +23,6 @@ export class Process {
 
       });
     });
-  }
-
-  public send(handle: RawHandle, data: string): Promise<void> {
-    this.result_queue.push({ "Send": [handle, data] });
-    return new Promise((resolve, reject) => {
-      this.emitter.once("callback", (s: Uint8Array) => {
-        const op = s[0];
-        if (0x01 <= op && op <= 0x06) {
-          reject(op);
-          return true;
-        } else if (op == 0x00) {
-          resolve();
-          return true;
-        }
-
-        return false;
-      })
-    })
   }
 
   public sleep(time: number): Promise<void> {
