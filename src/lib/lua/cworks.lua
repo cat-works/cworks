@@ -9,7 +9,10 @@ function cworks.syscall(sc_req)
   local sc_res_json = coroutine.yield(sc_req_json)
   local sc_res = json.parse(sc_res_json)
 
-  if sc_res == "None" then
+  if sc_res == nil then
+    print("syscall returned nil")
+    return nil
+  elseif sc_res == "None" then
     return nil
   elseif sc_res["FSList"] ~= nil then
     return sc_res["FSList"]

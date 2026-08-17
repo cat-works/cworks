@@ -1,35 +1,36 @@
 local cworks = require("cworks");
 local json = require("json");
 
-local io_buf_stdin = "";
-local io_buf_stdin_line = "";
+local stdio = {}
+stdio.in_buf = "";
+stdio.in_line = "";
 
-cworks.subscribe("/srv/stdio/root/in", function(caller, data)
+cworks.subscribe("/run/debug-app/shell-in", function(caller, data)
   if data["String"] == nil then
-    print("Invalid stdin data: " .. json.stringify(data))
+    print("Invalid stdin data")
     return
   end
 
   if data["String"] == "\n" then
-    io_buf_stdin_line = io_buf_stdin
-    io_buf_stdin = ""
+    stdio.in_line = stdio.in_buf
+    stdio.in_buf = ""
   else
-    io_buf_stdin = io_buf_stdin .. data["String"]
+    stdio.in_buf = stdio.in_buf .. data["String"]
   end
 end)
 
-local function readline()
-  while io_buf_stdin_line == "" do
+function stdio.readline()
+  while stdio.in_line == "" do
     cworks.wait_for_event()
   end
 
-  local line = io_buf_stdin_line
-  io_buf_stdin_line = ""
+  local line = stdio.in_line
+  stdio.in_line = ""
   return line
 end
 
-local function write_stdout(data)
-  cworks.publish("/srv/stdio/root/out", { String = data })
+function stdio.write(data)
+  cworks.publish("/run/debug-app/shell-out", { String = data })
 end
 
 local function path_join(base, name)
@@ -44,42 +45,38 @@ local function path_join(base, name)
   return result
 end
 
-local editor_load_buffer = "";
-cworks.mkdir("/srv", "shell")
-cworks.mkdir("/srv/shell", "root")
-cworks.subscribe("/srv/shell/root/push", function(caller, data)
+cworks.mkdir("/", "run")
+cworks.mkdir("/run", "debug-app")
+
+local editor = {}
+editor.take_buffer = "";
+cworks.subscribe("/run/debug-app/ta-load-back", function(caller, data)
   if data["String"] == nil then
     print("Invalid textarea data: " .. json.stringify(data))
     return
   end
 
-  editor_load_buffer = data["String"]
+  editor.take_buffer = data["String"]
 end)
-local function editor_take()
-  editor_load_buffer = "";
-  cworks.publish("/srv/textarea/root/take", { String = "/srv/shell/root/push" })
-  while editor_load_buffer == "" do
+function editor.take()
+  editor.take_buffer = "";
+  cworks.publish("/run/debug-app/ta-take", { String = "/run/debug-app/ta-load-back" })
+  while editor.take_buffer == "" do
     cworks.wait_for_event()
   end
 
-  local buffer = editor_load_buffer
-  editor_load_buffer = ""
+  local buffer = editor.take_buffer
+  editor.take_buffer = ""
   return buffer
 end
 
-local function editor_push(data)
-  cworks.publish("/srv/textarea/root/push", { String = data })
+function editor.push(data)
+  cworks.publish("/run/debug-app/ta-push", { String = data })
 end
 
 local function ls_rec(dir, depth)
   local list = cworks.list(dir)
-
-  if depth == 0 then
-    write_stdout("/\n")
-  else
-    local indent = string.rep("  ", depth - 1) .. "- "
-    write_stdout(indent .. "" .. dir .. "\n")
-  end
+  table.sort(list)
 
   for _, item in ipairs(list) do
     if item == "." or item == ".." then
@@ -88,30 +85,28 @@ local function ls_rec(dir, depth)
     local st = cworks.stat(dir .. "/" .. item)
     local kind = st["kind"] ---@type string
 
-    local indent = string.rep("  ", depth) .. "- "
-
     if kind == "Channel" then
-      write_stdout(indent .. "\x1b[36m" .. item .. "\x1b[m\n")
+      stdio.write("\x1b[36m" .. path_join(dir, item) .. "\x1b[m\n")
     elseif kind == "File" then
-      write_stdout(indent .. "\x1b[33m" .. item .. "\x1b[m\n")
+      stdio.write("\x1b[33m" .. path_join(dir, item) .. "\x1b[m\n")
     elseif kind == "Directory" then
       ls_rec(dir .. "/" .. item, depth + 1)
     else
-      write_stdout(indent .. item .. "\n")
+      stdio.write("Unknown kind: " .. kind .. " for " .. path_join(dir, item) .. "\n")
     end
     ::continue::
   end
 end
-write_stdout("\x1b[1;32mCat OS Shell\x1b[m\n")
+stdio.write("\x1b[1;32mCat OS Shell\x1b[m\n")
 
 ls_rec("", 0)
 
 
 local pwd = "/"
 while true do
-  write_stdout("\n\x1b[1;32m" .. pwd .. "\x1b[m\n");
-  write_stdout("\x1b[2m$\x1b[m ");
-  local line = readline()
+  stdio.write("\n\x1b[1;32m" .. pwd .. "\x1b[m\n");
+  stdio.write("\x1b[2m$\x1b[m ");
+  local line = stdio.readline()
   local command, args = line:match("^(%S+)%s*(.*)$")
   if command == "ls" then
     local path = args ~= "" and args or pwd
@@ -119,7 +114,7 @@ while true do
     for _, item in ipairs(list) do
       local st = cworks.stat(path .. "/" .. item)
       local kind = st["kind"] ---@type string
-      write_stdout(kind:sub(0, 1) .. " " .. item .. "\n")
+      stdio.write(kind:sub(0, 1) .. " " .. item .. "\n")
     end
   elseif command == "cd" then
     if args == "" then
@@ -130,7 +125,7 @@ while true do
       if st and st["kind"] == "Directory" then
         pwd = new_path
       else
-        write_stdout("No such directory: " .. new_path .. "\n")
+        stdio.write("No such directory: " .. new_path .. "\n")
       end
     end
   elseif command == "mkdir" then
@@ -138,63 +133,63 @@ while true do
     if name ~= "" then
       cworks.mkdir(pwd, name)
     else
-      write_stdout("Usage: mkdir <name>\n")
+      stdio.write("Usage: mkdir <name>\n")
     end
   elseif command == "stat" then
     if args == "" then
-      write_stdout("Usage: stat <path>\n")
+      stdio.write("Usage: stat <path>\n")
     else
       local st = cworks.stat(path_join(pwd, args))
       if st then
-        write_stdout("Kind: " .. st["kind"] .. "\n")
+        stdio.write("Kind: " .. st["kind"] .. "\n")
       else
-        write_stdout("No such file or directory: " .. path_join(pwd, args) .. "\n")
+        stdio.write("No such file or directory: " .. path_join(pwd, args) .. "\n")
       end
     end
   elseif command == "get" then
     local result_file = path_join(pwd, args)
     local data = cworks.get(result_file)
-    write_stdout("Content of " .. result_file .. ":\n" .. json.stringify(data) .. "\n")
+    stdio.write("Content of " .. result_file .. ":\n" .. json.stringify(data) .. "\n")
   elseif command == "cat" then
     local result_file = path_join(pwd, args)
     local data = cworks.get(result_file)
     if data["String"] == nil then
-      write_stdout("File is not a string: " .. result_file .. "\n")
+      stdio.write("File is not a string: " .. result_file .. "\n")
     else
-      write_stdout(data["String"] .. "\n")
+      stdio.write(data["String"] .. "\n")
     end
   elseif command == "set" then
     local file_name, content = args:match("^(%S+)%s+(.+)$")
     if file_name and content then
       local result_file = path_join(pwd, file_name)
       cworks.set(result_file, json.parse(content))
-      write_stdout("Set content of " .. result_file .. "\n")
+      stdio.write("Set content of " .. result_file .. "\n")
     else
-      write_stdout("Usage: set <file_name> <content>\n")
+      stdio.write("Usage: set <file_name> <content>\n")
     end
   elseif command == "take" then
     local result_file = path_join(pwd, args)
-    local buffer = editor_take()
+    local buffer = editor.take()
     cworks.set(result_file, { String = buffer })
   elseif command == "push" then
     local src_file = path_join(pwd, args)
     local src = cworks.get(src_file)
     if src["String"] == nil then
-      write_stdout("File is not a string: " .. src_file .. "\n")
+      stdio.write("File is not a string: " .. src_file .. "\n")
     else
-      editor_push(src["String"])
+      editor.push(src["String"])
     end
   elseif command == "clear" then
-    write_stdout("\x1b[2J\x1b[H")
+    stdio.write("\x1b[2J\x1b[H")
   elseif command == "exec" then
     local lua_path = path_join(pwd, args)
     local lua_code = cworks.get(lua_path)
     if lua_code["String"] == nil then
-      write_stdout("File is not a string: " .. lua_path .. "\n")
+      stdio.write("File is not a string: " .. lua_path .. "\n")
     else
       cworks.publish("/run/sys/exec-lua", { String = lua_code["String"] })
     end
   else
-    write_stdout("Unknown command: " .. command .. "\n")
+    stdio.write("Unknown command: " .. command .. "\n")
   end
 end
