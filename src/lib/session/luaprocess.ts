@@ -17,6 +17,8 @@ export class LuaProcess {
     const dataString = JSON.stringify(data, (key, value) => {
       if (typeof value === "bigint") {
         return value.toString();
+      } else if (value instanceof Map) {
+        return Object.fromEntries(value);
       }
       return value;
     });
