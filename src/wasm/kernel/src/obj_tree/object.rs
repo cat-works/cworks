@@ -21,8 +21,8 @@ pub enum Object {
         parent: Option<FSObjRef>,
         children: HashMap<String, FSObjRef>,
     },
-    #[serde(skip_serializing)]
     Func {
+        #[serde(skip_serializing)]
         callee_pid: Vec<u128>,
     },
 }

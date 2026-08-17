@@ -42,12 +42,16 @@ async fn fs_test(session: RustProcessCore, _arg: u32) {
         .await
         .expect("Failed to set /b");
 
-    // session.fs_stat("/".to_string()).await?;
-    // session.fs_stat("/usr".to_string()).await?;
-    // session.fs_stat("/usr/.".to_string()).await?;
-    // session.fs_stat("/usr/..".to_string()).await?;
-    if let Err(e) = session.fs_get("/usr".to_string()).await {
-        log::error!("Failed to get /usr: {e:?}");
+    session.sleep(1.0).await;
+
+    match session.fs_get("/".to_string()).await {
+        Err(e) => {
+            log::error!("Failed to get /: {e:?}");
+        }
+        Ok(v) => match serde_json::to_string(&v) {
+            Ok(json) => log::info!("Got /: {json}"),
+            Err(e) => log::error!("Failed to serialize /: {e:?}"),
+        },
     }
 }
 

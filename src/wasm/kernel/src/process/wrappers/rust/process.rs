@@ -102,20 +102,20 @@ impl RustProcessCore {
         }
     }
 
-    pub async fn fs_get(&self, path: String) -> Result<(), SyscallError> {
+    pub async fn fs_get(&self, path: String) -> Result<FSObjRef, SyscallError> {
         self.do_syscall(PollResult::Get(path)).await;
 
         let m = self.syscall_data.borrow().clone();
         match m {
-            SyscallData::FSGet(_) => {
+            SyscallData::FSGet(obj) => {
                 self.set_syscall_data(&SyscallData::None);
-                Ok(())
+                Ok(obj)
             }
             SyscallData::Fail(ref e) => {
                 self.set_syscall_data(&SyscallData::None);
                 Err(e.clone())
             }
-            _ => Ok(()),
+            _ => Err(SyscallError::NotImplemented),
         }
     }
 
