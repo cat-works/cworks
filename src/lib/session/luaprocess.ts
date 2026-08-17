@@ -1,7 +1,9 @@
-import { LuaEnv, LuaThread } from "../../lua/pkg/lua";
-import loader from "./cworks-loader.lua?raw";
+import { LuaEnv, LuaThread, LuaThreadError } from "../../lua/pkg/lua";
+import loader from "$lib/lua/cworks-loader.lua?raw";
+import json from "$lib/lua/json.lua?raw";
 
 const env = new LuaEnv();
+env.run(json);
 env.run(loader);
 
 export class LuaProcess {
@@ -18,7 +20,18 @@ export class LuaProcess {
       }
       return value;
     });
-    const result = this.thread.yield(dataString);
+
+    const result = (() => {
+      try {
+        return this.thread.yield(dataString)
+      } catch (e) {
+        if (e instanceof LuaThreadError) {
+          return JSON.stringify("Done");
+        } else {
+          throw e;
+        }
+      }
+    })();
     const parsed_obj = JSON.parse(result);
 
     // transform string back to bigint for handles

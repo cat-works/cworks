@@ -14,6 +14,7 @@ pub struct LuaThread {
 }
 
 impl LuaThread {
+    #[must_use]
     pub fn new(thread: Thread) -> Self {
         LuaThread { thread }
     }
@@ -23,15 +24,14 @@ impl LuaThread {
 
         let result: mlua::Result<mlua::Value> = self.thread.resume(lua_data);
 
-        result
-            .map_err(|e| LuaThreadError::MLuaError(e))
-            .and_then(|x| match x {
-                mlua::Value::String(s) => Ok(s.as_bytes().to_vec()),
-                _ => {
-                    eprintln!("Expected a string from Lua thread, got: {:?}", x);
-                    Err(LuaThreadError::InvalidData)
-                }
-            })
+        result.map_err(LuaThreadError::MLuaError).and_then(|x| {
+            if let mlua::Value::String(s) = x {
+                Ok(s.as_bytes().to_vec())
+            } else {
+                log::error!("Expected a string from Lua thread, got: {x:?}");
+                Err(LuaThreadError::InvalidData)
+            }
+        })
     }
 }
 
@@ -55,13 +55,13 @@ pub fn __ffi_lua_thread_yield(thread: *mut LuaThread, data: *const c_char) -> *m
         Err(e) => {
             match e {
                 LuaThreadError::MLuaError(err) => {
-                    eprintln!("MLua error: {}", err);
+                    log::error!("MLua error in Lua thread, {err}");
                 }
                 LuaThreadError::InvalidData => {
-                    eprintln!("Invalid data received from Lua thread.");
+                    log::error!("Invalid data received from Lua thread.");
                 }
             }
-            std::ptr::null_mut() // Return null pointer on error
+            c"\x01\x03".as_ptr().cast_mut()
         }
     }
 }

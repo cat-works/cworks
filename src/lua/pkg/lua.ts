@@ -1,6 +1,14 @@
 import lua_mod from "./lua-rs";
 
 const mod = await lua_mod();
+mod.ccall("__ffi_init", null, [], []);
+
+export class LuaThreadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LuaThreadError";
+  }
+}
 
 export class LuaEnv {
   ptr: number;
@@ -29,9 +37,10 @@ export class LuaThread {
     const encoded_arg = encode(arg);
 
     const encoded_value = mod.ccall("__ffi_lua_thread_yield", "string", ["number", "string"], [this.ptr, encoded_arg]);
+    if (encoded_value === "\x01\x03") { // lua thread error
+      throw new LuaThreadError("Lua thread encountered an error.");
+    }
     const value = decode(encoded_value);
-
-    // console.log(`${JSON.stringify(arg)} -> ${JSON.stringify(encoded_arg)} -> ${JSON.stringify(encoded_value)} -> ${JSON.stringify(value)}`);
     return value;
   }
 };

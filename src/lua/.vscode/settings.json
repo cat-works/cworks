@@ -1,9 +1,0 @@
-{
-  "saveAndRun": {
-    "commands": [
-      {
-        "cmd": "cargo run"
-      }
-    ]
-  }
-}
