@@ -12,23 +12,31 @@ export async function lua_launcher(p: Process, sess: Session) {
       console.warn("Invalid data received for exec-lua:", data);
       return
     }
-    const children = data.CompoundFSObj.children;
+    const children_map: Map<String, any> = data.CompoundFSObj.children;
 
-    if (typeof children.path?.String !== "string") {
-      console.warn("Invalid path received for exec-lua:", children.path);
+    if (typeof children_map.get("path")?.String !== "string") {
+      console.warn("Invalid path received for exec-lua:", data);
       return
     }
 
-    if (children.params == undefined) {
-      console.warn("Invalid params received for exec-lua:", children.params);
+    if (children_map.get("cmd_line") == undefined) {
+      console.warn("Invalid params received for exec-lua:", data);
       return
     }
 
-    const path = children.path.String;
-    const params = children.params;
+    const path = children_map.get("path")?.String;
+    const cmd_line = children_map.get("cmd_line")?.String;
 
-    const process = new LuaProcess(path, params);
-    sess.add_process(process.kernel_callback.bind(process));
+    p.fs_get(path).then((data) => {
+      if (typeof data.String !== "string") {
+        console.warn("Invalid Lua code received for exec-lua:", data);
+        return;
+      }
+
+      const process = new LuaProcess(path, data.String, cmd_line);
+      sess.add_process(process.kernel_callback.bind(process));
+    })
+
 
     return true;
   });

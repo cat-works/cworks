@@ -9,7 +9,7 @@ env.run(loader);
 export class LuaProcess {
   private thread: LuaThread;
 
-  constructor(name: string, code: string, cmdline: string = "/") {
+  constructor(name: string, code: string, cmdline: string) {
     const preamble = 'require("cworks").set_cmdline("' + cmdline + '")';
 
     this.thread = env.thread(name, preamble + code);
@@ -25,6 +25,7 @@ export class LuaProcess {
       return value;
     });
 
+    console.log("lp <", dataString);
     const result = (() => {
       try {
         return this.thread.yield(dataString)
@@ -36,6 +37,7 @@ export class LuaProcess {
         }
       }
     })();
+    console.log("lp >", result);
     const parsed_obj = JSON.parse(result);
 
     // transform string back to bigint for handles

@@ -99,7 +99,18 @@ local function ls_rec(dir, depth)
 end
 stdio.write("\x1b[1;32mCat OS Shell\x1b[m\n")
 
-ls_rec("", 0)
+-- ls_rec("", 0)
+
+local args = "ls"
+
+cworks.publish("/run/sys/exec-lua", {
+  CompoundFSObj = {
+    children = {
+      path = { String = "/usr/bin/ls.lua" },
+      cmd_line = { String = args },
+    }
+  }
+})
 
 
 local pwd = "/"
@@ -183,12 +194,21 @@ while true do
   elseif command == "clear" then
     stdio.write("\x1b[2J\x1b[H")
   elseif command == "exec" then
-    local lua_path = path_join(pwd, args)
+    -- args = <rel_path> ...
+    local rel_path = args:match("^(%S+)%s*")
+    local lua_path = path_join(pwd, rel_path)
     local lua_code = cworks.get(lua_path)
     if lua_code["String"] == nil then
       stdio.write("File is not a string: " .. lua_path .. "\n")
     else
-      cworks.publish("/run/sys/exec-lua", { String = lua_code["String"] })
+      cworks.publish("/run/sys/exec-lua", {
+        CompoundFSObj = {
+          children = {
+            path = { String = lua_code["String"] },
+            cmd_line = { String = args },
+          }
+        }
+      })
     end
   elseif command == "repl" then
     stdio.write("Entering REPL mode. Type 'exit' to leave.\n")

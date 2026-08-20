@@ -7,7 +7,7 @@ function stdio.write(data)
 end
 
 local pwd = "/"
-local args = "."
+local args = ""
 local path = args ~= "" and args or pwd
 local list = cworks.list(path)
 for _, item in ipairs(list) do
