@@ -46,11 +46,19 @@ pub fn __ffi_luaenv_run(env: *const LuaEnv, code: *mut c_char) {
 }
 
 #[unsafe(no_mangle)]
-pub fn __ffi_luaenv_thread(env: *mut LuaEnv, code: *mut c_char) -> *mut LuaThread {
+pub fn __ffi_luaenv_thread(
+    env: *mut LuaEnv,
+    name: *mut c_char,
+    code: *mut c_char,
+) -> *mut LuaThread {
     if env.is_null() || code.is_null() {
         return std::ptr::null_mut();
     }
     let env = unsafe { &*env };
+
+    let name: String = unsafe { std::ffi::CStr::from_ptr(name) }
+        .to_string_lossy()
+        .into_owned();
 
     let code: String = unsafe { std::ffi::CStr::from_ptr(code) }
         .to_string_lossy()
@@ -64,13 +72,11 @@ pub fn __ffi_luaenv_thread(env: *mut LuaEnv, code: *mut c_char) -> *mut LuaThrea
     let thread: Thread = env
         .0
         .load(wrapped_code)
-        .set_name("LuaProcessThread")
+        .set_name(name)
         .eval()
         .expect("Failed to create coroutine");
 
     let lua_thread = LuaThread::new(thread);
     let boxed_thread = Box::new(lua_thread);
-    let ptr = Box::into_raw(boxed_thread);
-
-    ptr as *mut LuaThread
+    Box::into_raw(boxed_thread)
 }

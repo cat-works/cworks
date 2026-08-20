@@ -20,8 +20,8 @@ export class LuaEnv {
     mod.ccall("__ffi_luaenv_run", null, ["number", "string"], [this.ptr, code]);
   }
 
-  thread(code: string): LuaThread {
-    const ptr = mod.ccall("__ffi_luaenv_thread", "number", ["number", "string"], [this.ptr, code]);
+  thread(name: string, code: string): LuaThread {
+    const ptr = mod.ccall("__ffi_luaenv_thread", "number", ["number", "string", "string"], [this.ptr, name, code]);
     return new LuaThread(ptr);
   }
 };
