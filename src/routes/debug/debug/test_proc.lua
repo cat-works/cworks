@@ -3,7 +3,7 @@ local json = require("json");
 
 local stdio = {}
 stdio.in_buf = "";
-stdio.in_line = "";
+local stdio_in_line = "";
 
 cworks.subscribe("/run/debug-app/shell-in", function(caller, data)
   if data["String"] == nil then
@@ -12,20 +12,20 @@ cworks.subscribe("/run/debug-app/shell-in", function(caller, data)
   end
 
   if data["String"] == "\n" then
-    stdio.in_line = stdio.in_buf
+    stdio_in_line = stdio.in_buf
     stdio.in_buf = ""
   else
     stdio.in_buf = stdio.in_buf .. data["String"]
   end
 end)
 
-function stdio.readline()
-  while stdio.in_line == "" do
+local function readline()
+  while stdio_in_line == "" do
     cworks.wait_for_event()
   end
 
-  local line = stdio.in_line
-  stdio.in_line = ""
+  local line = stdio_in_line
+  stdio_in_line = ""
   return line
 end
 
@@ -105,8 +105,9 @@ ls_rec("", 0)
 local pwd = "/"
 while true do
   stdio.write("\n\x1b[1;32m" .. pwd .. "\x1b[m\n");
+  stdio.write("  \x1b[2mcmdline = " .. tostring(cworks.get_cmdline()) .. "\x1b[m\n")
   stdio.write("\x1b[2m$\x1b[m ");
-  local line = stdio.readline()
+  local line = readline()
   local command, args = line:match("^(%S+)%s*(.*)$")
   if command == "ls" then
     local path = args ~= "" and args or pwd
@@ -188,6 +189,35 @@ while true do
       stdio.write("File is not a string: " .. lua_path .. "\n")
     else
       cworks.publish("/run/sys/exec-lua", { String = lua_code["String"] })
+    end
+  elseif command == "repl" then
+    stdio.write("Entering REPL mode. Type 'exit' to leave.\n")
+    -- 1 ==> 1
+    -- print ==> print
+    while true do
+      stdio.write("\x1b[2m>>\x1b[m ")
+      local repl_line = readline()
+      if repl_line == "exit" then
+        stdio.write("Exiting REPL mode.\n")
+        break
+      end
+      local func, err = load(repl_line)
+      if not func then
+        stdio.write("Error: " .. err .. "\n")
+      else
+        local success, result = pcall(func)
+        if not success then
+          stdio.write("Error: " .. result .. "\n")
+        else
+          if result ~= nil then
+            if type(result) == "table" then
+              stdio.write("Result: " .. json.stringify(result) .. "\n")
+            else
+              stdio.write("Result: " .. tostring(result) .. "\n")
+            end
+          end
+        end
+      end
     end
   else
     stdio.write("Unknown command: " .. command .. "\n")

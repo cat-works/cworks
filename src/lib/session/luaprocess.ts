@@ -9,8 +9,10 @@ env.run(loader);
 export class LuaProcess {
   private thread: LuaThread;
 
-  constructor(code: string) {
-    this.thread = env.thread(code);
+  constructor(name: string, code: string, cmdline: string = "/") {
+    const preamble = 'require("cworks").set_cmdline("' + cmdline + '")';
+
+    this.thread = env.thread(name, preamble + code);
   }
 
   kernel_callback(data: any): any {

@@ -85,4 +85,15 @@ function cworks.publish(path, data)
   return cworks.syscall({ Publish = { path, data } })
 end
 
+cworks.cmdline = ""
+function cworks.get_cmdline()
+  print("[[DEBUG" .. "]] Fetching cmdline value")
+  return cworks.cmdline
+end
+
+function cworks.set_cmdline(value)
+  print("[[DEBUG" .. "]] Setting cmdline value to: " .. tostring(value))
+  cworks.cmdline = value
+end
+
 return cworks
