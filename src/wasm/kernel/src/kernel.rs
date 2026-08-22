@@ -62,11 +62,11 @@ impl Kernel {
             let data = p.outgoing_data_buffer.pop().unwrap_or(SyscallData::None);
 
             if !matches!(data, SyscallData::None) {
-                log::debug!("Process<{pid}> <-- {data:?}");
+                log::trace!("Process<{pid}> <-- {data:?}");
             }
             let res = p.process.poll(&data);
             if !matches!(res, PollResult::Pending) {
-                log::debug!("Process<{pid}> --> {res:?}");
+                log::trace!("Process<{pid}> --> {res:?}");
             }
 
             let fs_frontend = FSFrontend::new(self.fs_root.clone());

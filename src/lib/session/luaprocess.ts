@@ -116,7 +116,7 @@ export class LuaProcess {
       return value;
     });
 
-    console.log("lp <", dataString);
+    // console.debug("lp <", dataString);
     const result = (() => {
       try {
         return this.thread.yield(dataString)
@@ -128,7 +128,7 @@ export class LuaProcess {
         }
       }
     })();
-    console.log("lp >", result);
+    // console.debug("lp >", result);
     const parsed_obj = JSON.parse(result);
 
     // transform string back to bigint for handles
