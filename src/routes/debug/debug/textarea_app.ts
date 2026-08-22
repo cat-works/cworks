@@ -24,7 +24,10 @@ export async function textarea_main(p: Process, textarea: HTMLTextAreaElement) {
     return true;
   });
 
+  // Stay running (like stdio_app) so requests queued by the subscribe handlers
+  // (e.g. fs_publish in ta-take) are processed instead of being shadowed by a
+  // stale WaitForEvent token in the result queue.
   while (1) {
-    await p.wait_for_event();
+    await p.pending();
   }
 }

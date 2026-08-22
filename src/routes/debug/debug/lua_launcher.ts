@@ -24,8 +24,20 @@ export async function lua_launcher(p: Process, sess: Session) {
       return
     }
 
+    if (typeof children_map.get("stdout")?.String !== "string") {
+      console.warn("Invalid stdout received for exec-lua:", data);
+      return
+    }
+
+    if (typeof children_map.get("stdin")?.String !== "string") {
+      console.warn("Invalid stdin received for exec-lua:", data);
+      return
+    }
+
     const path = children_map.get("path")?.String;
     const cmd_line = children_map.get("cmd_line")?.String;
+    const stdout = children_map.get("stdout")?.String;
+    const stdin = children_map.get("stdin")?.String;
 
     p.fs_get(path).then((data) => {
       if (typeof data.String !== "string") {
@@ -33,7 +45,11 @@ export async function lua_launcher(p: Process, sess: Session) {
         return;
       }
 
-      const process = new LuaProcess(path, data.String, cmd_line);
+      const process = new LuaProcess(path, data.String, {
+        cmdline: cmd_line,
+        stdout,
+        stdin,
+      });
       sess.add_process(process.kernel_callback.bind(process));
     })
 
@@ -41,8 +57,11 @@ export async function lua_launcher(p: Process, sess: Session) {
     return true;
   });
 
+  // Stay running (like stdio_app) so requests queued by the subscribe handler
+  // (e.g. fs_get) are processed instead of being shadowed by a stale
+  // WaitForEvent token in the result queue.
   while (1) {
-    await p.wait_for_event();
+    await p.pending();
   }
 
 
