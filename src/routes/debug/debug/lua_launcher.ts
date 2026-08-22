@@ -57,11 +57,8 @@ export async function lua_launcher(p: Process, sess: Session) {
     return true;
   });
 
-  // Stay running (like stdio_app) so requests queued by the subscribe handler
-  // (e.g. fs_get) are processed instead of being shadowed by a stale
-  // WaitForEvent token in the result queue.
   while (1) {
-    await p.pending();
+    await p.wait_for_event();
   }
 
 

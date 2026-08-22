@@ -27,3 +27,12 @@
 - **原因**: launcher の `while(1) { await p.wait_for_event(); }` パターン。`wait_for_event()` は result_queue に `"WaitForEvent"` トークンを積む。Invoke 受信時、subscribe ハンドラが積んだ `fs_get` の Get リクエストが**古い WaitForEvent トークンの後ろ**に回り、`kernel_callback` の shift() がトークンを返して process が睡眠 → Get が永遠に処理されない（起動時 exec はトークンが先に消費されるタイミングで動く）
 - **修正**: launcher / textarea_app のループを `while(1) { await p.pending(); }` に変更（`wait_for_event` をやめ常時 Running、stdio_app と同パターン）。`pending()` はトークンを積まないため、ハンドラのキュー積みが即座に shift される
 - **留意**: `wait_for_event()` + subscribe ハンドラで result_queue に仕事を積むパターンは同レースを持つ。TS Process で Invoke をトリガーに fs_* を呼ぶアプリは pending() ループを使うこと
+
+## TS Process の wait_for_event トークンレース（2026-08・修正済み・v2）
+- **症状**: shell で `exec /usr/bin/ls.lua` しても ls が起動しない（起動時の exec は動く）
+- **原因**: `wait_for_event()` は result_queue に `"WaitForEvent"` トークンを積む。イベント後ループが再積みしたトークンが**休眠中に消費されず残り**、次の Invoke 受信時、subscribe ハンドラが積んだ `fs_get` の Get が**古いトークンの後ろ**に回って shift() がトークンを返し、プロセスが再睡眠 → Get が永遠に処理されない
+- **修正（v1→v2）**:
+  - v1（非推奨）: launcher/textarea を `while(1){ await p.pending(); }` に変更（常時 Running = busy-poll、CPU 非効率）
+  - v2（採用）: **`Process.wait_for_event`（process.ts）を修正** — once ハンドラが実イベント（x ≠ "None"）で起きた時、result_queue から `"WaitForEvent"` トークンを除去してから resolve。これでハンドラが積んだ仕事が shift で即座に返り、**プロセスは休眠のまま**（WaitForEvent 返却）正しく処理できる
+- **確認**: exec 動作 + launcher が WaitForEvent で休眠復帰（Get 即送信）。Gate A/B 全 PASS
+- **教訓**: TS Process で「Invoke を受けてハンドラが fs_* を積む」パターンは、`wait_for_event` のトークン除去を Process 側で行うのが正解。pending() ループ化は busy-poll になるため避ける

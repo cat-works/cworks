@@ -34,7 +34,18 @@ export class Process {
   public wait_for_event(): Promise<void> {
     this.result_queue.push("WaitForEvent");
 
-    return this.pending();
+    return new Promise((resolve) => {
+      this.emitter.once("callback", (x) => {
+        if (x !== "None") {
+          const idx = this.result_queue.indexOf("WaitForEvent");
+          if (idx !== -1) {
+            this.result_queue.splice(idx, 1);
+          }
+        }
+        resolve();
+        return x === "None";
+      });
+    });
   }
 
   public fs_list(path: string): Promise<string[]> {
