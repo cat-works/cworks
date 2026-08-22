@@ -8,9 +8,9 @@ export class Process {
     this.emitter.mark_can_be_unused("callback");
 
     process(this).then(() => {
-      this.result_queue.push("Done");
+      this.result_queue.unshift("Done");
     }).catch((e) => {
-      this.result_queue.push("Done");
+      this.result_queue.unshift("Done");
       throw e;
     });
   }
@@ -26,7 +26,7 @@ export class Process {
   }
 
   public sleep(time: number): Promise<void> {
-    this.result_queue.push({ Sleep: time });
+    this.result_queue.unshift({ Sleep: time });
 
     return this.pending();
   }
@@ -49,7 +49,7 @@ export class Process {
   }
 
   public fs_list(path: string): Promise<string[]> {
-    this.result_queue.push({ "List": path });
+    this.result_queue.unshift({ "List": path });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -65,7 +65,7 @@ export class Process {
   }
 
   public fs_stat(path: string): Promise<{ kind: "Directory" | "File" }> {
-    this.result_queue.push({ "Stat": path });
+    this.result_queue.unshift({ "Stat": path });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -81,7 +81,7 @@ export class Process {
   }
 
   public fs_set(path: string, data: any): Promise<void> {
-    this.result_queue.push({ "Set": [path, data] });
+    this.result_queue.unshift({ "Set": [path, data] });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -97,7 +97,7 @@ export class Process {
   }
 
   public fs_get(path: string): Promise<any> {
-    this.result_queue.push({ "Get": path });
+    this.result_queue.unshift({ "Get": path });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -114,7 +114,7 @@ export class Process {
   }
 
   public fs_mkdir(path: string, name: any): Promise<void> {
-    this.result_queue.push({ "Mkdir": [path, name] });
+    this.result_queue.unshift({ "Mkdir": [path, name] });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -130,7 +130,7 @@ export class Process {
   }
 
   public fs_subscribe(path: string, callback: (caller_pid: bigint, data: any) => void): Promise<void> {
-    this.result_queue.push({ "Subscribe": path });
+    this.result_queue.unshift({ "Subscribe": path });
 
     this.emitter.on("invoke", (data: { caller_pid: bigint, path: string, arg: any }) => {
       if (data.path === path) {
@@ -155,7 +155,7 @@ export class Process {
   }
 
   public fs_unsubscribe(path: string): Promise<void> {
-    this.result_queue.push({ "Unsubscribe": path });
+    this.result_queue.unshift({ "Unsubscribe": path });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
@@ -173,7 +173,7 @@ export class Process {
   }
 
   public fs_publish(path: string, data: any): Promise<void> {
-    this.result_queue.push({ "Publish": [path, data] });
+    this.result_queue.unshift({ "Publish": [path, data] });
 
     return new Promise((resolve, reject) => {
       this.emitter.once("callback", (s: any) => {
