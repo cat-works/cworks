@@ -1,15 +1,10 @@
-use std::cell::RefCell;
-
-use kernel::Process;
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::js_process::CallbackProcess;
 #[wasm_bindgen]
 pub struct Session {
     #[wasm_bindgen(skip)]
-    pub kernel: RefCell<kernel::Kernel>,
-
-    spawn_queue: RefCell<Vec<Box<dyn Process>>>,
+    pub kernel: kernel::Kernel,
 }
 
 #[wasm_bindgen]
@@ -18,21 +13,16 @@ impl Session {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
-            kernel: RefCell::new(kernel::Kernel::default()),
-            spawn_queue: RefCell::new(Vec::new()),
+            kernel: kernel::Kernel::default(),
         }
     }
 
-    pub fn add_process(&self, callback: js_sys::Function) {
-        self.spawn_queue
-            .borrow_mut()
-            .push(Box::new(CallbackProcess::new(callback)));
+    pub fn add_process(&mut self, callback: js_sys::Function) -> u128 {
+        let p = Box::new(CallbackProcess::new(callback));
+        self.kernel.register_process(p)
     }
 
-    pub fn step(&self) {
-        for p in self.spawn_queue.borrow_mut().drain(..) {
-            self.kernel.borrow_mut().register_process(p);
-        }
-        self.kernel.borrow_mut().step();
+    pub fn step(&mut self) {
+        self.kernel.step();
     }
 }
