@@ -66,18 +66,56 @@ io.write("\x1b[1;32mCat OS Shell\x1b[m\n")
 
 ls_rec("", 0)
 
+--- child lua process spawner
+
+local lua_process_spawner = {}
+lua_process_spawner.last_pid = nil
+
+cworks.subscribe("/run/debug-app/lua-sp", function(caller, data)
+  if data["String"] == nil then
+    print("Invalid data for lua process spawner: " .. json.stringify(data))
+    return
+  end
+  local pid_str = data["String"]
+  local pid = tonumber(pid_str)
+  if pid == nil then
+    print("Invalid pid received: " .. pid_str)
+    return
+  end
+
+  lua_process_spawner.last_pid = pid
+end)
+
+function lua_process_spawner.spawn_lua_process(lua_path, cmd_line)
+  local pid_reply_to = "/run/debug-app/lua-sp"
+  cworks.publish("/run/sys/exec-lua", {
+    CompoundFSObj = {
+      children = {
+        path = { String = lua_path },
+        cmd_line = { String = cmd_line },
+        stdout = { String = env.stdout },
+        stdin = { String = env.stdin },
+        pid_reply_to = { String = pid_reply_to },
+      }
+    }
+  })
+
+  while lua_process_spawner.last_pid == nil do
+    cworks.wait_for_event()
+  end
+
+  local pid = lua_process_spawner.last_pid
+  lua_process_spawner.last_pid = nil
+
+  return pid
+end
+
+--- end of child lua process spawner
+
 local args = "ls"
 
-cworks.publish("/run/sys/exec-lua", {
-  CompoundFSObj = {
-    children = {
-      path = { String = "/usr/bin/ls.lua" },
-      cmd_line = { String = args },
-      stdout = { String = env.stdout },
-      stdin = { String = env.stdin },
-    }
-  }
-})
+local pid = lua_process_spawner.spawn_lua_process("/usr/bin/ls.lua", "ls")
+cworks.wait_for_process(pid)
 
 
 local pwd = "/"
@@ -164,16 +202,9 @@ while true do
     -- args = <rel_path> ...
     local rel_path = args:match("^(%S+)%s*")
     local lua_path = path_join(pwd, rel_path)
-    cworks.publish("/run/sys/exec-lua", {
-      CompoundFSObj = {
-        children = {
-          path = { String = lua_path },
-          cmd_line = { String = args },
-          stdout = { String = env.stdout },
-          stdin = { String = env.stdin },
-        }
-      }
-    })
+    local cmd_line = line
+    local pid = lua_process_spawner.spawn_lua_process(lua_path, cmd_line)
+    cworks.wait_for_process(pid)
   elseif command == "repl" then
     io.write("Entering REPL mode. Type 'exit' to leave.\n")
     -- 1 ==> 1

@@ -38,6 +38,8 @@ export async function lua_launcher(p: Process, sess: Session) {
     const cmd_line = children_map.get("cmd_line")?.String;
     const stdout = children_map.get("stdout")?.String;
     const stdin = children_map.get("stdin")?.String;
+    const pid_reply_to = children_map.get("pid_reply_to")?.String;
+
 
     p.fs_get(path).then((data) => {
       if (typeof data.String !== "string") {
@@ -50,8 +52,14 @@ export async function lua_launcher(p: Process, sess: Session) {
         stdout,
         stdin,
       });
-      sess.add_process(process.kernel_callback.bind(process));
-    })
+      const pid = sess.add_process(process.kernel_callback.bind(process));
+
+      if (pid_reply_to) {
+        return p.fs_publish(pid_reply_to, { String: pid.toString() });
+      }
+    }).then(() => {
+      console.debug("Lua process started for path:", path);
+    });
 
 
     return true;
