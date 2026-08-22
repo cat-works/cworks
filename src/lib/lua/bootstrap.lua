@@ -39,11 +39,11 @@ end
 
 local function fetch_done(r)
   return r == nil
-    or r == "None"
-    or r == "Pending"
-    or c_type(r) ~= "table"
-    or r["FSGet"] ~= nil
-    or r["Fail"] ~= nil
+      or r == "None"
+      or r == "Pending"
+      or c_type(r) ~= "table"
+      or r["FSGet"] ~= nil
+      or r["Fail"] ~= nil
 end
 
 local function parse_fetch_response(res, modname)
@@ -207,6 +207,9 @@ local function build_handle()
     end,
     wait_for_event = function()
       return simple("WaitForEvent")
+    end,
+    wait_for_process = function(pid)
+      return simple({ WaitForProcess = "$$bi:" .. c_tostring(pid) })
     end,
   }
 
