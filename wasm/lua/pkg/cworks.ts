@@ -3,6 +3,12 @@ import cworks_mod from "./cworks-rs";
 const mod = await cworks_mod();
 mod.ccall("__ffi_init", null, [], []);
 
+// ─── Symbol demangling ───
+
+export function demangle_str(x: string): string {
+  return mod.ccall("__ffi_demangle", "string", ["string"], [x]);
+}
+
 // ─── Lua Thread (existing API, backward-compatible) ───
 
 export class LuaThreadError extends Error {

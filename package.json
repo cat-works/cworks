@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "wasm": "wasm-pack build --dev --no-opt --target web ./src/wasm/wasm -d ../pkg",
-    "wasm-lua": "bash ./src/lua/build.sh",
+    "wasm": "wasm-pack build --dev --no-opt --target web ./wasm/wasm -d ../pkg",
+    "wasm-lua": "bash ./wasm/lua/build.sh",
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",

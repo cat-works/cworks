@@ -4,10 +4,10 @@
 			"path": "."
 		},
 		{
-			"path": "src/wasm"
+			"path": "wasm/lua"
 		},
 		{
-			"path": "src/lua"
+			"path": "../../syoch/dotfiles"
 		}
 	],
 	"settings": {

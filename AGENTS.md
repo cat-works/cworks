@@ -8,7 +8,7 @@ opencode セッションから直接 `cargo build --target wasm32-unknown-emscri
 
 正しいビルドコマンド:
 ```bash
-nix develop --command bash src/lua/build.sh
+nix develop --command bash wasm/lua/build.sh
 # または
 nix develop --command pnpm run wasm-lua
 ```

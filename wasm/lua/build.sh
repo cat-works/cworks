@@ -18,4 +18,5 @@ export TARGET_CXXFLAGS="-fwasm-exceptions"
 # (cargo:rustc-link-arg=-o<lua-rs.js> など)
 
 # ビルド
-cargo build --target wasm32-unknown-emscripten --release
+# -p cworks: workspace の bin ターゲット (test-cli) を emscripten 向けに巻き込まない
+cargo build --target wasm32-unknown-emscripten --release -p cworks

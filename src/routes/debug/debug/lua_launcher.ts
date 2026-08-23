@@ -1,6 +1,6 @@
 import type { Process } from "$lib/session";
 import { LuaProcess } from "$lib/session/luaprocess";
-import type { Session } from "../../../lua/pkg/cworks";
+import type { Session } from "../../../../wasm/lua/pkg/cworks";
 
 
 export async function lua_launcher(p: Process, sess: Session) {

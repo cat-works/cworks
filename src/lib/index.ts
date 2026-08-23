@@ -1,7 +1,1 @@
-import init, { demangle_str } from "../wasm/pkg/wasm";
-
-export function ghs_demangle(str: string): string {
-  return demangle_str(str);
-}
-
-await init();
+export { demangle_str as ghs_demangle } from "../../wasm/lua/pkg/cworks";
