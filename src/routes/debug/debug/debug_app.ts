@@ -1,6 +1,6 @@
 import type { Process } from "$lib/session";
 import { LuaProcess } from "$lib/session/luaprocess";
-import type { Session } from "../../../wasm/pkg/wasm";
+import type { Session } from "../../../lua/pkg/cworks";
 
 import sh_lua from "$lib/lua/usr/bin/sh.lua?raw";
 

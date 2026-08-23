@@ -5,7 +5,7 @@
     ITerminalInitOnlyOptions,
     Terminal,
   } from "@battlefieldduck/xterm-svelte";
-  import init, { Session } from "$lib/../wasm/pkg/wasm";
+  import { Session } from "$lib/../lua/pkg/cworks";
   import { Process } from "$lib/session";
   import { stdio_main } from "./stdio_app";
   import { debug_main } from "./debug_app";
@@ -41,8 +41,7 @@
   };
 
   let sess: Session | null = null;
-  let session_promise = init()
-    .then(() => sleep(100))
+  let session_promise = sleep(100)
     .then(() => {
       let session = new Session();
 

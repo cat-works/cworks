@@ -1,4 +1,6 @@
 pub mod buf_encoding;
+pub mod ffi_session;
+pub mod js_callback;
 pub mod luaenv;
 pub mod luathread;
 
@@ -8,5 +10,5 @@ pub extern "C" fn __ffi_init() {
         .filter_level(log::LevelFilter::Trace)
         .init();
 
-    log::info!("Lua module initialized.");
+    log::info!("CWorks module initialized.");
 }

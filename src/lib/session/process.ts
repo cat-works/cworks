@@ -31,6 +31,17 @@ export class Process {
     return this.pending();
   }
 
+  public wait_for_process(pid: bigint): Promise<void> {
+    return new Promise((resolve) => {
+      this.emitter.once("callback", (x) => {
+        if (x === "Done") {
+          resolve();
+          return true;
+        }
+      });
+    });
+  }
+
   public wait_for_event(): Promise<void> {
     this.result_queue.push("WaitForEvent");
 

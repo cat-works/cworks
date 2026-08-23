@@ -36,3 +36,10 @@
   - v2（採用）: **`Process.wait_for_event`（process.ts）を修正** — once ハンドラが実イベント（x ≠ "None"）で起きた時、result_queue から `"WaitForEvent"` トークンを除去してから resolve。これでハンドラが積んだ仕事が shift で即座に返り、**プロセスは休眠のまま**（WaitForEvent 返却）正しく処理できる
 - **確認**: exec 動作 + launcher が WaitForEvent で休眠復帰（Get 即送信）。Gate A/B 全 PASS
 - **教訓**: TS Process で「Invoke を受けてハンドラが fs_* を積む」パターンは、`wait_for_event` のトークン除去を Process 側で行うのが正解。pending() ループ化は busy-poll になるため避ける
+
+## 統合 emscripten モジュール移行時の JSON 境界問題（2026-08・解決済み）
+- **背景**: src/wasm (wasm-bindgen kernel) + src/lua/pkg/lua.ts を src/lua/pkg/cworks.ts (emscripten 統合モジュール) に統一した。旧パスは wasm-bindgen が JS オブジェクト/BigInt をネイティブ変換していたが、新パスは Rust↔JS 間がすべて JSON 文字列経由。
+- **症状1**: `children_map.get is not a function` — wasm-bindgen は HashMap を JS Map で渡すが、JSON 経由ではプレーンオブジェクトになる。`lua_launcher.ts` を `.get(k)` → `[k]` アクセスに修正。
+- **症状2**: シェルが `wait_for_process` 後に Done で死亡しプロンプト復帰しない — `PollResult::WaitForProcess(u128)` のペイロード (`$$bi:3` → BigInt) を JSON.stringify すると BigInt は文字列 `"3"` になり serde が u128 をデシリアライズできず `ffi_session.rs` の `unwrap_or(PollResult::Done)` で即死。**修正: replacer で bigint → Number(value)**（PID 程度の小さい値なら精度損失なし）。`value.toString()` は不可（文字列化で serde 失敗）。
+- **教訓**: ffi_session.rs の `unwrap_or(Done)` はデシリアライズ失敗を静かに握り潰す。JS 側から返す PollResult JSON の型は serde の期待に正確に合わせる必要がある（u128 = JSON 数値）。
+- **検証方法**: Playwright で xterm-helper-textarea に focus → keyboard.type("ls", delay=100) → Enter。**ls を 2 回実行してプロンプト復帰を確認するのが回帰テスト**（wait_for_process の死が検出できる）。

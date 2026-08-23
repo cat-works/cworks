@@ -24,8 +24,11 @@ local path = ""
 local recursive = false
 local color = false
 
+local first = true
 for arg in env.cmdline:gmatch("%S+") do
-  if arg == "-r" then
+  if first then
+    first = false -- skip command name
+  elseif arg == "-r" then
     recursive = true
   elseif arg == "--color" then
     color = true
