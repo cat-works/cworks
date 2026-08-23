@@ -1,1 +1,0 @@
-# ビルドプロファイルは workspace root (wasm/Cargo.toml) の [profile.release] で管理

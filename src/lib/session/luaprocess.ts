@@ -1,4 +1,4 @@
-import { LuaEnv, LuaThread, LuaThreadError } from "../../../wasm/lua/pkg/cworks";
+import { LuaEnv, LuaThread, LuaThreadError } from "../../../wasm/wasm/pkg/cworks";
 import stdio from "$lib/lua/stdio.lua?raw";
 import bootstrap from "$lib/lua/bootstrap.lua?raw";
 import json from "$lib/lua/usr/lib/json.lua?raw";

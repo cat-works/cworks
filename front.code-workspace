@@ -4,10 +4,13 @@
 			"path": "."
 		},
 		{
-			"path": "wasm/lua"
+			"path": "wasm"
 		},
 		{
-			"path": "../../syoch/dotfiles"
+			"path": "/home/syoch/ghq/github.com/syoch/dotfiles"
+		},
+		{
+			"path": "/home/syoch/work/CircuitMaker2"
 		}
 	],
 	"settings": {

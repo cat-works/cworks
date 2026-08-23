@@ -5,7 +5,7 @@
     ITerminalInitOnlyOptions,
     Terminal,
   } from "@battlefieldduck/xterm-svelte";
-  import { Session } from "../../../../wasm/lua/pkg/cworks";
+  import { Session } from "../../../../wasm/wasm/pkg/cworks";
   import { Process } from "$lib/session";
   import { stdio_main } from "./stdio_app";
   import { debug_main } from "./debug_app";

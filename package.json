@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "wasm": "wasm-pack build --dev --no-opt --target web ./wasm/wasm -d ../pkg",
-    "wasm-lua": "bash ./wasm/lua/build.sh",
+    "wasm-lua": "bash ./wasm/wasm/build.sh",
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",

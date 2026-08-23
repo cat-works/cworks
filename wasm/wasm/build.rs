@@ -11,8 +11,8 @@ fn main() {
     std::fs::create_dir_all(&pkg_dir).unwrap();
     let js = pkg_dir.join("cworks-rs.js");
     let tsd = pkg_dir.join("cworks-rs.d.ts");
-    let pre_js = Path::new(&manifest_dir).join("callback-pre.js");
-    let js_lib = Path::new(&manifest_dir).join("cworks-lib.js");
+    let pre_js = Path::new(&manifest_dir).join("glue/callback-pre.js");
+    let js_lib = Path::new(&manifest_dir).join("glue/cworks-lib.js");
 
     println!("cargo:rustc-link-arg=-sSIDE_MODULE=0");
     println!("cargo:rustc-link-arg=-o{}", js.display());

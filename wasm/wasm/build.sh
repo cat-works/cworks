@@ -15,7 +15,7 @@ export TARGET_CFLAGS="-fwasm-exceptions"
 export TARGET_CXXFLAGS="-fwasm-exceptions"
 
 # JS グルー生成用のリンク引数は build.rs が設定する
-# (cargo:rustc-link-arg=-o<lua-rs.js> など)
+# (cargo:rustc-link-arg=-o<cworks-rs.js> など)
 
 # ビルド
 # -p cworks: workspace の bin ターゲット (test-cli) を emscripten 向けに巻き込まない
