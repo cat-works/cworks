@@ -1,7 +1,7 @@
 import { LuaEnv, LuaThread, LuaThreadError } from "../../lua/pkg/lua";
 import stdio from "$lib/lua/stdio.lua?raw";
 import bootstrap from "$lib/lua/bootstrap.lua?raw";
-import json from "$lib/lua/json.lua?raw";
+import json from "$lib/lua/usr/lib/json.lua?raw";
 
 const env = new LuaEnv();
 env.run(json);
@@ -9,6 +9,7 @@ env.run(stdio);
 env.run(bootstrap);
 
 export interface LuaProcessOpts {
+  cwd: string;
   cmdline: string;
   stdout: string;
   stdin: string;
@@ -17,6 +18,7 @@ export interface LuaProcessOpts {
 
 interface LuaProcessEnv {
   cmdline: string;
+  cwd: string;
   stdout: string;
   stdin: string;
   extra_args: any;
@@ -83,14 +85,15 @@ export class LuaProcess {
   private thread: LuaThread;
 
   constructor(name: string, code: string, opts: LuaProcessOpts) {
-    const { cmdline, stdout, stdin } = opts;
+    const { cmdline, cwd, stdout, stdin } = opts;
     if (
       typeof cmdline !== "string" ||
+      typeof cwd !== "string" ||
       typeof stdout !== "string" ||
       typeof stdin !== "string"
     ) {
       throw new Error(
-        "LuaProcess: opts.cmdline, opts.stdout, opts.stdin are required",
+        "LuaProcess: opts.cmdline, opts.cwd, opts.stdout, opts.stdin are required",
       );
     }
     if (stdin === "") {
@@ -99,6 +102,7 @@ export class LuaProcess {
 
     const procEnv: LuaProcessEnv = {
       cmdline,
+      cwd,
       stdout,
       stdin,
       extra_args: opts.extra_args ?? {},

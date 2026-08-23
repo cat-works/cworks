@@ -19,6 +19,10 @@ export async function lua_launcher(p: Process, sess: Session) {
       return
     }
 
+    if (children_map.get("cwd") == undefined) {
+      console.warn("Invalid params received for exec-lua:", data);
+      return
+    }
     if (children_map.get("cmd_line") == undefined) {
       console.warn("Invalid params received for exec-lua:", data);
       return
@@ -35,6 +39,7 @@ export async function lua_launcher(p: Process, sess: Session) {
     }
 
     const path = children_map.get("path")?.String;
+    const cwd = children_map.get("cwd")?.String;
     const cmd_line = children_map.get("cmd_line")?.String;
     const stdout = children_map.get("stdout")?.String;
     const stdin = children_map.get("stdin")?.String;
@@ -48,6 +53,7 @@ export async function lua_launcher(p: Process, sess: Session) {
       }
 
       const process = new LuaProcess(path, data.String, {
+        cwd,
         cmdline: cmd_line,
         stdout,
         stdin,
