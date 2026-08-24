@@ -28,7 +28,7 @@ pub struct Kernel {
 impl Default for Kernel {
     fn default() -> Self {
         Self {
-            processes: AutoMap::new(),
+            processes: AutoMap::new(1),
             waiting_pairs: HashMap::new(),
             fs_root: initfs(),
         }
@@ -294,7 +294,7 @@ impl Kernel {
                     status == ProcessStatus::Running || matches!(status, ProcessStatus::Sleeping(_))
                 });
         if !is_any_process_running {
-            self.processes = AutoMap::new();
+            self.processes.clear();
         }
     }
     pub fn start(&mut self) {
