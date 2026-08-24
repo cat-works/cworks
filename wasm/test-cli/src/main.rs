@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
-use kernel::{RustProcess, RustProcessCore, obj_tree::Object};
+use cworks_lua::LuaProcess;
+use kernel::{Process, RustProcess, RustProcessCore, obj_tree::Object};
 
 async fn server(mut session: RustProcessCore, _arg: u32) {
     if let Err(e) = session
@@ -60,6 +61,23 @@ fn main() {
     k.register_process(Box::new(RustProcess::new(&server, 0)));
     k.register_process(Box::new(RustProcess::new(&client, 0)));
     k.register_process(Box::new(RustProcess::new(&fs_test, 0)));
+
+    let lua = mlua::Lua::new();
+    let lua_thread = lua
+        .create_thread(
+            lua.load(
+                r#"
+                while true do
+                    local data = coroutine.yield("{\"Sleep\":1}")
+                    print("Lua thread received data: " .. data)
+                end
+            "#,
+            )
+            .into_function()
+            .unwrap(),
+        )
+        .unwrap();
+    k.register_process(Box::new(LuaProcess::new(lua_thread)));
 
     k.start();
 }

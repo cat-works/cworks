@@ -1,0 +1,10 @@
+{
+  "saveAndRun": {
+    "commands": [
+      {
+        "cmd": "cargo run",
+        "silent": true
+      }
+    ]
+  }
+}

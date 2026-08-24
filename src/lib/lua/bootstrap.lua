@@ -209,7 +209,7 @@ local function build_handle()
       return simple("WaitForEvent")
     end,
     wait_for_process = function(pid)
-      return simple({ WaitForProcess = "$$bi:" .. c_tostring(pid) })
+      return simple({ WaitForProcess = pid })
     end,
   }
 

@@ -1,4 +1,4 @@
-import { LuaEnv, LuaThread, LuaThreadError } from "../../../wasm/wasm/pkg/cworks";
+import { createNativeLuaProcess, LuaEnv, LuaThread, LuaThreadError } from "../../../wasm/wasm/pkg/cworks";
 import stdio from "$lib/lua/stdio.lua?raw";
 import bootstrap from "$lib/lua/bootstrap.lua?raw";
 import json from "$lib/lua/usr/lib/json.lua?raw";
@@ -82,7 +82,7 @@ function buildThinChunk(env: LuaProcessEnv, code: string, name: string): string 
 }
 
 export class LuaProcess {
-  private thread: LuaThread;
+  public pid: bigint;
 
   constructor(name: string, code: string, opts: LuaProcessOpts) {
     const { cmdline, cwd, stdout, stdin } = opts;
@@ -107,50 +107,10 @@ export class LuaProcess {
       stdin,
       extra_args: opts.extra_args ?? {},
     };
-    this.thread = env.thread(name, buildThinChunk(procEnv, code, name));
-  }
 
-  kernel_callback(data: any): any {
-    const dataString = JSON.stringify(data, (key, value) => {
-      if (typeof value === "bigint") {
-        return value.toString();
-      } else if (value instanceof Map) {
-        return Object.fromEntries(value);
-      }
-      return value;
-    });
+    const chunk = buildThinChunk(procEnv, code, name);
 
-    // console.debug("lp <", dataString);
-    const result = (() => {
-      try {
-        return this.thread.yield(dataString)
-      } catch (e) {
-        if (e instanceof LuaThreadError) {
-          return JSON.stringify("Done");
-        } else {
-          throw e;
-        }
-      }
-    })();
-    // console.debug("lp >", result);
-    const parsed_obj = JSON.parse(result);
-
-    // transform string back to bigint for handles
-    const transformHandles = (obj: any): any => {
-      if (Array.isArray(obj)) {
-        return obj.map(transformHandles);
-      } else if (obj && typeof obj === "object") {
-        const transformedObj: any = {};
-        for (const key in obj) {
-          transformedObj[key] = transformHandles(obj[key]);
-        }
-        return transformedObj;
-      } else if (typeof obj === "string" && obj.startsWith("$$bi:")) {
-        return BigInt(obj.slice(5));
-      }
-      return obj;
-    };
-
-    return transformHandles(parsed_obj);
+    const nativeProcess = createNativeLuaProcess(env, name, chunk);
+    this.pid = nativeProcess;
   }
 }

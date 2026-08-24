@@ -30,4 +30,8 @@ impl LuaEnv {
 
         LuaThread::new(thread)
     }
+
+    pub fn get_lua(&self) -> &Lua {
+        &self.0
+    }
 }

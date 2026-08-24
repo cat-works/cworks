@@ -58,7 +58,7 @@ export async function lua_launcher(p: Process, sess: Session) {
         stdout,
         stdin,
       });
-      const pid = sess.add_process(process.kernel_callback.bind(process));
+      const pid = process.pid;
 
       if (pid_reply_to) {
         return p.fs_publish(pid_reply_to, { String: pid.toString() });

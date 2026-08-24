@@ -13,6 +13,7 @@
 
 pub mod buf_encoding;
 pub mod ffi_luaenv;
+pub mod ffi_luaprocess;
 pub mod ffi_luathread;
 pub mod ffi_session;
 pub mod js_callback;
@@ -35,9 +36,7 @@ pub fn __ffi_demangle(x: *const c_char) -> *mut c_char {
     if x.is_null() {
         return std::ptr::null_mut();
     }
-    let input: String = unsafe { CStr::from_ptr(x) }
-        .to_string_lossy()
-        .into_owned();
+    let input: String = unsafe { CStr::from_ptr(x) }.to_string_lossy().into_owned();
     let out = ghs_demangle::demangle(input).to_string();
     match CString::new(out) {
         Ok(c) => c.into_raw(),

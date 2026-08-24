@@ -11,10 +11,7 @@ impl kernel::Process for JsCallbackProcess {
     fn poll(&mut self, data: &kernel::SyscallData) -> kernel::PollResult {
         let json = serde_json::to_string(data).unwrap_or_default();
         // Wrap with callback ID so JS dispatcher can route correctly
-        let wrapped = format!(
-            "{{\"id\":{},\"data\":{}}}",
-            self.callback_id, json
-        );
+        let wrapped = format!("{{\"id\":{},\"data\":{}}}", self.callback_id, json);
         match call_js_callback(self.callback_id, &wrapped) {
             Some(result_json) => {
                 serde_json::from_str(&result_json).unwrap_or(kernel::PollResult::Done)
@@ -25,7 +22,7 @@ impl kernel::Process for JsCallbackProcess {
 }
 
 thread_local! {
-    static SESSION: RefCell<Option<Kernel>> = RefCell::new(None);
+    pub static SESSION: RefCell<Option<Kernel>> = RefCell::new(None);
 }
 
 #[unsafe(no_mangle)]

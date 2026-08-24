@@ -17,11 +17,10 @@ export async function debug_main(p: Process, sess: Session) {
   await p.fs_mkdir("/run", "debug-app");
 
 
-  const test_process = new LuaProcess("shell.lua", sh_lua, {
+  new LuaProcess("shell.lua", sh_lua, {
     cmdline: "sh",
     cwd: "/",
     stdout: "/run/debug-app/shell-out",
     stdin: "/run/debug-app/shell-in",
   });
-  sess.add_process(test_process.kernel_callback.bind(test_process));
 }

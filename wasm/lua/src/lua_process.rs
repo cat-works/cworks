@@ -12,10 +12,13 @@ impl LuaProcess {
 
 impl Process for LuaProcess {
     fn poll(&mut self, data: &kernel::SyscallData) -> kernel::PollResult {
+        let syscall_json = serde_json::to_string(data).expect("Failed to serialize SyscallData");
+        log::debug!("LP <-- {syscall_json}");
         let res: String = self
             .lua_thread
-            .resume(serde_json::to_string(data).expect("Failed to serialize SyscallData"))
+            .resume(syscall_json)
             .expect("Failed to resume Lua thread");
+        log::debug!("LP --> {res}");
         let res_data: kernel::PollResult =
             serde_json::from_str(&res).expect("Failed to deserialize PollResult from Lua thread");
 

@@ -60,6 +60,17 @@ export class LuaThread {
     return decode(encoded_value);
   }
 }
+export function createNativeLuaProcess(env: LuaEnv, name: string, code: string) {
+  const success = mod.ccall(
+    "__ffi_lua_process_new",
+    "number",
+    ["number", "string", "string"],
+    [env.ptr, name, code],
+  );
+
+  console.log("NativeLuaProcess created with PID:", success);
+  return BigInt(success);
+}
 
 // ─── Kernel Session (new unified API) ───
 
