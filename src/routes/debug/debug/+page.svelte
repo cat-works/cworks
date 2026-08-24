@@ -25,36 +25,36 @@
     cursorBlink: true,
     convertEol: true,
     theme: {
-      background: "#000000",
-      foreground: "#ffffff",
-      cursor: "#ffffff",
-      black: "#000000",
-      red: "#ff0000",
-      green: "green",
-      yellow: "#ffff00",
-      blue: "#0000ff",
-      magenta: "#ff00ff",
-      cyan: "#00ffff",
-      white: "#ffffff",
-      brightRed: "#ff0000",
+      cursor: "#cccccc",
+
+      magenta: "#C678DD",
+      green: "#98C379",
+      background: "#1E2127",
+      foreground: "#ABB2BF",
+      black: "#1E2127",
+      blue: "#61AFEF",
+      cyan: "#56B6C2",
+      red: "#E06C75",
+      white: "#ABB2BF",
+      yellow: "#E5C07B",
     },
+    rows: 30,
   };
 
   let sess: Session | null = null;
-  let session_promise = sleep(100)
-    .then(() => {
-      let session = new Session();
+  let session_promise = sleep(100).then(() => {
+    let session = new Session();
 
-      (async () => {
-        while (1) {
-          session.step();
-          await new Promise((r) => setTimeout(r, 0));
-        }
-      })();
+    (async () => {
+      while (1) {
+        session.step();
+        await new Promise((r) => setTimeout(r, 0));
+      }
+    })();
 
-      sess = session;
-      return session;
-    });
+    sess = session;
+    return session;
+  });
 
   const canonicalize_newline = (data: string): string =>
     data.replace(/\r(\n)?/g, "\n");
