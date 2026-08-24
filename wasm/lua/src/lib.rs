@@ -7,9 +7,11 @@
 //! The public API must not leak mlua types; errors are converted to
 //! self-contained values at construction.
 
-pub mod luaenv;
-pub mod luathread;
+mod lua_process;
+mod luaenv;
+mod luathread;
 
+pub use lua_process::LuaProcess;
 pub use luaenv::LuaEnv;
 pub use luathread::LuaThread;
 pub use luathread::LuaThreadError;

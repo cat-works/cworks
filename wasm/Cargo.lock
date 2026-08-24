@@ -140,8 +140,10 @@ dependencies = [
 name = "cworks-lua"
 version = "0.1.0"
 dependencies = [
+ "kernel",
  "log",
  "mlua",
+ "serde_json",
 ]
 
 [[package]]
@@ -726,9 +728,11 @@ dependencies = [
 name = "test-cli"
 version = "0.1.0"
 dependencies = [
+ "cworks-lua",
  "env_logger",
  "kernel",
  "log",
+ "mlua",
  "serde_json",
 ]
 

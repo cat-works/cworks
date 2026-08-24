@@ -8,5 +8,7 @@ edition = "2024"
 crate-type = ["rlib"]
 
 [dependencies]
+kernel = { path = "../kernel" }
 mlua = { version = "0.10.5", features = ["lua54", "vendored"] }
+serde_json = "1"
 log = "0.4.17"
