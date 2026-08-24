@@ -1,4 +1,4 @@
-//! Pure mlua wrapper library for CWorks.
+//! Pure mlua wrapper library for `CWorks`.
 //!
 //! This crate exposes typed Rust APIs (`LuaEnv`, `LuaThread`) over mlua and
 //! knows nothing about the JS boundary: no FFI exports, no wire encoding.
@@ -8,10 +8,5 @@
 //! self-contained values at construction.
 
 mod lua_process;
-mod luaenv;
-mod luathread;
 
 pub use lua_process::LuaProcess;
-pub use luaenv::LuaEnv;
-pub use luathread::LuaThread;
-pub use luathread::LuaThreadError;

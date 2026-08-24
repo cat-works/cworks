@@ -11,10 +11,8 @@
 //! The Lua VM itself is wrapped by `cworks-lua`; this crate only marshals
 //! data across the C boundary (pointers, CStrings, wire encoding).
 
-pub mod buf_encoding;
 pub mod ffi_luaenv;
 pub mod ffi_luaprocess;
-pub mod ffi_luathread;
 pub mod ffi_session;
 pub mod js_callback;
 
@@ -32,7 +30,7 @@ pub extern "C" fn __ffi_init() {
 /// Demangle a GHS-compiler mangled symbol. Returns a leaked C string
 /// (same convention as the yield shim; ccall "string" copies it to JS).
 #[unsafe(no_mangle)]
-pub fn __ffi_demangle(x: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn __ffi_demangle(x: *const c_char) -> *mut c_char {
     if x.is_null() {
         return std::ptr::null_mut();
     }

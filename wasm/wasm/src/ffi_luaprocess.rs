@@ -1,15 +1,13 @@
-use std::ffi::{CStr, CString, c_char};
+use std::ffi::{CStr, c_char};
 
-use cworks_lua::{LuaEnv, LuaProcess, LuaThread, LuaThreadError};
+use cworks_lua::LuaProcess;
+use mlua::Lua;
 
-use crate::{
-    buf_encoding::{decode, encode},
-    ffi_session::SESSION,
-};
+use crate::ffi_session::SESSION;
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn __ffi_lua_process_new(
-    env: *mut LuaEnv,
+    env: *mut Lua,
     name: *mut c_char,
     code: *mut c_char,
 ) -> u64 {
@@ -27,14 +25,12 @@ pub unsafe extern "C" fn __ffi_lua_process_new(
         .into_owned();
 
     let func = env
-        .get_lua()
         .load(code)
         .set_name(&name)
         .into_function()
         .expect("Failed to load Lua function");
 
     let thread = env
-        .get_lua()
         .create_thread(func)
         .expect("Failed to create Lua thread");
 
