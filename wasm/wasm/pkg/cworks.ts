@@ -1,7 +1,7 @@
 import cworks_mod from "./cworks-rs";
 
 const mod = await cworks_mod();
-mod.ccall("__ffi_init", null, [], []);
+mod.___ffi_init();
 
 // ─── Symbol demangling ───
 
