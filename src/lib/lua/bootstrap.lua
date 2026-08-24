@@ -168,6 +168,9 @@ local function build_handle()
       if res["FSGet"] ~= nil then
         return res["FSGet"]
       end
+      if res["GetPid"] ~= nil then
+        return res["GetPid"]
+      end
       return nil
     end
     return res
@@ -210,6 +213,9 @@ local function build_handle()
     end,
     wait_for_process = function(pid)
       return simple({ WaitForProcess = pid })
+    end,
+    get_pid = function()
+      return simple("GetPid")
     end,
   }
 

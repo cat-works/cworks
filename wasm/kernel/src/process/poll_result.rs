@@ -18,4 +18,5 @@ pub enum PollResult {
     Subscribe(String),
     Unsubscribe(String),
     Publish(String, Option<FSObjRef>),
+    GetPid,
 }

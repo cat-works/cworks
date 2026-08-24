@@ -254,6 +254,9 @@ impl Kernel {
 
                     p.outgoing_data_buffer.push(SyscallData::FSSuccess);
                 }
+                PollResult::GetPid => {
+                    p.outgoing_data_buffer.push(SyscallData::GetPid(*pid));
+                }
             }
         }
 

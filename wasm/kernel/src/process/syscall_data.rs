@@ -16,4 +16,5 @@ pub enum SyscallData {
         path: String,
         arg: Option<FSObjRef>,
     },
+    GetPid(u128),
 }
