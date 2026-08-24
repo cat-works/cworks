@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
-use cworks_lua::LuaProcess;
-use kernel::{Process, RustProcess, RustProcessCore, obj_tree::Object};
+use kernel::{RustProcess, RustProcessCore, obj_tree::Object};
 
 async fn server(mut session: RustProcessCore, _arg: u32) {
     if let Err(e) = session
@@ -32,24 +31,6 @@ async fn client(session: RustProcessCore, _arg: u32) {
     }
     session.sleep(0.2).await;
 }
-async fn fs_test(session: RustProcessCore, _arg: u32) {
-    session
-        .fs_set("/b".to_string(), Object::Int(1).into())
-        .await
-        .expect("Failed to set /b");
-
-    session.sleep(1.0).await;
-
-    match session.fs_get("/".to_string()).await {
-        Err(e) => {
-            log::error!("Failed to get /: {e:?}");
-        }
-        Ok(v) => match serde_json::to_string(&v) {
-            Ok(json) => log::info!("Got /: {json}"),
-            Err(e) => log::error!("Failed to serialize /: {e:?}"),
-        },
-    }
-}
 
 fn main() {
     env_logger::builder()
@@ -60,24 +41,6 @@ fn main() {
 
     k.register_process(Box::new(RustProcess::new(&server, 0)));
     k.register_process(Box::new(RustProcess::new(&client, 0)));
-    k.register_process(Box::new(RustProcess::new(&fs_test, 0)));
-
-    let lua = mlua::Lua::new();
-    let lua_thread = lua
-        .create_thread(
-            lua.load(
-                r#"
-                while true do
-                    local data = coroutine.yield("{\"Sleep\":1}")
-                    print("Lua thread received data: " .. data)
-                end
-            "#,
-            )
-            .into_function()
-            .unwrap(),
-        )
-        .unwrap();
-    k.register_process(Box::new(LuaProcess::new(lua_thread)));
 
     k.start();
 }
