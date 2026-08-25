@@ -1,8 +1,8 @@
 use super::SyscallError;
 use crate::obj_tree::{FSObjRef, FileStat};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum SyscallData {
     #[default]
     None,
