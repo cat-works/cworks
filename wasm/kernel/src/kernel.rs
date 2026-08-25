@@ -72,7 +72,13 @@ impl Kernel {
                 for waiter in self.processes.get(pid).unwrap().waiters_pid.clone() {
                     self.update_process_status(waiter, ProcessStatus::Running);
                 }
-                for obj in self.processes.get(pid).unwrap().listening_channels.clone() {
+                for obj in self
+                    .processes
+                    .get_mut(pid)
+                    .unwrap()
+                    .listening_channels
+                    .drain(..)
+                {
                     let mut callee_pid = {
                         let Object::Func { ref callee_pid } = **obj.borrow() else {
                             return Err(SyscallData::Fail(SyscallError::InvalidRequest));
@@ -243,13 +249,9 @@ impl Kernel {
             }
         }
 
-        let is_any_process_running =
-            self.processes
-                .values()
-                .map(|p| p.status.clone())
-                .any(|status| {
-                    status == ProcessStatus::Running || matches!(status, ProcessStatus::Sleeping(_))
-                });
+        let is_any_process_running = self.processes.values().any(|p| {
+            p.status == ProcessStatus::Running || matches!(p.status, ProcessStatus::Sleeping(_))
+        });
         if !is_any_process_running {
             self.processes.clear();
         }
