@@ -309,12 +309,12 @@ impl Kernel {
                             path: path.clone(),
                             arg: content.clone(),
                         };
-                        self.processes
-                            .get_mut(&pid)
-                            .map(|p| p.outgoing_data_buffer.push(syscall_data))
-                            .unwrap_or_else(|| {
-                                log::warn!("Process {pid} not found! (ignored)");
-                            });
+                        self.processes.get_mut(&pid).map(|p| {
+                            p.outgoing_data_buffer.push(syscall_data);
+                            p.status = ProcessStatus::Running;
+                        }).unwrap_or_else(|| {
+                            log::warn!("Process {pid} not found! (ignored)");
+                        });
                     }
 
                     self.processes

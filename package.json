@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "wasm": "wasm-pack build --dev --no-opt --target web ./wasm/wasm -d ../pkg",
-    "wasm-lua": "bash ./wasm/wasm/build.sh",
+    "wasm-lua": "cd wasm && cargo build --target wasm32-unknown-emscripten --release",
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",

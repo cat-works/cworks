@@ -11,5 +11,9 @@ mergeInto(LibraryManager.library, {
     var ptr = _malloc(lengthBytes + 1);
     stringToUTF8(resultStr, ptr, lengthBytes + 1);
     return ptr;
+  },
+  cworks_console_debug__sig: 'vi',
+  cworks_console_debug: function(strPtr) {
+    console.debug(UTF8ToString(strPtr));
   }
 });

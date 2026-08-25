@@ -4,14 +4,11 @@ description = "CWorks artifact crate: JS <-> Rust boundary (emscripten cdylib)"
 version = "0.1.0"
 edition = "2024"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
 kernel = { path = "../kernel" }
 cworks-lua = { path = "../lua" }
 log = "0.4.17"
-env_logger = "0.10.0"
 serde_json = "1"
 ghs_demangle = { git = "https://github.com/syoch/ghs_demangle" }
-mlua = { version = "0.10.5", features = ["lua54", "vendored"] }
+mlua = { version = "0.12", features = ["lua55", "vendored"] }
+# console_log = "1.1.0"

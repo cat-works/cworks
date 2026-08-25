@@ -8,5 +8,9 @@ members = [
 ]
 
 [profile.release]
-debug = true
+debug = false
 opt-level = 'z'
+
+[profile.dev]
+debug = true
+opt-level = 0

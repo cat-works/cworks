@@ -14,17 +14,19 @@ fn main() {
     let pre_js = Path::new(&manifest_dir).join("glue/callback-pre.js");
     let js_lib = Path::new(&manifest_dir).join("glue/cworks-lib.js");
 
-    println!("cargo:rustc-link-arg=-sSIDE_MODULE=0");
-    println!("cargo:rustc-link-arg=-o{}", js.display());
-    println!("cargo:rustc-link-arg=--emit-tsd");
-    println!("cargo:rustc-link-arg={}", tsd.display());
+    // Calling function that have string arguments from JS requires ccall (or UTF8ToString/stringToUTF8)
+    println!(
+        "cargo:rustc-link-arg=-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8"
+    );
+
+    // Vite works with ES6 modules, so we need MODULARIZE=1 and EXPORT_ES6=1
     println!("cargo:rustc-link-arg=-sMODULARIZE=1");
     println!("cargo:rustc-link-arg=-sEXPORT_ES6=1");
-    println!("cargo:rustc-link-arg=-sMAIN_MODULE=2");
+
+    // the crate being compiled as a wasm library
+    println!("cargo:rustc-link-arg=-o{}", js.display());
+
+    println!("cargo:rustc-link-arg=--emit-tsd={}", tsd.display());
     println!("cargo:rustc-link-arg=--pre-js={}", pre_js.display());
     println!("cargo:rustc-link-arg=--js-library={}", js_lib.display());
-    println!("cargo:rustc-link-arg=-sERROR_ON_UNDEFINED_SYMBOLS=0");
-    println!(
-        "cargo:rustc-link-arg=-sEXPORTED_RUNTIME_METHODS=ccall,UTF8ToString,stringToUTF8,lengthBytesUTF8"
-    );
 }
