@@ -76,6 +76,10 @@ while true do
   local line = io.read("*l")
   local command, args = line:match("^(%S+)%s*(.*)$")
 
+  if command == nil then
+    goto continue
+  end
+
   if command == "cd" then
     if args == "" then
       pwd = "/"
@@ -88,6 +92,14 @@ while true do
         print("No such directory: " .. new_path .. "")
       end
     end
+  elseif command:sub(0, 2) == "./" then
+    local lua_path = path_join(pwd, command:sub(3) .. ".lua")
+    if cworks.stat(lua_path) then
+      local pid = lua_process_spawner.spawn_lua_process(lua_path, pwd, line)
+      cworks.wait_for_process(pid)
+    else
+      print("No such file: " .. lua_path .. "")
+    end
   else
     local lua_path = "/usr/bin/" .. command .. ".lua"
     if cworks.stat(lua_path) then
@@ -97,4 +109,6 @@ while true do
       print("Unknown command: " .. command .. "")
     end
   end
+
+  ::continue::
 end

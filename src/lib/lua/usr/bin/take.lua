@@ -28,3 +28,5 @@ end
 local result_file = path_join(env.cwd, args)
 local buffer = editor.take()
 cworks.set(result_file, { String = buffer })
+
+cworks.exit()
