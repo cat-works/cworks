@@ -29,6 +29,10 @@ impl Kernel {
         self.processes.add_value(p.into())
     }
 
+    pub fn set_process_debug(&mut self, enabled: bool) {
+        self.process_debug_enabled = enabled;
+    }
+
     fn send_syscall_data(&mut self, pid: u128, data: SyscallData) {
         if let Some(process) = self.processes.get_mut(&pid) {
             process.outgoing_data_buffer.push_back(data);
@@ -65,7 +69,15 @@ impl Kernel {
 
         match res {
             PollResult::WaitForEvent => {
-                self.update_process_status(*pid, ProcessStatus::WaitingForEvent);
+                let has_pending = !self
+                    .processes
+                    .get(pid)
+                    .unwrap()
+                    .outgoing_data_buffer
+                    .is_empty();
+                if !has_pending {
+                    self.update_process_status(*pid, ProcessStatus::WaitingForEvent);
+                }
             }
             PollResult::Pending => (),
             PollResult::Done => {
