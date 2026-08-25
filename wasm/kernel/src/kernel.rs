@@ -8,12 +8,6 @@ use crate::{
 
 use super::process::{KernelProcess, PollResult, Process};
 
-enum KernelAction {
-    ProcessKill(u128),
-    SendSyscallData(u128, SyscallData),
-    WakeUp(u128),
-}
-
 struct PWaitingPair {
     waitee: u128,
     waiter: u128,
@@ -41,30 +35,33 @@ impl Kernel {
     }
 
     pub fn step(&mut self) {
-        let mut actions = vec![];
-
         let now = timestamp_ms();
         let pid_list: Vec<u128> = self.processes.keys().copied().collect();
 
         for pid in &pid_list {
-            let p = self.processes.get_mut(pid).unwrap();
-            if let ProcessStatus::Sleeping(t) = p.status {
+            if let ProcessStatus::Sleeping(t) = self.processes.get(pid).unwrap().status {
                 if t >= now {
                     continue;
                 }
-                actions.push(KernelAction::WakeUp(*pid));
+                self.processes.get_mut(pid).unwrap().status = ProcessStatus::Running;
             }
 
-            if p.status != ProcessStatus::Running {
+            if self.processes.get(pid).unwrap().status != ProcessStatus::Running {
                 continue;
             }
 
-            let data = p.outgoing_data_buffer.pop().unwrap_or(SyscallData::None);
+            let data = self
+                .processes
+                .get_mut(pid)
+                .unwrap()
+                .outgoing_data_buffer
+                .pop()
+                .unwrap_or(SyscallData::None);
 
             if !matches!(data, SyscallData::None) {
                 log::trace!("Process<{pid}> <-- {data:?}");
             }
-            let res = p.process.poll(&data);
+            let res = self.processes.get_mut(pid).unwrap().process.poll(&data);
             if !matches!(res, PollResult::Pending) {
                 log::trace!("Process<{pid}> --> {res:?}");
             }
@@ -73,11 +70,11 @@ impl Kernel {
 
             match res {
                 PollResult::WaitForEvent => {
-                    p.status = ProcessStatus::WaitingForEvent;
+                    self.processes.get_mut(pid).unwrap().status = ProcessStatus::WaitingForEvent;
                 }
                 PollResult::Pending => (),
                 PollResult::Done => {
-                    actions.push(KernelAction::ProcessKill(*pid));
+                    self.processes.remove(pid);
 
                     let pairs = self.waiting_pairs.remove(pid);
                     if let Some(pairs) = pairs {
@@ -85,20 +82,30 @@ impl Kernel {
                             if pair.waitee != *pid {
                                 continue;
                             }
-                            actions.push(KernelAction::WakeUp(pair.waiter));
+                            if let Some(process) = self.processes.get_mut(&pair.waiter) {
+                                process.status = ProcessStatus::Running;
+                            } else {
+                                log::warn!(
+                                    "Process {} is waiting for {} but it does not exist",
+                                    pair.waiter,
+                                    pair.waitee
+                                );
+                            }
                         }
                     }
                 }
                 PollResult::Sleep(seconds) => {
                     let duration_ms = (seconds * 1000.0) as i64;
-                    p.status = ProcessStatus::Sleeping(now + duration_ms);
+                    self.processes.get_mut(pid).unwrap().status =
+                        ProcessStatus::Sleeping(now + duration_ms);
                     /* log::debug!(
                         "Process<{pid}> Sleeps for {seconds:6.4} seconds since {now:6.4}"
                     ); */
                 }
                 PollResult::WaitForProcess(waitee) => {
                     if pid_list.contains(&waitee) {
-                        p.status = ProcessStatus::WaitingForProcess;
+                        self.processes.get_mut(pid).unwrap().status =
+                            ProcessStatus::WaitingForProcess;
 
                         let pair = PWaitingPair {
                             waitee,
@@ -110,33 +117,51 @@ impl Kernel {
                             self.waiting_pairs.insert(waitee, vec![pair]);
                         }
                     } else {
-                        p.outgoing_data_buffer
+                        self.processes
+                            .get_mut(pid)
+                            .unwrap()
+                            .outgoing_data_buffer
                             .push(SyscallData::Fail(SyscallError::NoSuchEntry));
                     }
                 }
                 PollResult::List(path) => {
                     let res = fs_frontend.list(&path);
-                    p.outgoing_data_buffer
+                    self.processes
+                        .get_mut(pid)
+                        .unwrap()
+                        .outgoing_data_buffer
                         .push(res.map_or_else(SyscallData::Fail, SyscallData::FSList));
                 }
                 PollResult::Stat(path) => {
                     let stat = fs_frontend.stat(&path);
-                    p.outgoing_data_buffer
+                    self.processes
+                        .get_mut(pid)
+                        .unwrap()
+                        .outgoing_data_buffer
                         .push(stat.map_or_else(SyscallData::Fail, SyscallData::FSStat));
                 }
                 PollResult::Get(path) => {
                     let res = fs_frontend.get(&path);
-                    p.outgoing_data_buffer
+                    self.processes
+                        .get_mut(pid)
+                        .unwrap()
+                        .outgoing_data_buffer
                         .push(res.map_or_else(SyscallData::Fail, SyscallData::FSGet));
                 }
                 PollResult::Set(path, obj) => {
                     let res = fs_frontend.set(&path, &obj);
-                    p.outgoing_data_buffer
+                    self.processes
+                        .get_mut(pid)
+                        .unwrap()
+                        .outgoing_data_buffer
                         .push(res.map_or_else(SyscallData::Fail, |()| SyscallData::FSSuccess));
                 }
                 PollResult::Mkdir(path, name) => {
                     let res = fs_frontend.mkdir(&path, &name);
-                    p.outgoing_data_buffer
+                    self.processes
+                        .get_mut(pid)
+                        .unwrap()
+                        .outgoing_data_buffer
                         .push(res.map_or_else(SyscallData::Fail, |()| SyscallData::FSSuccess));
                 }
                 PollResult::Subscribe(path) => {
@@ -150,7 +175,11 @@ impl Kernel {
                         }) {
                         Ok(a) => a,
                         Err(e) => {
-                            p.outgoing_data_buffer.push(e);
+                            self.processes
+                                .get_mut(pid)
+                                .unwrap()
+                                .outgoing_data_buffer
+                                .push(e);
                             continue;
                         }
                     };
@@ -164,13 +193,20 @@ impl Kernel {
                         }) {
                             Ok(obj) => obj,
                             Err(e) => {
-                                p.outgoing_data_buffer.push(e);
+                                self.processes
+                                    .get_mut(pid)
+                                    .unwrap()
+                                    .outgoing_data_buffer
+                                    .push(e);
                                 continue;
                             }
                         };
                     let mut callee_pid = {
                         let Object::Func { ref callee_pid } = **func_obj.borrow() else {
-                            p.outgoing_data_buffer
+                            self.processes
+                                .get_mut(pid)
+                                .unwrap()
+                                .outgoing_data_buffer
                                 .push(SyscallData::Fail(SyscallError::InvalidRequest));
                             continue;
                         };
@@ -179,7 +215,11 @@ impl Kernel {
                     callee_pid.push(*pid);
                     **func_obj.borrow_mut() = Object::Func { callee_pid };
 
-                    p.outgoing_data_buffer.push(SyscallData::FSSuccess);
+                    self.processes
+                        .get_mut(pid)
+                        .unwrap()
+                        .outgoing_data_buffer
+                        .push(SyscallData::FSSuccess);
                 }
                 PollResult::Unsubscribe(path) => {
                     let (dir, fname) = match split_filename(&path)
@@ -192,7 +232,11 @@ impl Kernel {
                         }) {
                         Ok(a) => a,
                         Err(e) => {
-                            p.outgoing_data_buffer.push(e);
+                            self.processes
+                                .get_mut(pid)
+                                .unwrap()
+                                .outgoing_data_buffer
+                                .push(e);
                             continue;
                         }
                     };
@@ -206,13 +250,20 @@ impl Kernel {
                         }) {
                             Ok(obj) => obj,
                             Err(e) => {
-                                p.outgoing_data_buffer.push(e);
+                                self.processes
+                                    .get_mut(pid)
+                                    .unwrap()
+                                    .outgoing_data_buffer
+                                    .push(e);
                                 continue;
                             }
                         };
                     let mut callee_pid = {
                         let Object::Func { ref callee_pid } = **func_obj.borrow() else {
-                            p.outgoing_data_buffer
+                            self.processes
+                                .get_mut(pid)
+                                .unwrap()
+                                .outgoing_data_buffer
                                 .push(SyscallData::Fail(SyscallError::InvalidRequest));
                             continue;
                         };
@@ -221,20 +272,31 @@ impl Kernel {
                     callee_pid.retain(|&x| x != *pid);
                     **func_obj.borrow_mut() = Object::Func { callee_pid };
 
-                    p.outgoing_data_buffer.push(SyscallData::FSSuccess);
+                    self.processes
+                        .get_mut(pid)
+                        .unwrap()
+                        .outgoing_data_buffer
+                        .push(SyscallData::FSSuccess);
                 }
                 PollResult::Publish(path, content) => {
                     let func_obj = match self.fs_root.follow(&path) {
                         Ok(obj) => obj,
                         Err(e) => {
-                            p.outgoing_data_buffer.push(SyscallData::Fail(e));
+                            self.processes
+                                .get_mut(pid)
+                                .unwrap()
+                                .outgoing_data_buffer
+                                .push(SyscallData::Fail(e));
                             continue;
                         }
                     };
 
                     let callee_pid = {
                         let Object::Func { ref callee_pid } = **func_obj.borrow() else {
-                            p.outgoing_data_buffer
+                            self.processes
+                                .get_mut(pid)
+                                .unwrap()
+                                .outgoing_data_buffer
                                 .push(SyscallData::Fail(SyscallError::InvalidRequest));
                             continue;
                         };
@@ -242,49 +304,31 @@ impl Kernel {
                     };
 
                     for pid in callee_pid {
-                        actions.push(KernelAction::SendSyscallData(
-                            pid,
-                            SyscallData::Invoke {
-                                caller_pid: pid,
-                                path: path.clone(),
-                                arg: content.clone(),
-                            },
-                        ));
+                        let syscall_data = SyscallData::Invoke {
+                            caller_pid: pid,
+                            path: path.clone(),
+                            arg: content.clone(),
+                        };
+                        self.processes
+                            .get_mut(&pid)
+                            .map(|p| p.outgoing_data_buffer.push(syscall_data))
+                            .unwrap_or_else(|| {
+                                log::warn!("Process {pid} not found! (ignored)");
+                            });
                     }
 
-                    p.outgoing_data_buffer.push(SyscallData::FSSuccess);
+                    self.processes
+                        .get_mut(pid)
+                        .unwrap()
+                        .outgoing_data_buffer
+                        .push(SyscallData::FSSuccess);
                 }
                 PollResult::GetPid => {
-                    p.outgoing_data_buffer.push(SyscallData::GetPid(*pid));
-                }
-            }
-        }
-
-        for act in actions {
-            match act {
-                KernelAction::ProcessKill(pid) => {
-                    self.processes.remove(&pid);
-                }
-                KernelAction::SendSyscallData(pid, data) => {
-                    let process = self.processes.get_mut(&pid);
-                    match process {
-                        Some(process) => {
-                            process.outgoing_data_buffer.push(data);
-                            process.status = ProcessStatus::Running;
-                        }
-                        None => {
-                            log::warn!("Process {pid} not found! (ignored)");
-                        }
-                    }
-                }
-                KernelAction::WakeUp(pid) => {
-                    let process = self.processes.get_mut(&pid);
-
-                    if let Some(process) = process {
-                        process.status = ProcessStatus::Running;
-                    } else {
-                        log::warn!("Process {pid} not found for wake up! (ignored)");
-                    }
+                    self.processes
+                        .get_mut(pid)
+                        .unwrap()
+                        .outgoing_data_buffer
+                        .push(SyscallData::GetPid(*pid));
                 }
             }
         }
