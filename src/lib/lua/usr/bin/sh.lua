@@ -20,8 +20,6 @@ local function path_join(base, name)
   return result
 end
 
-print("\x1b[1;32mCat OS Shell\x1b[m")
-
 --- child lua process spawner
 
 local lua_process_spawner = {}
@@ -68,6 +66,8 @@ function lua_process_spawner.spawn_lua_process(lua_path, cwd, cmd_line)
 end
 
 --- end of child lua process spawner
+
+print("\x1b[1;32mCat OS Shell\x1b[m")
 
 local pwd = "/"
 while true do

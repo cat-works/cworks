@@ -43,3 +43,9 @@
 - **症状2**: シェルが `wait_for_process` 後に Done で死亡しプロンプト復帰しない — `PollResult::WaitForProcess(u128)` のペイロード (`$$bi:3` → BigInt) を JSON.stringify すると BigInt は文字列 `"3"` になり serde が u128 をデシリアライズできず `ffi_session.rs` の `unwrap_or(PollResult::Done)` で即死。**修正: replacer で bigint → Number(value)**（PID 程度の小さい値なら精度損失なし）。`value.toString()` は不可（文字列化で serde 失敗）。
 - **教訓**: ffi_session.rs の `unwrap_or(Done)` はデシリアライズ失敗を静かに握り潰す。JS 側から返す PollResult JSON の型は serde の期待に正確に合わせる必要がある（u128 = JSON 数値）。
 - **検証方法**: Playwright で xterm-helper-textarea に focus → keyboard.type("ls", delay=100) → Enter。**ls を 2 回実行してプロンプト復帰を確認するのが回帰テスト**（wait_for_process の死が検出できる）。
+
+## PID 周辺の変更（2026-08・GetPid 実装に伴う更新）
+- **`PollResult::GetPid` / `SyscallData::GetPid(u128)` 追加**: プロセスは `cw.get_pid()` で自身の pid を取得可能（「自己識別不能」制約は解消）。bootstrap の simple() が GetPid 応答をアンラップ済み
+- **pid は 1 開始**（0 はカーネル予約）。createVFS 設計の「PID=0 ⇒ Kernel」と整合
+- **アイドルリセットが `processes.clear()` に変更**（旧: `AutoMap::new()` で作り直し）→ pid カウンタが保持され、**セッション内での pid 再利用は発生しなくなった**。旧特性 #3「pid 再利用によるチャネル誤配送」は解消（callee_pid 残留問題は今後は死亡 pid 参照=NoSuchEntry 系に変化）
+- test-cli は簡素化（cworks-lua/mlua/serde_json 依存除去、純 Rust プロセスの playground に回帰）
