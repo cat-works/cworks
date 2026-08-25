@@ -5,22 +5,23 @@ use std::{
 
 pub struct AutoMap<T> {
     map: HashMap<u128, T>,
-    begin: u128,
+    next_id: u128,
 }
 
 impl<T> AutoMap<T> {
-    pub fn new(begin: u128) -> Self {
+    pub fn new(min_id: u128) -> Self {
         Self {
             map: HashMap::new(),
-            begin,
+            next_id: min_id,
         }
     }
-    fn find_free_id(&self) -> u128 {
-        let mut i: u128 = self.begin;
+    fn find_free_id(&mut self) -> u128 {
+        let mut i: u128 = self.next_id;
 
         while self.map.contains_key(&i) {
             i += 1;
         }
+        self.next_id = i + 1;
 
         i
     }
@@ -32,6 +33,7 @@ impl<T> AutoMap<T> {
         i
     }
 }
+
 impl<T> Deref for AutoMap<T> {
     type Target = HashMap<u128, T>;
 
