@@ -3,9 +3,8 @@ use super::{Process, SyscallData};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProcessStatus {
     Running,
-    Sleeping(i64),     // TODO: Rename to WaitSeconds
-    WaitingForProcess, // PID of the process to wait for
-    WaitingForEvent,   // waiting for an channel event
+    Sleeping(i64),   // TODO: Rename to WaitSeconds
+    WaitingForEvent, // waiting for an channel event
 }
 
 pub struct KernelProcess {
@@ -13,6 +12,7 @@ pub struct KernelProcess {
     pub process: Box<dyn Process>,
     pub outgoing_data_buffer: Vec<SyscallData>,
     pub status: ProcessStatus,
+    pub waiters_pid: Vec<u128>, // PIDs of processes waiting for this process to finish
 }
 
 impl From<Box<dyn Process>> for KernelProcess {
@@ -22,6 +22,7 @@ impl From<Box<dyn Process>> for KernelProcess {
             process: p,
             outgoing_data_buffer: vec![],
             status: ProcessStatus::Running,
+            waiters_pid: vec![],
         }
     }
 }

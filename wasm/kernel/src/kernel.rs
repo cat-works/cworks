@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     libs::{split_filename, timestamp_ms, AutoMap},
     obj_tree::{initfs, FSFrontend, FSObjRef, Object},
@@ -8,14 +6,8 @@ use crate::{
 
 use super::process::{KernelProcess, PollResult, Process};
 
-struct PWaitingPair {
-    waitee: u128,
-    waiter: u128,
-}
-
 pub struct Kernel {
     processes: AutoMap<KernelProcess>,
-    waiting_pairs: HashMap<u128, Vec<PWaitingPair>>,
     fs_root: FSObjRef,
 }
 
@@ -23,7 +15,6 @@ impl Default for Kernel {
     fn default() -> Self {
         Self {
             processes: AutoMap::new(1),
-            waiting_pairs: HashMap::new(),
             fs_root: initfs(),
         }
     }
@@ -50,6 +41,21 @@ impl Kernel {
         }
     }
 
+    fn wait_process(&mut self, pid: u128, wait_target: u128) -> Result<(), SyscallData> {
+        if !self.processes.contains_key(&wait_target) {
+            return Err(SyscallData::Fail(SyscallError::NoSuchEntry));
+        }
+        self.update_process_status(pid, ProcessStatus::WaitingForEvent);
+
+        self.processes
+            .get_mut(&wait_target)
+            .unwrap()
+            .waiters_pid
+            .push(pid);
+
+        Ok(())
+    }
+
     fn handle_syscall(&mut self, now: i64, pid: &u128, res: PollResult) -> Result<(), SyscallData> {
         let fs_frontend = FSFrontend::new(self.fs_root.clone());
 
@@ -59,37 +65,17 @@ impl Kernel {
             }
             PollResult::Pending => (),
             PollResult::Done => {
-                self.processes.remove(pid);
-
-                let pairs = self.waiting_pairs.remove(pid);
-                if let Some(pairs) = pairs {
-                    for pair in pairs {
-                        if pair.waitee != *pid {
-                            continue;
-                        }
-                        self.update_process_status(pair.waiter, ProcessStatus::Running);
-                    }
+                for waiter in self.processes.get(pid).unwrap().waiters_pid.clone() {
+                    self.update_process_status(waiter, ProcessStatus::Running);
                 }
+                self.processes.remove(pid);
             }
             PollResult::Sleep(seconds) => {
                 let duration_ms = (seconds * 1000.0) as i64;
                 self.update_process_status(*pid, ProcessStatus::Sleeping(now + duration_ms));
             }
             PollResult::WaitForProcess(waitee) => {
-                if !self.processes.contains_key(&waitee) {
-                    return Err(SyscallData::Fail(SyscallError::NoSuchEntry));
-                }
-                self.update_process_status(*pid, ProcessStatus::WaitingForProcess);
-
-                let pair = PWaitingPair {
-                    waitee,
-                    waiter: *pid,
-                };
-                if let Some(waiters) = self.waiting_pairs.get_mut(&waitee) {
-                    waiters.push(pair);
-                } else {
-                    self.waiting_pairs.insert(waitee, vec![pair]);
-                }
+                self.wait_process(*pid, waitee)?;
             }
             PollResult::List(path) => {
                 let res = fs_frontend.list(&path);
