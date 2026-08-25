@@ -9,6 +9,8 @@ use super::process::{KernelProcess, PollResult, Process};
 pub struct Kernel {
     processes: AutoMap<KernelProcess>,
     fs_root: FSObjRef,
+
+    process_debug_enabled: bool,
 }
 
 impl Default for Kernel {
@@ -16,6 +18,8 @@ impl Default for Kernel {
         Self {
             processes: AutoMap::new(1),
             fs_root: initfs(),
+
+            process_debug_enabled: false,
         }
     }
 }
@@ -27,7 +31,7 @@ impl Kernel {
 
     fn send_syscall_data(&mut self, pid: u128, data: SyscallData) {
         if let Some(process) = self.processes.get_mut(&pid) {
-            process.outgoing_data_buffer.push(data);
+            process.outgoing_data_buffer.push_back(data);
         } else {
             log::warn!("Process {pid} not found, failed to send syscall data: {data:?}");
         }
@@ -67,6 +71,16 @@ impl Kernel {
             PollResult::Done => {
                 for waiter in self.processes.get(pid).unwrap().waiters_pid.clone() {
                     self.update_process_status(waiter, ProcessStatus::Running);
+                }
+                for obj in self.processes.get(pid).unwrap().listening_channels.clone() {
+                    let mut callee_pid = {
+                        let Object::Func { ref callee_pid } = **obj.borrow() else {
+                            return Err(SyscallData::Fail(SyscallError::InvalidRequest));
+                        };
+                        callee_pid.clone()
+                    };
+                    callee_pid.retain(|&x| x != *pid);
+                    **obj.borrow_mut() = Object::Func { callee_pid };
                 }
                 self.processes.remove(pid);
             }
@@ -141,6 +155,11 @@ impl Kernel {
                 **func_obj.borrow_mut() = Object::Func { callee_pid };
 
                 self.send_syscall_data(*pid, SyscallData::FSSuccess);
+                self.processes
+                    .get_mut(pid)
+                    .unwrap()
+                    .listening_channels
+                    .push(func_obj);
             }
             PollResult::Unsubscribe(path) => {
                 let func_obj = self.fs_root.follow(&path).map_err(SyscallData::Fail)?;
@@ -207,14 +226,14 @@ impl Kernel {
                 .get_mut(pid)
                 .unwrap()
                 .outgoing_data_buffer
-                .pop()
+                .pop_front()
                 .unwrap_or(SyscallData::None);
 
-            if !matches!(data, SyscallData::None) {
+            if self.process_debug_enabled && !matches!(data, SyscallData::None) {
                 log::trace!("Process<{pid}> <-- {data:?}");
             }
             let res = self.processes.get_mut(pid).unwrap().process.poll(&data);
-            if !matches!(res, PollResult::Pending) {
+            if self.process_debug_enabled && !matches!(res, PollResult::Pending) {
                 log::trace!("Process<{pid}> --> {res:?}");
             }
 

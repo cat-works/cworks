@@ -1,3 +1,7 @@
+use std::collections::VecDeque;
+
+use crate::obj_tree::FSObjRef;
+
 use super::{Process, SyscallData};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -10,9 +14,10 @@ pub enum ProcessStatus {
 pub struct KernelProcess {
     pub parent_pid: u128,
     pub process: Box<dyn Process>,
-    pub outgoing_data_buffer: Vec<SyscallData>,
+    pub outgoing_data_buffer: VecDeque<SyscallData>,
     pub status: ProcessStatus,
     pub waiters_pid: Vec<u128>, // PIDs of processes waiting for this process to finish
+    pub listening_channels: Vec<FSObjRef>,
 }
 
 impl From<Box<dyn Process>> for KernelProcess {
@@ -20,9 +25,10 @@ impl From<Box<dyn Process>> for KernelProcess {
         Self {
             parent_pid: 0,
             process: p,
-            outgoing_data_buffer: vec![],
+            outgoing_data_buffer: VecDeque::new(),
             status: ProcessStatus::Running,
             waiters_pid: vec![],
+            listening_channels: Vec::new(),
         }
     }
 }
