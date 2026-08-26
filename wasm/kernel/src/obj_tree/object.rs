@@ -23,7 +23,7 @@ pub enum Object {
     },
     Func {
         #[serde(skip_serializing)]
-        callee_pid: Vec<u128>,
+        callee_pid: Vec<u64>,
     },
 }
 

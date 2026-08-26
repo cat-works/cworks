@@ -12,11 +12,11 @@ pub enum ProcessStatus {
 }
 
 pub struct KernelProcess {
-    pub parent_pid: u128,
+    pub parent_pid: u64,
     pub process: Box<dyn Process>,
     pub outgoing_data_buffer: VecDeque<SyscallData>,
     pub status: ProcessStatus,
-    pub waiters_pid: Vec<u128>, // PIDs of processes waiting for this process to finish
+    pub waiters_pid: Vec<u64>, // PIDs of processes waiting for this process to finish
     pub listening_channels: Vec<FSObjRef>,
 }
 

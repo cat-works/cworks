@@ -19,6 +19,7 @@ pub trait ProcessClientExt {
     async fn fs_set(&mut self, path: String, data: FSObjRef) -> Result<(), SyscallError>;
     async fn fs_mkdir(&mut self, path: String, name: String) -> Result<(), SyscallError>;
     async fn wait_for_event(&mut self) -> Result<(), SyscallError>;
+    async fn get_pid(&mut self) -> Result<u64, SyscallError>;
     fn pass_syscall_data(&mut self, data: &SyscallData);
     fn take_syscall(&mut self) -> PollResult;
 }
@@ -112,6 +113,14 @@ impl<T: ProcessClient> ProcessClientExt for T {
             .do_syscall(PollResult::WaitForEvent)
             .await;
         Ok(())
+    }
+
+    async fn get_pid(&mut self) -> Result<u64, SyscallError> {
+        match self.get_session().do_syscall(PollResult::GetPid).await {
+            SyscallData::GetPid(pid) => Ok(pid),
+            SyscallData::Fail(ref e) => Err(e.clone()),
+            _ => Err(SyscallError::NotImplemented),
+        }
     }
 
     fn pass_syscall_data(&mut self, data: &SyscallData) {

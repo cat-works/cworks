@@ -27,7 +27,7 @@ impl Default for Kernel {
 }
 
 impl Kernel {
-    pub fn register_process(&mut self, p: Box<dyn Process>) -> u128 {
+    pub fn register_process(&mut self, p: Box<dyn Process>) -> u64 {
         self.processes.add_value(p.into())
     }
 
@@ -35,7 +35,7 @@ impl Kernel {
         self.process_debug_enabled = enabled;
     }
 
-    fn send_syscall_data(&mut self, pid: u128, data: SyscallData) {
+    fn send_syscall_data(&mut self, pid: u64, data: SyscallData) {
         if let Some(process) = self.processes.get_mut(&pid) {
             process.outgoing_data_buffer.push_back(data);
         } else {
@@ -43,7 +43,7 @@ impl Kernel {
         }
     }
 
-    fn update_process_status(&mut self, pid: u128, status: ProcessStatus) {
+    fn update_process_status(&mut self, pid: u64, status: ProcessStatus) {
         if let Some(process) = self.processes.get_mut(&pid) {
             process.status = status;
         } else {
@@ -51,7 +51,7 @@ impl Kernel {
         }
     }
 
-    fn wait_process(&mut self, pid: u128, wait_target: u128) -> Result<(), SyscallData> {
+    fn wait_process(&mut self, pid: u64, wait_target: u64) -> Result<(), SyscallData> {
         if !self.processes.contains_key(&wait_target) {
             return Err(SyscallData::Fail(SyscallError::NoSuchEntry));
         }
@@ -66,7 +66,7 @@ impl Kernel {
         Ok(())
     }
 
-    fn handle_syscall(&mut self, now: i64, pid: &u128, res: PollResult) -> Result<(), SyscallData> {
+    fn handle_syscall(&mut self, now: i64, pid: &u64, res: PollResult) -> Result<(), SyscallData> {
         let fs_frontend = FSFrontend::new(self.fs_root.clone());
 
         match res {
@@ -227,7 +227,7 @@ impl Kernel {
 
     pub fn step(&mut self) {
         let now = timestamp_ms();
-        let pid_list: Vec<u128> = self.processes.keys().copied().collect();
+        let pid_list: Vec<u64> = self.processes.keys().copied().collect();
 
         for pid in &pid_list {
             if let ProcessStatus::Sleeping(t) = self.processes.get(pid).unwrap().status {

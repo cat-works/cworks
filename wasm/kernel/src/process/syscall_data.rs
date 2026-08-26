@@ -12,9 +12,9 @@ pub enum SyscallData {
     FSList(Vec<String>),
     FSStat(FileStat),
     Invoke {
-        caller_pid: u128,
+        caller_pid: u64,
         path: String,
         arg: Option<FSObjRef>,
     },
-    GetPid(u128),
+    GetPid(u64),
 }
