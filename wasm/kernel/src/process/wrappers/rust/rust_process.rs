@@ -4,7 +4,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::{PollResult, Process, SyscallData};
+use crate::{PollResult, Process, ProcessClientExt, SyscallData};
 
 use super::process::RustProcessCore;
 
@@ -39,7 +39,7 @@ where
     fn poll(&mut self, data: &SyscallData) -> PollResult {
         let f = unsafe { Pin::new_unchecked(&mut self.f) };
 
-        self.session.set_syscall_data(data);
+        self.session.pass_syscall_data(data);
         let r = f.poll(&mut self.ctx);
 
         match r {
@@ -47,9 +47,6 @@ where
             Poll::Pending => {}
         }
 
-        let res = self.session.result.borrow().clone();
-        self.session.result.replace(PollResult::Pending);
-
-        res
+        self.session.take_syscall()
     }
 }

@@ -1,164 +1,24 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::{obj_tree::FSObjRef, PollResult, SyscallData, SyscallError};
-
-use super::dummy_future::DummyFuture;
+use crate::{
+    obj_tree::FSObjRef, process::wrappers::rust::ProcessSession, ProcessClient, ProcessClientExt,
+    SyscallData, SyscallError,
+};
 
 type DataHandler = Rc<Box<dyn Fn(Option<FSObjRef>) -> Result<(), SyscallError>>>;
 
 #[derive(Clone, Default)]
 pub struct RustProcessCore {
-    pub(crate) result: Rc<RefCell<PollResult>>,
-    pub(crate) syscall_data: Rc<RefCell<SyscallData>>,
+    session: ProcessSession,
     data_handlers: Rc<RefCell<HashMap<String, DataHandler>>>,
 }
 
-impl RustProcessCore {
-    async fn do_syscall(&self, syscall: PollResult) {
-        *self.result.borrow_mut() = syscall;
-        DummyFuture::Started.await;
+impl ProcessClient for RustProcessCore {
+    fn get_session(&mut self) -> &mut ProcessSession {
+        &mut self.session
     }
 
-    pub async fn sleep(&self, seconds: f32) {
-        self.do_syscall(PollResult::Sleep(seconds)).await;
-    }
-
-    pub async fn subscribe(
-        &mut self,
-        name: String,
-        handler: DataHandler,
-    ) -> Result<(), SyscallError> {
-        self.data_handlers
-            .borrow_mut()
-            .insert(name.clone(), handler);
-        self.do_syscall(PollResult::Subscribe(name)).await;
-
-        let m = self.syscall_data.borrow().clone();
-        match m {
-            SyscallData::FSSuccess => {
-                self.set_syscall_data(&SyscallData::None);
-                Ok(())
-            }
-            SyscallData::Fail(ref e) => {
-                self.set_syscall_data(&SyscallData::None);
-                Err(e.clone())
-            }
-            _ => Ok(()),
-        }
-    }
-
-    pub async fn unsubscribe(&self, name: String) -> Result<(), SyscallError> {
-        self.do_syscall(PollResult::Unsubscribe(name)).await;
-        let m = self.syscall_data.borrow().clone();
-        match m {
-            SyscallData::FSSuccess => {
-                self.set_syscall_data(&SyscallData::None);
-                Ok(())
-            }
-            SyscallData::Fail(ref e) => {
-                self.set_syscall_data(&SyscallData::None);
-                Err(e.clone())
-            }
-            _ => Ok(()),
-        }
-    }
-
-    pub async fn publish(&self, name: String, data: Option<FSObjRef>) -> Result<(), SyscallError> {
-        self.do_syscall(PollResult::Publish(name, data)).await;
-        Ok(())
-    }
-
-    pub async fn fs_list(&self, path: String) -> Result<(), SyscallError> {
-        self.do_syscall(PollResult::List(path)).await;
-
-        let m = self.syscall_data.borrow().clone();
-        match m {
-            SyscallData::FSList(_) => {
-                self.set_syscall_data(&SyscallData::None);
-                Ok(())
-            }
-            SyscallData::Fail(ref e) => {
-                self.set_syscall_data(&SyscallData::None);
-                Err(e.clone())
-            }
-            _ => Ok(()),
-        }
-    }
-
-    pub async fn fs_stat(&self, path: String) -> Result<(), SyscallError> {
-        self.do_syscall(PollResult::Stat(path)).await;
-
-        let m = self.syscall_data.borrow().clone();
-        match m {
-            SyscallData::FSStat(_) => {
-                self.set_syscall_data(&SyscallData::None);
-                Ok(())
-            }
-            SyscallData::Fail(ref e) => {
-                self.set_syscall_data(&SyscallData::None);
-                Err(e.clone())
-            }
-            _ => Ok(()),
-        }
-    }
-
-    pub async fn fs_get(&self, path: String) -> Result<FSObjRef, SyscallError> {
-        self.do_syscall(PollResult::Get(path)).await;
-
-        let m = self.syscall_data.borrow().clone();
-        match m {
-            SyscallData::FSGet(obj) => {
-                self.set_syscall_data(&SyscallData::None);
-                Ok(obj)
-            }
-            SyscallData::Fail(ref e) => {
-                self.set_syscall_data(&SyscallData::None);
-                Err(e.clone())
-            }
-            _ => Err(SyscallError::NotImplemented),
-        }
-    }
-
-    pub async fn fs_set(&self, path: String, data: FSObjRef) -> Result<(), SyscallError> {
-        self.do_syscall(PollResult::Set(path, data)).await;
-
-        let m = self.syscall_data.borrow().clone();
-        match m {
-            SyscallData::FSSuccess => {
-                self.set_syscall_data(&SyscallData::None);
-                Ok(())
-            }
-            SyscallData::Fail(ref e) => {
-                self.set_syscall_data(&SyscallData::None);
-                Err(e.clone())
-            }
-            _ => Ok(()),
-        }
-    }
-
-    pub async fn fs_mkdir(&self, path: String, name: String) -> Result<(), SyscallError> {
-        self.do_syscall(PollResult::Mkdir(path, name)).await;
-
-        let m = self.syscall_data.borrow().clone();
-        match m {
-            SyscallData::FSSuccess => {
-                self.set_syscall_data(&SyscallData::None);
-                Ok(())
-            }
-            SyscallData::Fail(ref e) => {
-                self.set_syscall_data(&SyscallData::None);
-                Err(e.clone())
-            }
-            _ => Ok(()),
-        }
-    }
-
-    pub async fn wait_for_event(&self) -> Result<(), SyscallError> {
-        self.do_syscall(PollResult::WaitForEvent).await;
-        Ok(())
-    }
-
-    pub(crate) fn set_syscall_data(&self, data: &SyscallData) {
+    fn handle_invocation(&mut self, data: &SyscallData) {
         if let SyscallData::Invoke {
             caller_pid: _,
             path,
@@ -173,7 +33,19 @@ impl RustProcessCore {
                 log::warn!("No handler registered for path: {path}");
             }
         }
+    }
+}
 
-        *self.syscall_data.borrow_mut() = data.clone();
+impl RustProcessCore {
+    pub async fn subscribe(
+        &mut self,
+        name: String,
+        handler: DataHandler,
+    ) -> Result<(), SyscallError> {
+        self.data_handlers
+            .borrow_mut()
+            .insert(name.clone(), handler);
+
+        ProcessClientExt::subscribe(self, name).await
     }
 }
