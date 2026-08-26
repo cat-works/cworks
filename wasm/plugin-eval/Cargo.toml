@@ -1,0 +1,15 @@
+[package]
+name = "plugin-eval"
+description = "cworks test plugin: expression evaluation service (evalexpr)"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cworks-sdk = { path = "../sdk" }
+evalexpr = "11"
+
+[dev-dependencies]
+postcard = { version = "1", features = ["alloc"] }

@@ -3,7 +3,10 @@ resolver = "2"
 members = [
     "kernel",
     "lua",
+    "sdk",
+    "sdk-macros",
     "test-cli",
+    "plugin-eval",
     "wasm",
 ]
 

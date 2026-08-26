@@ -1,0 +1,12 @@
+[package]
+name = "cworks-sdk"
+description = "Plugin Development Kit for writing cworks processes in Rust"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+kernel = { path = "../kernel" }
+cworks-sdk-macros = { path = "../sdk-macros" }
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }
+log = "0.4.17"
