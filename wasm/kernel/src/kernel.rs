@@ -1,3 +1,5 @@
+use std::{thread::sleep, time::Duration};
+
 use crate::{
     libs::{split_filename, timestamp_ms, AutoMap},
     obj_tree::{initfs, FSFrontend, FSObjRef, Object},
@@ -265,6 +267,7 @@ impl Kernel {
             p.status == ProcessStatus::Running || matches!(p.status, ProcessStatus::Sleeping(_))
         });
         if !is_any_process_running {
+            log::debug!("No running processes, kernel exiting");
             self.processes.clear();
         }
     }
