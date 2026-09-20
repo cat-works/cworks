@@ -2,10 +2,14 @@
 
 use std::rc::Rc;
 
+use cworks_lua::new_lua_process;
 use kernel::{
-    ProcessClientExt, RustProcess, RustProcessCore, SyscallError,
+    Kernel, ProcessClientExt, RustProcess, RustProcessCore, SyscallError,
     obj_tree::{FSObjRef, Object},
 };
+use mlua::prelude::*;
+
+use mlua::chunk;
 
 // mod plugin;
 // use plugin::WasmPluginProcess;
@@ -112,6 +116,32 @@ async fn eval_client(mut session: RustProcessCore, _arg: u32) {
     }
 }
 
+fn lua_test(kernel: &mut Kernel, lua: &Lua) {
+    let lua_func = lua
+        .load(chunk! {
+            function(sess)
+                local function ls_rec(obj, depth)
+                    for k, v in pairs(obj:list()) do
+                        if v ~= "." and v ~= ".." then
+                            local child = obj:get_obj(v)
+                            print(string.rep("  ", depth) .. v .. " (" .. child:get_type() .. ")")
+                            if child:get_type() == "CompoundFSObj" then
+                                ls_rec(child, depth + 1)
+                            end
+                        end
+                    end
+                end
+                ls_rec(sess:fs_root(), 0)
+                sess:wait_for_event()
+            end
+        })
+        .eval::<mlua::Function>()
+        .expect("failed to eval lua chunk");
+
+    let lua_proc = new_lua_process(lua_func).expect("failed to create lua process");
+    kernel.register_process(Box::new(lua_proc));
+}
+
 fn main() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Trace)
@@ -119,6 +149,7 @@ fn main() {
 
     let mut k = kernel::Kernel::default();
     k.set_process_debug(true);
+
     k.register_process(Box::new(RustProcess::new(&eval_mock, 0)));
     /* let wasm = include_bytes!("../../target/wasm32-unknown-unknown/debug/plugin_eval.wasm");
     match WasmPluginProcess::load(wasm) {
@@ -129,7 +160,10 @@ fn main() {
         Err(e) => log::error!("plugin load failed: {e}"),
     } */
 
-    k.register_process(Box::new(RustProcess::new(&eval_client, 0)));
+    // k.register_process(Box::new(RustProcess::new(&eval_client, 0)));
+
+    let lua = mlua::Lua::new();
+    lua_test(&mut k, &lua);
 
     k.start();
 }

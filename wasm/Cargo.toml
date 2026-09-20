@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "kernel",
-    # "lua",
+    "cworks-lua",
     # "sdk",
     # "sdk-macros",
     "test-cli",

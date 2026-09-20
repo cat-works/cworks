@@ -12,3 +12,5 @@ wasmi = "1.1.0"
 postcard = { version = "1", features = ["alloc"] }
 # cworks-sdk = { path = "../sdk" }
 # plugin-eval = { path = "../plugin-eval" }
+cworks-lua = { path = "../cworks-lua" }
+mlua = { version = "0.12", features = ["lua55", "vendored", "async", "macros"] }

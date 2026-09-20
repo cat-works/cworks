@@ -9,4 +9,4 @@
 
 mod lua_process;
 
-pub use lua_process::LuaProcess;
+pub use lua_process::new_lua_process;
