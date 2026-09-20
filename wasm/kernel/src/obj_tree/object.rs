@@ -3,11 +3,8 @@ use std::{
     fmt::{Debug, Display},
 };
 
-use serde::{Deserialize, Serialize};
-
 use crate::obj_tree::FSObjRef;
 
-#[derive(Serialize, Deserialize)]
 pub enum Object {
     Int(i128),
     String(String),
@@ -17,12 +14,10 @@ pub enum Object {
     Bytes(Vec<u8>),
     Null,
     CompoundFSObj {
-        #[serde(skip_serializing)]
         parent: Option<FSObjRef>,
         children: HashMap<String, FSObjRef>,
     },
     Func {
-        #[serde(skip_serializing)]
         callee_pid: Vec<u64>,
     },
 }

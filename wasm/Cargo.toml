@@ -2,12 +2,12 @@
 resolver = "2"
 members = [
     "kernel",
-    "lua",
-    "sdk",
-    "sdk-macros",
+    # "lua",
+    # "sdk",
+    # "sdk-macros",
     "test-cli",
-    "plugin-eval",
-    "wasm",
+    # "plugin-eval",
+    # "wasm",
 ]
 
 [profile.release]

@@ -8,7 +8,7 @@ edition = "2024"
 kernel = { path = "../kernel" }
 log = "0.4.17"
 env_logger = "0.10.0"
-cworks-sdk = { path = "../sdk" }
 wasmi = "1.1.0"
 postcard = { version = "1", features = ["alloc"] }
-plugin-eval = { path = "../plugin-eval" }
+# cworks-sdk = { path = "../sdk" }
+# plugin-eval = { path = "../plugin-eval" }

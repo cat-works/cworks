@@ -5,34 +5,12 @@ use std::{
     rc::Rc,
 };
 
-use serde::Serialize;
-
 use crate::SyscallError;
 
-use super::{FileKind, FileStat, Object};
+use super::Object;
 
 #[derive(Clone)]
 pub struct FSObjRef(Rc<RefCell<Box<Object>>>);
-
-impl Serialize for FSObjRef {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let obj = self.0.borrow();
-        obj.serialize(serializer)
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for FSObjRef {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let obj = Object::deserialize(deserializer)?;
-        Ok(Self(Rc::new(RefCell::new(Box::new(obj)))))
-    }
-}
 
 impl FSObjRef {
     #[must_use]
@@ -86,21 +64,6 @@ impl Display for FSObjRef {
 }
 
 impl FSObjRef {
-    #[must_use]
-    pub fn stat(&self) -> FileStat {
-        match **self.0.borrow() {
-            Object::CompoundFSObj { .. } => FileStat {
-                kind: FileKind::Directory,
-            },
-            Object::Func { .. } => FileStat {
-                kind: FileKind::Channel,
-            },
-            _ => FileStat {
-                kind: FileKind::File,
-            },
-        }
-    }
-
     // directory-like methods
     pub fn list(&self) -> Result<Vec<String>, SyscallError> {
         match **self.0.borrow() {

@@ -1,19 +1,17 @@
 use super::SyscallError;
-use crate::obj_tree::{FSObjRef, FileStat};
-use serde::{Deserialize, Serialize};
+use crate::obj_tree::FSObjRef;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Default)]
 pub enum SyscallData {
     #[default]
     None,
     Fail(SyscallError),
+    FSRoot(FSObjRef),
     FSSuccess,
     FSGet(FSObjRef),
-    FSList(Vec<String>),
-    FSStat(FileStat),
     Invoke {
         caller_pid: u64,
-        path: String,
+        obj: FSObjRef,
         arg: Option<FSObjRef>,
     },
     GetPid(u64),

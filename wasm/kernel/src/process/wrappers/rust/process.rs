@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, ops::Deref, rc::Rc};
 
 use crate::{
     obj_tree::FSObjRef, process::wrappers::rust::ProcessSession, ProcessClient, ProcessClientExt,
@@ -10,7 +10,7 @@ type DataHandler = Rc<Box<dyn Fn(Option<FSObjRef>) -> Result<(), SyscallError>>>
 #[derive(Clone, Default)]
 pub struct RustProcessCore {
     session: ProcessSession,
-    data_handlers: Rc<RefCell<HashMap<String, DataHandler>>>,
+    data_handlers: Rc<RefCell<HashMap<*const <FSObjRef as Deref>::Target, DataHandler>>>,
 }
 
 impl ProcessClient for RustProcessCore {
@@ -21,16 +21,22 @@ impl ProcessClient for RustProcessCore {
     fn handle_invocation(&mut self, data: &SyscallData) {
         if let SyscallData::Invoke {
             caller_pid: _,
-            path,
+            obj,
             arg,
         } = data
         {
-            if let Some(handler) = self.data_handlers.borrow().get(path) {
+            if let Some(handler) = self
+                .data_handlers
+                .borrow()
+                .iter()
+                .find(|x| *x.0 == obj.as_ptr())
+                .map(|x| x.1)
+            {
                 if let Err(e) = handler(arg.clone()) {
-                    log::error!("Error handling data for path {path}: {e:?}");
+                    log::error!("Error handling data: {e:?}");
                 }
             } else {
-                log::warn!("No handler registered for path: {path}");
+                log::warn!("No handler registered");
             }
         }
     }
@@ -39,13 +45,13 @@ impl ProcessClient for RustProcessCore {
 impl RustProcessCore {
     pub async fn subscribe(
         &mut self,
-        name: String,
+        obj: FSObjRef,
         handler: DataHandler,
     ) -> Result<(), SyscallError> {
         self.data_handlers
             .borrow_mut()
-            .insert(name.clone(), handler);
+            .insert(obj.as_ptr(), handler);
 
-        ProcessClientExt::subscribe(self, name).await
+        ProcessClientExt::subscribe(self, obj).await
     }
 }

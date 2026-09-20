@@ -4,6 +4,7 @@
 //! `evalexpr`, and publishes the result to `/srv/eval/res`.
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use cworks_sdk::prelude::*;
@@ -14,24 +15,34 @@ async fn main(session: Session) {
 }
 
 async fn run(mut session: Session) -> Result<(), SyscallError> {
-    session.fs_mkdir("/".to_string(), "srv".to_string()).await?;
-    session.fs_mkdir("/srv".to_string(), "eval".to_string()).await?;
+    let root = session.fs_root().await?;
+    let srv = root.get_obj("srv").unwrap_or_else(|_| {
+        FSObjRef::from(Object::CompoundFSObj {
+            parent: Some(root.clone()),
+            children: HashMap::new(),
+        })
+    });
+    let eval_ns = root.get_obj("eval").unwrap_or_else(|_| {
+        FSObjRef::from(Object::CompoundFSObj {
+            parent: Some(srv),
+            children: HashMap::new(),
+        })
+    });
+    let req_ch = eval_ns
+        .get_obj("req")
+        .unwrap_or_else(|_| FSObjRef::from(Object::Func { callee_pid: vec![] }));
 
     let pending: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
     let pending_handler = pending.clone();
-    let handler: DataHandler = Rc::new(Box::new(
-        move |data: Option<FSObjRef>| {
-            if let Some(obj) = data {
-                if let Object::String(s) = &**obj.borrow() {
-                    *pending_handler.borrow_mut() = Some(s.clone());
-                }
-            }
-            Ok(())
-        },
-    ));
-    session
-        .subscribe("/srv/eval/req".to_string(), handler)
-        .await?;
+    let handler: DataHandler = Rc::new(Box::new(move |data: Option<FSObjRef>| {
+        if let Some(obj) = data
+            && let Object::String(s) = &**obj.borrow()
+        {
+            *pending_handler.borrow_mut() = Some(s.clone());
+        }
+        Ok(())
+    }));
+    session.subscribe(req_ch, handler).await?;
 
     loop {
         session.wait_for_event().await?;
@@ -40,11 +51,9 @@ async fn run(mut session: Session) -> Result<(), SyscallError> {
                 Ok(value) => value.to_string(),
                 Err(e) => format!("Error: {e}"),
             };
+            let res_ch = eval_ns.get_obj("res").expect("res channel not found");
             session
-                .publish(
-                    "/srv/eval/res".to_string(),
-                    Some(Object::String(reply).into()),
-                )
+                .publish(res_ch, Some(Object::String(reply).into()))
                 .await?;
         }
     }
@@ -53,7 +62,7 @@ async fn run(mut session: Session) -> Result<(), SyscallError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cworks_sdk::{step_plugin, PollResult, Session, SyscallData};
+    use cworks_sdk::{PollResult, Session, SyscallData, step_plugin};
     use std::future::Future;
     use std::pin::Pin;
 
@@ -72,8 +81,9 @@ mod tests {
     fn eval_service_flow() {
         let mut session = Session::default();
         let run_session = session.clone();
-        let mut fut: Pin<Box<dyn Future<Output = ()>>> =
-            Box::pin(async move { let _ = run(run_session).await; });
+        let mut fut: Pin<Box<dyn Future<Output = ()>>> = Box::pin(async move {
+            let _ = run(run_session).await;
+        });
 
         let r = drive(&mut session, &mut fut, &SyscallData::None);
         assert!(

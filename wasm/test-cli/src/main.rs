@@ -3,25 +3,97 @@
 use std::rc::Rc;
 
 use kernel::{
-    ProcessClientExt, RustProcess, RustProcessCore,
+    ProcessClientExt, RustProcess, RustProcessCore, SyscallError,
     obj_tree::{FSObjRef, Object},
 };
-use plugin::WasmPluginProcess;
 
-mod plugin;
+// mod plugin;
+// use plugin::WasmPluginProcess;
+
+fn get_obj(
+    obj: &FSObjRef,
+    name: &str,
+    default: impl Fn() -> FSObjRef,
+) -> Result<FSObjRef, SyscallError> {
+    obj.get_obj(name).or_else(|_| {
+        let child = default();
+        obj.add_child(name, &child)?;
+        Ok(child)
+    })
+}
+
+async fn eval_mock(mut session: RustProcessCore, _arg: u32) {
+    let root = session.fs_root().await.expect("fs_root failed");
+    let srv = get_obj(&root, "srv", || {
+        FSObjRef::from(Object::CompoundFSObj {
+            parent: Some(root.clone()),
+            children: std::collections::HashMap::new(),
+        })
+    })
+    .expect("srv namespace creation failed");
+    let eval_ns = get_obj(&srv, "eval", || {
+        FSObjRef::from(Object::CompoundFSObj {
+            parent: Some(srv.clone()),
+            children: std::collections::HashMap::new(),
+        })
+    })
+    .expect("eval namespace creation failed");
+    let request_channel = get_obj(&eval_ns, "req", || {
+        FSObjRef::from(Object::Func { callee_pid: vec![] })
+    })
+    .expect("req channel creation failed");
+
+    session
+        .subscribe(
+            request_channel,
+            Rc::new(Box::new(move |data| {
+                if let Some(obj) = data
+                    && let Object::String(s) = &**obj.borrow()
+                {
+                    log::info!("eval request: {s}");
+                }
+                Ok(())
+            })),
+        )
+        .await
+        .expect("subscribe failed");
+
+    loop {
+        session.wait_for_event().await.expect("wait failed");
+    }
+}
 
 /// eval プラグインの E2E: 式を publish し、応答を subscribe して検証する。
 async fn eval_client(mut session: RustProcessCore, _arg: u32) {
-    // プラグイン側の mkdir/subscribe 完了を待つ
-    session.sleep(0.3).await;
+    let root = session.fs_root().await.expect("fs_root failed");
+    let srv = root.get_obj("srv").unwrap_or_else(|_| {
+        FSObjRef::from(Object::CompoundFSObj {
+            parent: Some(root.clone()),
+            children: std::collections::HashMap::new(),
+        })
+    });
+    let eval_ns = srv.get_obj("eval").unwrap_or_else(|_| {
+        FSObjRef::from(Object::CompoundFSObj {
+            parent: Some(srv.clone()),
+            children: std::collections::HashMap::new(),
+        })
+    });
 
-    let handler: Rc<Box<dyn Fn(Option<FSObjRef>) -> Result<(), kernel::SyscallError>>> =
-        Rc::new(Box::new(|data| {
-            log::info!("eval reply: {data:?}");
-            Ok(())
-        }));
+    session.sleep(0.2).await;
+    let request_ch = eval_ns.get_obj("req").expect("req channel not found");
+    let response_ch = get_obj(&eval_ns, "res", || {
+        FSObjRef::from(Object::Func { callee_pid: vec![] })
+    })
+    .expect("res channel creation failed");
+
     session
-        .subscribe("/srv/eval/res".to_string(), handler)
+        .subscribe(
+            response_ch,
+            Rc::new(Box::new(|data| {
+                log::info!("eval reply: {data:?}");
+                Ok(())
+            })),
+        )
         .await
         .expect("subscribe failed");
 
@@ -30,7 +102,7 @@ async fn eval_client(mut session: RustProcessCore, _arg: u32) {
 
     let expr = Object::String("2+3*4".to_string()).into();
     session
-        .publish("/srv/eval/req".to_string(), Some(expr))
+        .publish(request_ch, Some(expr))
         .await
         .expect("publish failed");
 
@@ -45,18 +117,17 @@ fn main() {
         .filter_level(log::LevelFilter::Trace)
         .init();
 
-    let wasm = include_bytes!("../../target/wasm32-unknown-unknown/debug/plugin_eval.wasm");
-
     let mut k = kernel::Kernel::default();
     k.set_process_debug(true);
-
+    k.register_process(Box::new(RustProcess::new(&eval_mock, 0)));
+    /* let wasm = include_bytes!("../../target/wasm32-unknown-unknown/debug/plugin_eval.wasm");
     match WasmPluginProcess::load(wasm) {
         Ok(plugin) => {
             log::info!("plugin loaded");
             k.register_process(Box::new(plugin));
         }
         Err(e) => log::error!("plugin load failed: {e}"),
-    }
+    } */
 
     k.register_process(Box::new(RustProcess::new(&eval_client, 0)));
 

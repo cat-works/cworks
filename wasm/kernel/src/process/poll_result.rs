@@ -1,8 +1,6 @@
-use serde::{Deserialize, Serialize};
-
 use crate::obj_tree::FSObjRef;
 
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Default)]
 pub enum PollResult {
     WaitForEvent,
     #[default]
@@ -10,13 +8,9 @@ pub enum PollResult {
     Done,
     Sleep(f32),
     WaitForProcess(u64),
-    List(String),
-    Stat(String),
-    Get(String),
-    Set(String, FSObjRef),
-    Mkdir(String, String),
-    Subscribe(String),
-    Unsubscribe(String),
-    Publish(String, Option<FSObjRef>),
+    Root,
+    Subscribe(FSObjRef),
+    Unsubscribe(FSObjRef),
+    Publish(FSObjRef, Option<FSObjRef>),
     GetPid,
 }

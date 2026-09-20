@@ -1,6 +1,4 @@
-use serde::{Deserialize, Serialize};
-
-#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum SyscallError {
     NoSuchEntry,   // no such entry
     AlreadyExists, // entry already exists

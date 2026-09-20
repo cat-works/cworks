@@ -9,17 +9,23 @@ pub trait ProcessClient {
 }
 
 pub trait ProcessClientExt {
-    async fn sleep(&mut self, seconds: f32);
-    async fn subscribe(&mut self, name: String) -> Result<(), SyscallError>;
-    async fn unsubscribe(&mut self, name: String) -> Result<(), SyscallError>;
-    async fn publish(&mut self, name: String, data: Option<FSObjRef>) -> Result<(), SyscallError>;
-    async fn fs_list(&mut self, path: String) -> Result<(), SyscallError>;
-    async fn fs_stat(&mut self, path: String) -> Result<(), SyscallError>;
-    async fn fs_get(&mut self, path: String) -> Result<FSObjRef, SyscallError>;
-    async fn fs_set(&mut self, path: String, data: FSObjRef) -> Result<(), SyscallError>;
-    async fn fs_mkdir(&mut self, path: String, name: String) -> Result<(), SyscallError>;
-    async fn wait_for_event(&mut self) -> Result<(), SyscallError>;
-    async fn get_pid(&mut self) -> Result<u64, SyscallError>;
+    fn sleep(&mut self, seconds: f32) -> impl std::future::Future<Output = ()>;
+    fn subscribe(
+        &mut self,
+        obj: FSObjRef,
+    ) -> impl std::future::Future<Output = Result<(), SyscallError>>;
+    fn unsubscribe(
+        &mut self,
+        obj: FSObjRef,
+    ) -> impl std::future::Future<Output = Result<(), SyscallError>>;
+    fn publish(
+        &mut self,
+        obj: FSObjRef,
+        data: Option<FSObjRef>,
+    ) -> impl std::future::Future<Output = Result<(), SyscallError>>;
+    fn fs_root(&mut self) -> impl std::future::Future<Output = Result<FSObjRef, SyscallError>>;
+    fn wait_for_event(&mut self) -> impl std::future::Future<Output = Result<(), SyscallError>>;
+    fn get_pid(&mut self) -> impl std::future::Future<Output = Result<u64, SyscallError>>;
     fn pass_syscall_data(&mut self, data: &SyscallData);
     fn take_syscall(&mut self) -> PollResult;
 }
@@ -31,10 +37,10 @@ impl<T: ProcessClient> ProcessClientExt for T {
             .await;
     }
 
-    async fn subscribe(&mut self, name: String) -> Result<(), SyscallError> {
+    async fn subscribe(&mut self, obj: FSObjRef) -> Result<(), SyscallError> {
         match self
             .get_session()
-            .do_syscall(PollResult::Subscribe(name))
+            .do_syscall(PollResult::Subscribe(obj))
             .await
         {
             SyscallData::Fail(ref e) => Err(e.clone()),
@@ -42,10 +48,10 @@ impl<T: ProcessClient> ProcessClientExt for T {
         }
     }
 
-    async fn unsubscribe(&mut self, name: String) -> Result<(), SyscallError> {
+    async fn unsubscribe(&mut self, obj: FSObjRef) -> Result<(), SyscallError> {
         match self
             .get_session()
-            .do_syscall(PollResult::Unsubscribe(name))
+            .do_syscall(PollResult::Unsubscribe(obj))
             .await
         {
             SyscallData::Fail(ref e) => Err(e.clone()),
@@ -53,10 +59,10 @@ impl<T: ProcessClient> ProcessClientExt for T {
         }
     }
 
-    async fn publish(&mut self, name: String, data: Option<FSObjRef>) -> Result<(), SyscallError> {
+    async fn publish(&mut self, obj: FSObjRef, data: Option<FSObjRef>) -> Result<(), SyscallError> {
         match self
             .get_session()
-            .do_syscall(PollResult::Publish(name, data))
+            .do_syscall(PollResult::Publish(obj, data))
             .await
         {
             SyscallData::Fail(ref e) => Err(e.clone()),
@@ -64,47 +70,11 @@ impl<T: ProcessClient> ProcessClientExt for T {
         }
     }
 
-    async fn fs_list(&mut self, path: String) -> Result<(), SyscallError> {
-        match self.get_session().do_syscall(PollResult::List(path)).await {
+    async fn fs_root(&mut self) -> Result<FSObjRef, SyscallError> {
+        match self.get_session().do_syscall(PollResult::Root).await {
             SyscallData::Fail(ref e) => Err(e.clone()),
-            _ => Ok(()),
-        }
-    }
-
-    async fn fs_stat(&mut self, path: String) -> Result<(), SyscallError> {
-        match self.get_session().do_syscall(PollResult::Stat(path)).await {
-            SyscallData::Fail(ref e) => Err(e.clone()),
-            _ => Ok(()),
-        }
-    }
-
-    async fn fs_get(&mut self, path: String) -> Result<FSObjRef, SyscallError> {
-        match self.get_session().do_syscall(PollResult::Get(path)).await {
-            SyscallData::FSGet(obj) => Ok(obj),
-            SyscallData::Fail(ref e) => Err(e.clone()),
-            _ => Err(SyscallError::NotImplemented),
-        }
-    }
-
-    async fn fs_set(&mut self, path: String, data: FSObjRef) -> Result<(), SyscallError> {
-        match self
-            .get_session()
-            .do_syscall(PollResult::Set(path, data))
-            .await
-        {
-            SyscallData::Fail(ref e) => Err(e.clone()),
-            _ => Ok(()),
-        }
-    }
-
-    async fn fs_mkdir(&mut self, path: String, name: String) -> Result<(), SyscallError> {
-        match self
-            .get_session()
-            .do_syscall(PollResult::Mkdir(path, name))
-            .await
-        {
-            SyscallData::Fail(ref e) => Err(e.clone()),
-            _ => Ok(()),
+            SyscallData::FSRoot(e) => Ok(e),
+            _ => Err(SyscallError::UnreachableEntry),
         }
     }
 
