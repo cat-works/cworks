@@ -50,27 +50,29 @@ impl LuaFSObj {
     }
 }
 
-struct LuaSession {
-    core: RustProcessCore,
-}
-impl UserData for LuaSession {
-    fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-        methods.add_async_method_mut("wait_for_event", |_, mut this, ()| async move {
-            this.core.wait_for_event().await.expect("a");
-            Ok(())
-        });
-        methods.add_async_method_mut("sleep", |_, mut this, sleep_duration: f32| async move {
-            this.core.sleep(sleep_duration).await;
-            Ok(())
-        });
-        methods.add_async_method_mut("get_pid", |_, mut this, ()| async move {
-            let pid = this.core.get_pid().await.expect("get_pid failed");
-            Ok(pid)
-        });
-        methods.add_async_method_mut("fs_root", |_, mut this, ()| async move {
-            let root = this.core.fs_root().await.expect("fs_root failed");
-            Ok(LuaFSObj(root))
-        });
+#[derive(UserData)]
+struct LuaSession(RustProcessCore);
+
+#[mlua::userdata_impl]
+impl LuaSession {
+    async fn wait_for_event(&mut self) -> Result<(), mlua::Error> {
+        self.0.wait_for_event().await.expect("a");
+        Ok(())
+    }
+
+    async fn sleep(&mut self, sleep_duration: f32) -> Result<(), mlua::Error> {
+        self.0.sleep(sleep_duration).await;
+        Ok(())
+    }
+
+    async fn get_pid(&mut self) -> Result<u64, mlua::Error> {
+        let pid = self.0.get_pid().await.expect("get_pid failed");
+        Ok(pid)
+    }
+
+    async fn fs_root(&mut self) -> Result<LuaFSObj, mlua::Error> {
+        let root = self.0.fs_root().await.expect("fs_root failed");
+        Ok(LuaFSObj(root))
     }
 }
 
@@ -79,7 +81,7 @@ pub fn new_lua_process(func: mlua::Function) -> Result<impl Process, mlua::Error
         &move |rpc: RustProcessCore, ()| {
             let value = func.clone();
             async move {
-                let session = LuaSession { core: rpc };
+                let session = LuaSession(rpc);
                 match value.call_async::<()>(session).await {
                     Ok(()) => log::info!("Lua process completed successfully"),
                     Err(e) => log::error!("Lua process failed: {e}"),
