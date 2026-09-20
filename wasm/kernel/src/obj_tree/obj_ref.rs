@@ -127,6 +127,13 @@ impl FSObjRef {
         Ok(())
     }
 
+    pub fn has_child(&self, name: &str) -> Result<bool, SyscallError> {
+        match **self.0.borrow() {
+            Object::CompoundFSObj { ref children, .. } => Ok(children.contains_key(name)),
+            _ => Err(SyscallError::UnsupportedMethod),
+        }
+    }
+
     pub fn follow(&self, path: &str) -> Result<Self, SyscallError> {
         let parts = path.split('/').filter(|x| !x.is_empty());
 

@@ -25,18 +25,21 @@ impl ProcessClient for RustProcessCore {
             arg,
         } = data
         {
-            if let Some(handler) = self
-                .data_handlers
-                .borrow()
-                .iter()
-                .find(|x| *x.0 == obj.as_ptr())
-                .map(|x| x.1)
-            {
-                if let Err(e) = handler(arg.clone()) {
-                    log::error!("Error handling data: {e:?}");
+            let handler = {
+                let handlers = self.data_handlers.borrow();
+
+                let handler = handlers.iter().find(|x| *x.0 == obj.as_ptr()).map(|x| x.1);
+
+                if handler.is_none() {
+                    log::warn!("No handler registered for object: {obj:?}");
+                    return;
                 }
-            } else {
-                log::warn!("No handler registered");
+
+                handler.unwrap().clone()
+            };
+
+            if let Err(e) = handler(arg.clone()) {
+                log::error!("Error handling data: {e:?}");
             }
         }
     }

@@ -70,18 +70,20 @@ async fn eval_mock(mut session: RustProcessCore, _arg: u32) {
 /// eval プラグインの E2E: 式を publish し、応答を subscribe して検証する。
 async fn eval_client(mut session: RustProcessCore, _arg: u32) {
     let root = session.fs_root().await.expect("fs_root failed");
-    let srv = root.get_obj("srv").unwrap_or_else(|_| {
+    let srv = get_obj(&root, "srv", || {
         FSObjRef::from(Object::CompoundFSObj {
             parent: Some(root.clone()),
             children: std::collections::HashMap::new(),
         })
-    });
-    let eval_ns = srv.get_obj("eval").unwrap_or_else(|_| {
+    })
+    .expect("srv namespace creation failed");
+    let eval_ns = get_obj(&srv, "eval", || {
         FSObjRef::from(Object::CompoundFSObj {
             parent: Some(srv.clone()),
             children: std::collections::HashMap::new(),
         })
-    });
+    })
+    .expect("eval namespace creation failed");
 
     session.sleep(0.2).await;
     let request_ch = eval_ns.get_obj("req").expect("req channel not found");
@@ -124,14 +126,37 @@ fn lua_test(kernel: &mut Kernel, lua: &Lua) {
                     for k, v in pairs(obj:list()) do
                         if v ~= "." and v ~= ".." then
                             local child = obj:get_obj(v)
-                            print(string.rep("  ", depth) .. v .. " (" .. child:get_type() .. ")")
-                            if child:get_type() == "CompoundFSObj" then
+                            print(string.rep("  ", depth) .. v .. " (" .. child:type() .. ")")
+                            if child:type() == "CompoundFSObj" then
                                 ls_rec(child, depth + 1)
                             end
                         end
                     end
                 end
-                ls_rec(sess:fs_root(), 0)
+
+                local root = sess:fs_root()
+                local req = root
+                    :ensure_compound("srv")
+                    :ensure_compound("eval")
+                    :create_func("req")
+
+                sess:subscribe(req, function(data)
+                    local type = data:type()
+                    if type == "String" then
+                        print("eval request: " .. data:string())
+                        local res_ch = root
+                            :get_obj("srv")
+                            :get_obj("eval")
+                            :ensure_func("res")
+                        local res_v = root.new_string("12");
+                        sess:publish(res_ch, resv)
+                    else
+                        print("eval request: [" .. data:type() .. "]")
+                    end
+                end)
+
+                ls_rec(root, 0)
+
                 sess:wait_for_event()
             end
         })
@@ -150,7 +175,10 @@ fn main() {
     let mut k = kernel::Kernel::default();
     k.set_process_debug(true);
 
-    k.register_process(Box::new(RustProcess::new(&eval_mock, 0)));
+    let lua = mlua::Lua::new();
+    lua_test(&mut k, &lua);
+
+    // k.register_process(Box::new(RustProcess::new(&eval_mock, 0)));
     /* let wasm = include_bytes!("../../target/wasm32-unknown-unknown/debug/plugin_eval.wasm");
     match WasmPluginProcess::load(wasm) {
         Ok(plugin) => {
@@ -160,10 +188,7 @@ fn main() {
         Err(e) => log::error!("plugin load failed: {e}"),
     } */
 
-    // k.register_process(Box::new(RustProcess::new(&eval_client, 0)));
-
-    let lua = mlua::Lua::new();
-    lua_test(&mut k, &lua);
+    k.register_process(Box::new(RustProcess::new(&eval_client, 0)));
 
     k.start();
 }
