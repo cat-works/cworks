@@ -1,61 +1,10 @@
-use std::{cell::RefCell, collections::HashMap, ops::Deref, rc::Rc};
-
-use crate::{
-    obj_tree::FSObjRef, process::wrappers::rust::ProcessSession, ProcessClient, ProcessClientExt,
-    SyscallData, SyscallError,
-};
-
-type RawDataHandler = dyn Fn(Option<FSObjRef>) -> Result<(), SyscallError>;
-type DataHandler = Rc<Box<RawDataHandler>>;
+use crate::{process::wrappers::rust::ProcessSession, ProcessClient};
 
 #[derive(Clone, Default)]
-pub struct RustProcessCore {
-    session: ProcessSession,
-    data_handlers: Rc<RefCell<HashMap<*const <FSObjRef as Deref>::Target, DataHandler>>>,
-}
+pub struct RustProcessCore(ProcessSession);
 
 impl ProcessClient for RustProcessCore {
     fn get_session(&mut self) -> &mut ProcessSession {
-        &mut self.session
-    }
-
-    fn handle_invocation(&mut self, data: &SyscallData) {
-        if let SyscallData::Invoke {
-            caller_pid: _,
-            obj,
-            arg,
-        } = data
-        {
-            let handler = {
-                let handlers = self.data_handlers.borrow();
-
-                let handler = handlers.iter().find(|x| *x.0 == obj.as_ptr()).map(|x| x.1);
-
-                if handler.is_none() {
-                    log::warn!("No handler registered for object: {obj:?}");
-                    return;
-                }
-
-                handler.unwrap().clone()
-            };
-
-            if let Err(e) = handler(arg.clone()) {
-                log::error!("Error handling data: {e:?}");
-            }
-        }
-    }
-}
-
-impl RustProcessCore {
-    pub async fn subscribe(
-        &mut self,
-        obj: FSObjRef,
-        handler: DataHandler,
-    ) -> Result<(), SyscallError> {
-        self.data_handlers
-            .borrow_mut()
-            .insert(obj.as_ptr(), handler);
-
-        ProcessClientExt::subscribe(self, obj).await
+        &mut self.0
     }
 }

@@ -2,12 +2,15 @@
 resolver = "2"
 members = [
     "kernel",
-    "cworks-lua",
+
+    "test-cli",
+
     # "sdk",
     # "sdk-macros",
-    "test-cli",
     # "plugin-eval",
     # "wasm",
+
+    "cworks-lua",
 ]
 
 [profile.release]

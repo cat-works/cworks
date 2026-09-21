@@ -1,11 +1,11 @@
 use crate::{
-    obj_tree::FSObjRef, process::wrappers::rust::ProcessSession, PollResult, SyscallData,
-    SyscallError,
+    obj_tree::FSObjRef,
+    process::wrappers::rust::{process_session::DataHandler, ProcessSession},
+    PollResult, SyscallData, SyscallError,
 };
 
 pub trait ProcessClient {
     fn get_session(&mut self) -> &mut ProcessSession;
-    fn handle_invocation(&mut self, data: &SyscallData);
 }
 
 pub trait ProcessClientExt {
@@ -13,6 +13,7 @@ pub trait ProcessClientExt {
     fn subscribe(
         &mut self,
         obj: FSObjRef,
+        handler: DataHandler,
     ) -> impl std::future::Future<Output = Result<(), SyscallError>>;
     fn unsubscribe(
         &mut self,
@@ -21,7 +22,7 @@ pub trait ProcessClientExt {
     fn publish(
         &mut self,
         obj: FSObjRef,
-        data: Option<FSObjRef>,
+        data: FSObjRef,
     ) -> impl std::future::Future<Output = Result<(), SyscallError>>;
     fn fs_root(&mut self) -> impl std::future::Future<Output = Result<FSObjRef, SyscallError>>;
     fn wait_for_event(&mut self) -> impl std::future::Future<Output = Result<(), SyscallError>>;
@@ -37,7 +38,8 @@ impl<T: ProcessClient> ProcessClientExt for T {
             .await;
     }
 
-    async fn subscribe(&mut self, obj: FSObjRef) -> Result<(), SyscallError> {
+    async fn subscribe(&mut self, obj: FSObjRef, handler: DataHandler) -> Result<(), SyscallError> {
+        self.get_session().register_data_handler(&obj, handler);
         match self
             .get_session()
             .do_syscall(PollResult::Subscribe(obj))
@@ -59,7 +61,7 @@ impl<T: ProcessClient> ProcessClientExt for T {
         }
     }
 
-    async fn publish(&mut self, obj: FSObjRef, data: Option<FSObjRef>) -> Result<(), SyscallError> {
+    async fn publish(&mut self, obj: FSObjRef, data: FSObjRef) -> Result<(), SyscallError> {
         match self
             .get_session()
             .do_syscall(PollResult::Publish(obj, data))
@@ -94,7 +96,6 @@ impl<T: ProcessClient> ProcessClientExt for T {
     }
 
     fn pass_syscall_data(&mut self, data: &SyscallData) {
-        self.handle_invocation(data);
         *self.get_session().response.borrow_mut() = Some(data.clone());
     }
     fn take_syscall(&mut self) -> PollResult {

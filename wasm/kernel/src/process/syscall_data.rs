@@ -12,7 +12,7 @@ pub enum SyscallData {
     Invoke {
         caller_pid: u64,
         obj: FSObjRef,
-        arg: Option<FSObjRef>,
+        arg: FSObjRef,
     },
     GetPid(u64),
 }

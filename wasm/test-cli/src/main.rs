@@ -1,15 +1,14 @@
-//! Native playground for testing cworks kernel features.
-
 use std::rc::Rc;
 
-use cworks_lua::new_lua_process;
 use kernel::{
-    Kernel, ProcessClientExt, RustProcess, RustProcessCore, SyscallError,
+    ProcessClientExt, RustProcess, RustProcessCore, SyscallError,
     obj_tree::{FSObjRef, Object},
 };
-use mlua::prelude::*;
 
+use cworks_lua::new_lua_process;
+use kernel::Kernel;
 use mlua::chunk;
+use mlua::prelude::*;
 
 // mod plugin;
 // use plugin::WasmPluginProcess;
@@ -47,16 +46,31 @@ async fn eval_mock(mut session: RustProcessCore, _arg: u32) {
     })
     .expect("req channel creation failed");
 
+    let value = session.clone();
     session
         .subscribe(
             request_channel,
             Rc::new(Box::new(move |data| {
-                if let Some(obj) = data
-                    && let Object::String(s) = &**obj.borrow()
-                {
-                    log::info!("eval request: {s}");
-                }
-                Ok(())
+                let eval_ns = eval_ns.clone();
+                let mut session = value.clone();
+                Box::pin(async move {
+                    let string = if let Object::String(ref s) = **data.borrow() {
+                        s.clone()
+                    } else {
+                        log::warn!("eval_mock: invalid data type: {data:?}");
+                        return;
+                    };
+                    session
+                        .publish(
+                            get_obj(&eval_ns, "res", || {
+                                FSObjRef::from(Object::Func { callee_pid: vec![] })
+                            })
+                            .expect("res channel creation failed"),
+                            Object::String(format!("eval reply: {string}")).into(),
+                        )
+                        .await
+                        .expect("publish failed");
+                })
             })),
         )
         .await
@@ -67,7 +81,6 @@ async fn eval_mock(mut session: RustProcessCore, _arg: u32) {
     }
 }
 
-/// eval プラグインの E2E: 式を publish し、応答を subscribe して検証する。
 async fn eval_client(mut session: RustProcessCore, _arg: u32) {
     let root = session.fs_root().await.expect("fs_root failed");
     let srv = get_obj(&root, "srv", || {
@@ -96,24 +109,23 @@ async fn eval_client(mut session: RustProcessCore, _arg: u32) {
         .subscribe(
             response_ch,
             Rc::new(Box::new(|data| {
-                log::info!("eval reply: {data:?}");
-                Ok(())
+                Box::pin(async move {
+                    log::info!("eval_client: eval reply ====> {data:?}");
+                })
             })),
         )
         .await
         .expect("subscribe failed");
 
-    // プラグインが subscribe を完了するのを待つ
     session.sleep(0.2).await;
 
     let expr = Object::String("2+3*4".to_string()).into();
     session
-        .publish(request_ch, Some(expr))
+        .publish(request_ch, expr)
         .await
         .expect("publish failed");
 
-    // 応答の到達を待つ
-    for _ in 0..10 {
+    loop {
         session.wait_for_event().await.expect("wait failed");
     }
 }

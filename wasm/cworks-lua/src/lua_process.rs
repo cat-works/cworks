@@ -20,7 +20,7 @@ impl LuaFSObj {
                 "child with name '{name}' already exists"
             )));
         }
-        self.0.add_child(name, &obj).expect("add_child failed");
+        self.0.add_child(name, obj).expect("add_child failed");
         Ok(obj.clone())
     }
 }
@@ -288,13 +288,25 @@ impl LuaSession {
         Ok(LuaFSObj(root))
     }
 
-    async fn subscribe(&mut self, obj: LuaAnyUserData) -> Result<(), mlua::Error> {
+    async fn subscribe(
+        &mut self,
+        obj: LuaAnyUserData,
+        handler: mlua::Function,
+    ) -> Result<(), mlua::Error> {
         let obj_ref = obj.borrow::<LuaFSObj>()?.0.clone();
 
         self.0
             .subscribe(
                 obj_ref,
-                Rc::new(Box::new(move |data| panic!("Not implemented"))),
+                Rc::new(Box::new(move |data| {
+                    let handler = handler.clone();
+                    Box::pin(async move {
+                        handler
+                            .call_async::<()>(LuaFSObj(data))
+                            .await
+                            .expect("handler call failed");
+                    })
+                })),
             )
             .await
             .map_err(|_| mlua::Error::external("subscribe failed"))?;
@@ -310,17 +322,9 @@ impl LuaSession {
         Ok(())
     }
 
-    async fn publish(
-        &self,
-        obj: LuaAnyUserData,
-        data: Option<LuaAnyUserData>,
-    ) -> Result<(), mlua::Error> {
+    async fn publish(&self, obj: LuaAnyUserData, data: LuaAnyUserData) -> Result<(), mlua::Error> {
         let obj_ref = obj.borrow::<LuaFSObj>()?.0.clone();
-        let data_ref = if let Some(data) = data {
-            Some(data.borrow::<LuaFSObj>()?.0.clone())
-        } else {
-            None
-        };
+        let data_ref = data.borrow::<LuaFSObj>()?.0.clone();
         self.0
             .clone()
             .publish(obj_ref, data_ref)

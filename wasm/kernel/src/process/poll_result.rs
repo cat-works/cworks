@@ -11,6 +11,6 @@ pub enum PollResult {
     Root,
     Subscribe(FSObjRef),
     Unsubscribe(FSObjRef),
-    Publish(FSObjRef, Option<FSObjRef>),
+    Publish(FSObjRef, FSObjRef),
     GetPid,
 }
