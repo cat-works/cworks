@@ -1,12 +1,12 @@
 [package]
-name = "cworks"
+name = "cworks-wasm"
 description = "CWorks artifact crate: JS <-> Rust boundary (emscripten cdylib)"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 kernel = { path = "../kernel" }
-cworks-lua = { path = "../lua" }
+cworks-lua = { path = "../cworks-lua" }
 log = "0.4.17"
 serde_json = "1"
 ghs_demangle = { git = "https://github.com/syoch/ghs_demangle" }

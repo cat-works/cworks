@@ -179,6 +179,7 @@ local function build_handle()
   local cw = {
     handlers = handlers,
     syscall = syscall,
+    -- TODO: These syscall are deleted. needed to updating lua codebase
     list = function(path)
       return simple({ List = path })
     end,

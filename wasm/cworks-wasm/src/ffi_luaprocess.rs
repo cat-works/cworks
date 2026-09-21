@@ -1,6 +1,6 @@
 use std::ffi::{CStr, c_char};
 
-use cworks_lua::LuaProcess;
+use cworks_lua::new_lua_process;
 use mlua::Lua;
 
 use crate::ffi_session::SESSION;
@@ -30,11 +30,7 @@ pub unsafe extern "C" fn __ffi_lua_process_new(
         .into_function()
         .expect("Failed to load Lua function");
 
-    let thread = env
-        .create_thread(func)
-        .expect("Failed to create Lua thread");
-
-    let lua_process = Box::new(LuaProcess::new(thread));
+    let lua_process = Box::new(new_lua_process(func).expect("Failed to create Lua process"));
 
     let pid = SESSION.with(|session| {
         let mut session = session.borrow_mut();

@@ -4,11 +4,11 @@ members = [
     "kernel",
 
     "test-cli",
+    "cworks-wasm",
 
     # "sdk",
     # "sdk-macros",
     # "plugin-eval",
-    # "wasm",
 
     "cworks-lua",
 ]

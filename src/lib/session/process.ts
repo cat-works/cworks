@@ -59,38 +59,6 @@ export class Process {
     });
   }
 
-  public fs_list(path: string): Promise<string[]> {
-    this.result_queue.unshift({ "List": path });
-
-    return new Promise((resolve, reject) => {
-      this.emitter.once("callback", (s: any) => {
-        if (s.Fail !== undefined) {
-          reject(s.Fail);
-          return true;
-        } else if (s.FSList !== undefined) {
-          resolve(s.FSList);
-          return true;
-        }
-      })
-    })
-  }
-
-  public fs_stat(path: string): Promise<{ kind: "Directory" | "File" }> {
-    this.result_queue.unshift({ "Stat": path });
-
-    return new Promise((resolve, reject) => {
-      this.emitter.once("callback", (s: any) => {
-        if (s.Fail !== undefined) {
-          reject(s.Fail);
-          return true;
-        } else if (s.FSStat !== undefined) {
-          resolve(s.FSStat);
-          return true;
-        }
-      })
-    })
-  }
-
   public fs_set(path: string, data: any): Promise<void> {
     this.result_queue.unshift({ "Set": [path, data] });
 
