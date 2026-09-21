@@ -51,3 +51,5 @@ vite.config.ts.timestamp-*
 
 # nix
 .direnv
+
+.agents/sessions-archive

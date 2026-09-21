@@ -5,12 +5,6 @@
 		},
 		{
 			"path": "wasm"
-		},
-		{
-			"path": "/home/syoch/ghq/github.com/syoch/dotfiles"
-		},
-		{
-			"path": "/home/syoch/work/CircuitMaker2"
 		}
 	],
 	"settings": {

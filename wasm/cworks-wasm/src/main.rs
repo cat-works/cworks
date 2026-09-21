@@ -13,6 +13,7 @@
 
 pub mod ffi_luaenv;
 pub mod ffi_luaprocess;
+pub mod ffi_object;
 pub mod ffi_session;
 pub mod js_callback;
 
