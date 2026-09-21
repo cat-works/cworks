@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use kernel::obj_tree::{FSObjRef, Object};
 use kernel::{Process, ProcessClientExt};
 use kernel::{RustProcess, RustProcessCore};
@@ -266,8 +268,8 @@ struct LuaSession(RustProcessCore);
 
 #[mlua::userdata_impl]
 impl LuaSession {
-    async fn wait_for_event(&mut self) -> Result<(), mlua::Error> {
-        self.0.wait_for_event().await.expect("a");
+    async fn wait_for_event(&self) -> Result<(), mlua::Error> {
+        self.0.clone().wait_for_event().await.expect("a");
         Ok(())
     }
 
@@ -286,29 +288,14 @@ impl LuaSession {
         Ok(LuaFSObj(root))
     }
 
-    async fn subscribe(
-        &mut self,
-        obj: LuaAnyUserData,
-        handler: mlua::Function,
-    ) -> Result<(), mlua::Error> {
+    async fn subscribe(&mut self, obj: LuaAnyUserData) -> Result<(), mlua::Error> {
         let obj_ref = obj.borrow::<LuaFSObj>()?.0.clone();
-        let data_handler = std::rc::Rc::new(Box::new(move |data: Option<FSObjRef>| {
-            if let Some(obj) = data {
-                let lua_obj = LuaFSObj(obj);
-                handler
-                    .call::<()>(lua_obj)
-                    .map_err(|e| {
-                        log::error!("Error in Lua handler: {e}");
-                        mlua::Error::external("Lua handler failed")
-                    })
-                    .unwrap();
-            }
-            Ok(())
-        })
-            as Box<dyn Fn(Option<FSObjRef>) -> Result<(), kernel::SyscallError>>);
 
         self.0
-            .subscribe(obj_ref, data_handler)
+            .subscribe(
+                obj_ref,
+                Rc::new(Box::new(move |data| panic!("Not implemented"))),
+            )
             .await
             .map_err(|_| mlua::Error::external("subscribe failed"))?;
         Ok(())
@@ -324,7 +311,7 @@ impl LuaSession {
     }
 
     async fn publish(
-        &mut self,
+        &self,
         obj: LuaAnyUserData,
         data: Option<LuaAnyUserData>,
     ) -> Result<(), mlua::Error> {
@@ -335,6 +322,7 @@ impl LuaSession {
             None
         };
         self.0
+            .clone()
             .publish(obj_ref, data_ref)
             .await
             .map_err(|_| mlua::Error::external("publish failed"))?;

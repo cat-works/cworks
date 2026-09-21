@@ -5,7 +5,8 @@ use crate::{
     SyscallData, SyscallError,
 };
 
-type DataHandler = Rc<Box<dyn Fn(Option<FSObjRef>) -> Result<(), SyscallError>>>;
+type RawDataHandler = dyn Fn(Option<FSObjRef>) -> Result<(), SyscallError>;
+type DataHandler = Rc<Box<RawDataHandler>>;
 
 #[derive(Clone, Default)]
 pub struct RustProcessCore {

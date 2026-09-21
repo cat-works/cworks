@@ -124,13 +124,16 @@ fn lua_test(kernel: &mut Kernel, lua: &Lua) {
             function(sess)
                 local function ls_rec(obj, depth)
                     for k, v in pairs(obj:list()) do
-                        if v ~= "." and v ~= ".." then
-                            local child = obj:get_obj(v)
-                            print(string.rep("  ", depth) .. v .. " (" .. child:type() .. ")")
-                            if child:type() == "CompoundFSObj" then
-                                ls_rec(child, depth + 1)
-                            end
+                        if v == "." or v == ".." then
+                            goto continue
                         end
+                        local child = obj:get_obj(v)
+                        print(string.rep("  ", depth) .. v .. " (" .. child:type() .. ")")
+                        if child:type() == "CompoundFSObj" then
+                            ls_rec(child, depth + 1)
+                        end
+
+                        ::continue::
                     end
                 end
 
@@ -142,22 +145,29 @@ fn lua_test(kernel: &mut Kernel, lua: &Lua) {
 
                 sess:subscribe(req, function(data)
                     local type = data:type()
-                    if type == "String" then
-                        print("eval request: " .. data:string())
-                        local res_ch = root
-                            :get_obj("srv")
-                            :get_obj("eval")
-                            :ensure_func("res")
-                        local res_v = root.new_string("12");
-                        sess:publish(res_ch, resv)
-                    else
+                    if type ~= "String" then
                         print("eval request: [" .. data:type() .. "]")
+                        goto continue
                     end
+
+                    print("eval request: " .. data:string())
+                    local res_ch = root
+                        :get_obj("srv")
+                        :get_obj("eval")
+                        :ensure_func("res")
+                    local res_v = root.new_string("12");
+                    print("<=============================================>")
+                    sess:publish(res_ch, res_v)
+
+
+                    ::continue::
                 end)
 
                 ls_rec(root, 0)
 
-                sess:wait_for_event()
+                while true do
+                    sess:wait_for_event()
+                end
             end
         })
         .eval::<mlua::Function>()
@@ -179,6 +189,7 @@ fn main() {
     lua_test(&mut k, &lua);
 
     // k.register_process(Box::new(RustProcess::new(&eval_mock, 0)));
+
     /* let wasm = include_bytes!("../../target/wasm32-unknown-unknown/debug/plugin_eval.wasm");
     match WasmPluginProcess::load(wasm) {
         Ok(plugin) => {
