@@ -3,15 +3,15 @@
 Internal module (package.loaded["__stdio"]) providing process-local stdio.
 
 Exposes:
-  stdio.build(env, cw) -> { print = print_fn, io = io_table, flush = flush_fn }
+  stdio.build(env, session) -> { print = print_fn, io = io_table, flush = flush_fn }
 
-- Output sink is env.stdout (channel path). "" / nil disables the channel
-  and falls back to C-level writes (real io.write on the main state).
+- Output sink is env.stdout (channel handle, nil disables the channel and falls
+  back to C-level writes on the main state).
 - publish failures fall back to C-level writes (best-effort).
 - stderr is redirected to stdout.
 - Writes are deferred when not yieldable; flush points:
   next print/io.write, io.read wait start, run end, exit().
-- env.stdin is required ("" is an error). Keystroke chunks are appended to a
+- env.stdin is a required channel handle. Keystroke chunks are appended to a
   character-stream buffer; io.read supports the standard formats
   (table-driven: see read_handlers).
 ]]
@@ -112,29 +112,26 @@ local function normalize_read_format(fmt)
   return fmt
 end
 
-function stdio.build(env, cw)
-  local out_path = env.stdout
-  if out_path == nil or out_path == "" then
-    out_path = nil
+function stdio.build(env, sess)
+  local out = env.stdout
+  local inp = env.stdin
+  if inp == nil then
+    error("stdio: env.stdin must be a channel handle")
   end
-
-  local in_path = env.stdin
-  if in_path == nil or in_path == "" then
-    error("stdio: env.stdin must be a channel path (empty string not allowed)")
-  end
+  local root = env.root
 
   local out_queue = {}
   local in_buf = ""
 
   local function deliver(chunk)
-    if out_path == nil then
+    if out == nil then
       c_write(chunk)
       return
     end
-    local pub_ok, pub_res = pcall(function()
-      return cw.publish(out_path, { String = chunk })
+    local pub_ok = pcall(function()
+      sess:publish(out, root.new_string(chunk))
     end)
-    if not pub_ok or pub_res ~= "FSSuccess" then
+    if not pub_ok then
       c_write(chunk)
     end
   end
@@ -156,11 +153,11 @@ function stdio.build(env, cw)
     deliver(joined)
   end
 
-  cw.subscribe(in_path, function(caller, data)
-    if c_type(data) ~= "table" or c_type(data["String"]) ~= "string" then
+  sess:subscribe(inp, function(data)
+    if data:type() ~= "String" then
       return
     end
-    local s = (data["String"]:gsub("\r\n", "\n"):gsub("\r", "\n"))
+    local s = (data:string():gsub("\r\n", "\n"):gsub("\r", "\n"))
     in_buf = in_buf .. s
   end)
 
@@ -224,7 +221,7 @@ function stdio.build(env, cw)
         return val
       end
       flush_pending()
-      cw.wait_for_event()
+      sess:wait_for_event()
     end
   end
 

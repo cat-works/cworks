@@ -1,202 +1,121 @@
-import { EventEmitter } from "../event_emitter";
+import type {
+  FSObj,
+  JsProcessHandle,
+  KernelEvent,
+  Session,
+} from "../../../wasm/cworks-wasm/pkg/cworks";
+
 export class Process {
-  public emitter = new EventEmitter("Process");
-  private result_queue: any[] = [];
+  private handle: JsProcessHandle;
+  private pending: {
+    resolve: (data: KernelEvent) => void;
+    reject: (error: Error) => void;
+    acceptNone: boolean;
+  } | null = null;
+  private queue: Array<() => void> = [];
+  private handlers = new Map<number, (arg: FSObj) => void>();
+  private done = false;
 
-  constructor(process: (p: Process) => Promise<void>) {
-
-    this.emitter.mark_can_be_unused("callback");
-
-    process(this).then(() => {
-      this.result_queue.unshift("Done");
-    }).catch((e) => {
-      this.result_queue.unshift("Done");
-      throw e;
-    });
+  constructor(session: Session, run: (p: Process) => Promise<void>) {
+    this.handle = session.addProcess(this.kernelCallback.bind(this));
+    run(this).then(
+      () => this.finish(),
+      (error) => {
+        this.finish();
+        throw error;
+      },
+    );
   }
 
-  public pending(): Promise<void> {
-    return new Promise((resolve) => {
-      this.emitter.once("callback", (x) => {
-        resolve();
-        return x === "None";
+  private finish() {
+    this.done = true;
+  }
 
+  private request(
+    send: () => void,
+    acceptNone = false,
+  ): Promise<KernelEvent> {
+    return new Promise<KernelEvent>((resolve, reject) => {
+      this.queue.push(() => {
+        this.pending = { resolve, reject, acceptNone };
+        send();
       });
     });
   }
 
-  public sleep(time: number): Promise<void> {
-    this.result_queue.unshift({ Sleep: time });
-
-    return this.pending();
+  private pump() {
+    if (this.pending || this.queue.length === 0) {
+      return;
+    }
+    const next = this.queue.shift();
+    next?.();
   }
 
-  public wait_for_process(pid: bigint): Promise<void> {
-    return new Promise((resolve) => {
-      this.emitter.once("callback", (x) => {
-        if (x === "Done") {
-          resolve();
-          return true;
+  public kernelCallback(data: KernelEvent): void {
+    if (data.kind === "invoke") {
+      const handler = this.handlers.get(data.obj.id());
+      handler?.(data.arg);
+      return;
+    }
+    if (this.pending) {
+      if (data.kind === "none") {
+        if (this.pending.acceptNone) {
+          const { resolve } = this.pending;
+          this.pending = null;
+          resolve(data);
         }
-      });
-    });
-  }
-
-  public wait_for_event(): Promise<void> {
-    this.result_queue.push("WaitForEvent");
-
-    return new Promise((resolve) => {
-      this.emitter.once("callback", (x) => {
-        if (x !== "None") {
-          const idx = this.result_queue.indexOf("WaitForEvent");
-          if (idx !== -1) {
-            this.result_queue.splice(idx, 1);
-          }
-        }
-        resolve();
-        return x === "None";
-      });
-    });
-  }
-
-  public fs_set(path: string, data: any): Promise<void> {
-    this.result_queue.unshift({ "Set": [path, data] });
-
-    return new Promise((resolve, reject) => {
-      this.emitter.once("callback", (s: any) => {
-        if (s.Fail !== undefined) {
-          reject(s.Fail);
-          return true;
-        } else if (s === "FSSuccess") {
-          resolve();
-          return true;
-        }
-      })
-    })
-  }
-
-  public fs_get(path: string): Promise<any> {
-    this.result_queue.unshift({ "Get": path });
-
-    return new Promise((resolve, reject) => {
-      this.emitter.once("callback", (s: any) => {
-        if (s.Fail !== undefined) {
-          reject(s.Fail);
-          return true;
-        }
-        if (s.FSGet !== undefined) {
-          resolve(s.FSGet);
-          return true;
-        }
-      })
-    })
-  }
-
-  public fs_mkdir(path: string, name: any): Promise<void> {
-    this.result_queue.unshift({ "Mkdir": [path, name] });
-
-    return new Promise((resolve, reject) => {
-      this.emitter.once("callback", (s: any) => {
-        if (s.Fail !== undefined) {
-          reject(s.Fail);
-          return true;
-        } else if (s === "FSSuccess") {
-          resolve();
-          return true;
-        }
-      })
-    })
-  }
-
-  public fs_subscribe(path: string, callback: (caller_pid: bigint, data: any) => void): Promise<void> {
-    this.result_queue.unshift({ "Subscribe": path });
-
-    this.emitter.on("invoke", (data: { caller_pid: bigint, path: string, arg: any }) => {
-      if (data.path === path) {
-        callback(data.caller_pid, data.arg);
-        return true;
-      }
-    });
-
-    return new Promise((resolve, reject) => {
-      this.emitter.once("callback", (s: any) => {
-        if (s.Fail !== undefined) {
-          reject(s.Fail);
-          return true;
-        } else if (s === "FSSuccess") {
-          resolve();
-          return true;
+      } else {
+        const { resolve, reject } = this.pending;
+        this.pending = null;
+        if (data.kind === "fail") {
+          reject(new Error(data.error));
         } else {
-          return false;
-        }
-      })
-    })
-  }
-
-  public fs_unsubscribe(path: string): Promise<void> {
-    this.result_queue.unshift({ "Unsubscribe": path });
-
-    return new Promise((resolve, reject) => {
-      this.emitter.once("callback", (s: any) => {
-        if (s.Fail !== undefined) {
-          reject(s.Fail);
-          return true;
-        } else if (s === "FSSuccess") {
-          resolve();
-          return true;
-        } else {
-          return false;
-        }
-      })
-    })
-  }
-
-  public fs_publish(path: string, data: any): Promise<void> {
-    this.result_queue.unshift({ "Publish": [path, data] });
-
-    return new Promise((resolve, reject) => {
-      this.emitter.once("callback", (s: any) => {
-        if (s.Fail !== undefined) {
-          reject(s.Fail);
-          return true;
-        } else if (s === "FSSuccess") {
-          resolve();
-          return true;
-        } else {
-          return false;
-        }
-      })
-    })
-  }
-
-
-  kernel_callback(data: any): any {
-    if (data !== "None") {
-      let callback_handled = this.emitter.emit("callback", data);
-      if (callback_handled === false) {
-        if (data.Fail !== undefined) {
-          this.emitter.emit("fail", data.Fail);
-        } else if (data.Invoke !== undefined) {
-          let caller_pid = data.Invoke.caller_pid;
-          let path: string = data.Invoke.path;
-          let arg = data.Invoke.arg;
-          this.emitter.emit("invoke", {
-            caller_pid: caller_pid,
-            path: path,
-            arg: arg
-          });
-
-        } else {
-          console.error("Unhandled kernel callback:", data);
-          return "Done";
+          resolve(data);
         }
       }
     }
+    if (this.done) {
+      this.handle.done();
+      return;
+    }
+    this.pump();
+  }
 
-    const result = this.result_queue.shift();
-    // if (result) { console.debug("Kernel callback result", result) };
+  public async fsRoot(): Promise<FSObj> {
+    const data = await this.request(() => this.handle.root());
+    if (data.kind !== "fsRoot") {
+      throw new Error(`unexpected response for root: ${data.kind}`);
+    }
+    return data.obj;
+  }
 
-    return result || "Pending";
+  public async waitForEvent(): Promise<void> {
+    await this.request(() => this.handle.waitForEvent(), true);
+  }
 
+  public async sleep(seconds: number): Promise<void> {
+    await this.request(() => this.handle.sleep(seconds), true);
+  }
+
+  public async getPid(): Promise<number> {
+    const data = await this.request(() => this.handle.getPid());
+    return data.kind === "getPid" ? data.pid : 0;
+  }
+
+  public async subscribe(
+    obj: FSObj,
+    handler: (arg: FSObj) => void,
+  ): Promise<void> {
+    this.handlers.set(obj.id(), handler);
+    await this.request(() => this.handle.subscribe(obj));
+  }
+
+  public async unsubscribe(obj: FSObj): Promise<void> {
+    this.handlers.delete(obj.id());
+    await this.request(() => this.handle.unsubscribe(obj));
+  }
+
+  public async publish(obj: FSObj, data: FSObj): Promise<void> {
+    await this.request(() => this.handle.publish(obj, data));
   }
 }

@@ -26,6 +26,10 @@ pub trait ProcessClientExt {
     ) -> impl std::future::Future<Output = Result<(), SyscallError>>;
     fn fs_root(&mut self) -> impl std::future::Future<Output = Result<FSObjRef, SyscallError>>;
     fn wait_for_event(&mut self) -> impl std::future::Future<Output = Result<(), SyscallError>>;
+    fn wait_for_process(
+        &mut self,
+        pid: u64,
+    ) -> impl std::future::Future<Output = Result<(), SyscallError>>;
     fn get_pid(&mut self) -> impl std::future::Future<Output = Result<u64, SyscallError>>;
     fn pass_syscall_data(&mut self, data: &SyscallData);
     fn take_syscall(&mut self) -> PollResult;
@@ -85,6 +89,17 @@ impl<T: ProcessClient> ProcessClientExt for T {
             .do_syscall(PollResult::WaitForEvent)
             .await;
         Ok(())
+    }
+
+    async fn wait_for_process(&mut self, pid: u64) -> Result<(), SyscallError> {
+        match self
+            .get_session()
+            .do_syscall(PollResult::WaitForProcess(pid))
+            .await
+        {
+            SyscallData::Fail(ref e) => Err(e.clone()),
+            _ => Ok(()),
+        }
     }
 
     async fn get_pid(&mut self) -> Result<u64, SyscallError> {

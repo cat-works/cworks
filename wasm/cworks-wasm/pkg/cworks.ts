@@ -1,129 +1,94 @@
-import cworks_mod from "./cworks-rs";
+import MainModuleFactory from "./cworks-rs.js";
 
-const mod = await cworks_mod();
-mod.___ffi_init();
+export type KernelEvent =
+  | { kind: "none" }
+  | { kind: "success" }
+  | { kind: "fail"; error: string }
+  | { kind: "fsRoot"; obj: FSObj }
+  | { kind: "fsGet"; obj: FSObj }
+  | { kind: "getPid"; pid: number }
+  | { kind: "invoke"; callerPid: number; obj: FSObj; arg: FSObj };
 
-// ─── Symbol demangling ───
+export interface FSObj {
+  id(): number;
+  getObj(name: string): FSObj;
+  list(): string[];
+  hasChild(name: string): boolean;
+  addChild(name: string, obj: FSObj): FSObj;
+  type(): string;
+  string(): string;
+  int(): number;
+  boolean(): boolean;
+  float(): number;
+  double(): number;
+  bytes(): Uint8Array;
+  createInt(name: string, value: number): FSObj;
+  createString(name: string, value: string): FSObj;
+  createBoolean(name: string, value: boolean): FSObj;
+  createFloat(name: string, value: number): FSObj;
+  createDouble(name: string, value: number): FSObj;
+  createBytes(name: string, value: Uint8Array): FSObj;
+  createNull(name: string): FSObj;
+  createCompound(name: string): FSObj;
+  createFunc(name: string): FSObj;
+  ensureInt(name: string, value: number): FSObj;
+  ensureString(name: string, value: string): FSObj;
+  ensureBoolean(name: string, value: boolean): FSObj;
+  ensureFloat(name: string, value: number): FSObj;
+  ensureDouble(name: string, value: number): FSObj;
+  ensureBytes(name: string, value: Uint8Array): FSObj;
+  ensureNull(name: string): FSObj;
+  ensureCompound(name: string): FSObj;
+  ensureFunc(name: string): FSObj;
+}
+
+export interface FSObjClass {
+  newInt(value: number): FSObj;
+  newString(value: string): FSObj;
+  newBoolean(value: boolean): FSObj;
+  newFloat(value: number): FSObj;
+  newDouble(value: number): FSObj;
+  newBytes(value: Uint8Array): FSObj;
+  newNull(): FSObj;
+  newCompound(): FSObj;
+  newFunc(): FSObj;
+}
+
+export interface JsProcessHandle {
+  done(): void;
+  root(): void;
+  waitForEvent(): void;
+  sleep(seconds: number): void;
+  getPid(): void;
+  subscribe(obj: FSObj): void;
+  unsubscribe(obj: FSObj): void;
+  publish(obj: FSObj, data: FSObj): void;
+}
+
+export interface Session {
+  step(): void;
+  addProcess(callback: (data: KernelEvent) => void): JsProcessHandle;
+}
+
+export interface SessionClass {
+  new(): Session;
+}
+
+export interface LuaEnv {
+  run(code: string): void;
+  createProcess(name: string, code: string): bigint;
+}
+
+export interface LuaEnvClass {
+  new(): LuaEnv;
+}
+
+const mod: any = await MainModuleFactory();
+
+export const Session: SessionClass = mod.Session;
+export const FSObj: FSObjClass = mod.FSObj;
+export const LuaEnv: LuaEnvClass = mod.LuaEnv;
 
 export function demangle_str(x: string): string {
-  return mod.ccall("__ffi_demangle", "string", ["string"], [x]);
-}
-
-// ─── Lua Thread (existing API, backward-compatible) ───
-
-export class LuaThreadError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "LuaThreadError";
-  }
-}
-
-export class LuaEnv {
-  ptr: number;
-  constructor() {
-    this.ptr = mod.___ffi_lufenv_new();
-  }
-
-  run(code: string) {
-    mod.ccall("__ffi_luaenv_run", null, ["number", "string"], [this.ptr, code]);
-  }
-}
-
-export function createNativeLuaProcess(env: LuaEnv, name: string, code: string) {
-  const success = mod.ccall(
-    "__ffi_lua_process_new",
-    "number",
-    ["number", "string", "string"],
-    [env.ptr, name, code],
-  );
-
-  console.log("NativeLuaProcess created with PID:", success);
-  return BigInt(success);
-}
-
-// ─── Kernel Session (new unified API) ───
-
-export type KernelCallback = (data: any) => any;
-
-export class Session {
-  private nextCallbackId = 1;
-  private callbacks = new Map<number, KernelCallback>();
-
-  constructor() {
-    mod.___ffi_session_new();
-    // Register the global dispatcher that Rust will call via cworks_js_callback.
-    // cworks_js_callback(id, dataPtr, dataLen) → Module._invokeJsCallback(id, data)
-    (mod as any)._registerJsCallback(0, (id: number, data: string) => {
-      return this.dispatchCallback(id, data);
-    });
-  }
-
-  /**
-   * Register a callback function that will be invoked when the kernel
-   * polls a process. Returns a numeric callback ID to pass to Rust.
-   */
-  registerCallback(fn: KernelCallback): number {
-    const id = this.nextCallbackId++;
-    this.callbacks.set(id, fn);
-    return id;
-  }
-
-  /**
-   * Unregister a previously registered callback.
-   */
-  unregisterCallback(id: number) {
-    this.callbacks.delete(id);
-  }
-
-  /**
-   * Add a process to the kernel using a raw callback function.
-   * This is the backward-compatible API matching the old wasm Session.
-   */
-  add_process(callback: Function): bigint {
-    const id = this.registerCallback(callback as KernelCallback);
-    return this.addProcess(id);
-  }
-
-  /**
-   * Add a process to the kernel.
-   * `callbackId` is the ID returned by `registerCallback()`.
-   * Returns the process PID.
-   */
-  addProcess(callbackId: number): bigint {
-    const result = mod.___ffi_session_add_process(callbackId);
-    return BigInt(result as unknown as number);
-  }
-
-  /**
-   * Advance the kernel by one tick. This triggers polling of all
-   * processes, which in turn invoke their registered JS callbacks.
-   */
-  step() {
-    mod.___ffi_session_step();
-  }
-
-  /**
-   * Internal: dispatcher called from Rust via cworks_js_callback.
-   * Routes the callback to the appropriate registered function.
-   */
-  private dispatchCallback(id: number, data: string): string {
-    const fn = this.callbacks.get(id);
-    if (!fn) {
-      console.error(`cworks: no callback registered for id ${id}`);
-      return JSON.stringify(null);
-    }
-    try {
-      // Rust wraps data as {"id":callback_id,"data":<SyscallData JSON>}
-      const { id: _routedId, data: syscallData } = JSON.parse(data);
-      const result = fn(syscallData);
-      // Serialize BigInt as JSON numbers (u128 fields like WaitForProcess
-      // payloads must deserialize as numbers on the Rust side).
-      return JSON.stringify(result, (_key, value) =>
-        typeof value === "bigint" ? Number(value) : value
-      );
-    } catch (e) {
-      console.error(`cworks: callback error for id ${id}`, e);
-      return JSON.stringify(null);
-    }
-  }
+  return mod.demangleStr(x);
 }

@@ -39,6 +39,7 @@
           pkgs.clippy
           pkgs.rust-cbindgen
           pkgs.emscripten
+          pkgs.wasm-bindgen-cli
         ];
         RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
       };

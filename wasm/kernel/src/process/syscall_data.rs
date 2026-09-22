@@ -8,7 +8,6 @@ pub enum SyscallData {
     Fail(SyscallError),
     FSRoot(FSObjRef),
     FSSuccess,
-    FSGet(FSObjRef),
     Invoke {
         caller_pid: u64,
         obj: FSObjRef,

@@ -1,4 +1,4 @@
-local cworks = env.cworks
+local cworks = require("cworks").new(session, env)
 
 local function path_join(base, name)
   if base == "" then

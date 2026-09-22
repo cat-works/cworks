@@ -1,4 +1,4 @@
-local cworks = env.cworks
+local cworks = require("cworks").new(session, env)
 local editor = require("editor").new(
   cworks,
   "/run/debug-app/ta-load-back",

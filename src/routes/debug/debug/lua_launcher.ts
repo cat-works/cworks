@@ -1,80 +1,56 @@
 import type { Process } from "$lib/session";
-import { LuaProcess } from "$lib/session/luaprocess";
-import type { Session } from "../../../../wasm/cworks-wasm/pkg/cworks";
+import { createLuaProcess } from "$lib/session/luaprocess";
+import { FSObj } from "../../../../wasm/cworks-wasm/pkg/cworks";
 
+// Long-bracket string literal safe for the given content: `[==[ ... ]==]`
+function longBracket(s: string): string {
+  const re = /\]\=+\]/g;
+  let maxEq = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s)) !== null) {
+    const eq = m[0].length - 2;
+    if (eq > maxEq) maxEq = eq;
+  }
+  const level = maxEq + 1;
+  return "[" + "=".repeat(level) + "[" + s + "]" + "=".repeat(level) + "]";
+}
 
-export async function lua_launcher(p: Process, sess: Session) {
-  await p.fs_mkdir("/", "run");
-  await p.fs_mkdir("/run", "sys");
+function buildThinChunk(code: string, name: string): string {
+  return (
+    "local session = ...\n" +
+    'package.loaded["__bootstrap"].run(session, ' +
+    longBracket(code) +
+    ", " +
+    longBracket(name) +
+    ")\n"
+  );
+}
 
-  await p.fs_subscribe("/run/sys/exec-lua", (caller_pid: bigint, data: any) => {
-    if (!data.CompoundFSObj) {
-      console.warn("Invalid data received for exec-lua:", data);
-      return
+export async function lua_launcher(p: Process) {
+  const root = await p.fsRoot();
+  const execLua = root.ensureCompound("run").ensureCompound("sys").ensureFunc("exec-lua");
+  const procNs = root.ensureCompound("run").ensureCompound("proc");
+
+  await p.subscribe(execLua, (arg) => {
+    if (arg.type() !== "CompoundFSObj") {
+      console.warn("Invalid data received for exec-lua:", arg);
+      return;
     }
-    const children: Record<string, any> = data.CompoundFSObj.children;
 
-    if (typeof children["path"]?.String !== "string") {
-      console.warn("Invalid path received for exec-lua:", data);
-      return
-    }
+    const name = arg.getObj("name").string();
+    const code = arg.getObj("code").string();
+    const pidReplyTo = arg.hasChild("pid_reply_to") ? arg.getObj("pid_reply_to") : null;
 
-    if (children["cwd"] == undefined) {
-      console.warn("Invalid params received for exec-lua:", data);
-      return
-    }
-    if (children["cmd_line"] == undefined) {
-      console.warn("Invalid params received for exec-lua:", data);
-      return
-    }
-
-    if (typeof children["stdout"]?.String !== "string") {
-      console.warn("Invalid stdout received for exec-lua:", data);
-      return
-    }
-
-    if (typeof children["stdin"]?.String !== "string") {
-      console.warn("Invalid stdin received for exec-lua:", data);
-      return
-    }
-
-    const path = children["path"]?.String;
-    const cwd = children["cwd"]?.String;
-    const cmd_line = children["cmd_line"]?.String;
-    const stdout = children["stdout"]?.String;
-    const stdin = children["stdin"]?.String;
-    const pid_reply_to = children["pid_reply_to"]?.String;
-
-
-    p.fs_get(path).then((data) => {
-      if (typeof data.String !== "string") {
-        console.warn("Invalid Lua code received for exec-lua:", data);
-        return;
+    queueMicrotask(() => {
+      const pid = createLuaProcess(name, buildThinChunk(code, name));
+      procNs.addChild(pid.toString(), arg);
+      if (pidReplyTo) {
+        p.publish(pidReplyTo, FSObj.newInt(Number(pid)));
       }
-
-      const process = new LuaProcess(path, data.String, {
-        cwd,
-        cmdline: cmd_line,
-        stdout,
-        stdin,
-      });
-      const pid = process.pid;
-
-      if (pid_reply_to) {
-        return p.fs_publish(pid_reply_to, { String: pid.toString() });
-      }
-    }).then(() => {
-      console.debug("Lua process started for path:", path);
     });
-
-
-    return true;
   });
 
   while (1) {
-    await p.wait_for_event();
+    await p.waitForEvent();
   }
-
-
-  return;
 }

@@ -1,4 +1,4 @@
-local cworks = env.cworks
+local cworks = require("cworks").new(session, env)
 local editor = require("editor").new(
   cworks,
   "/run/debug-app/ta-load-back",
@@ -27,8 +27,8 @@ end
 
 local src_file = path_join(env.cwd, args)
 local src = cworks.get(src_file)
-if src["String"] == nil then
+if src:type() ~= "String" then
   io.write("File is not a string: " .. src_file .. "\n")
 else
-  editor.push(src["String"])
+  editor.push(src:string())
 end

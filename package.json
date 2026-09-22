@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "wasm-lua": "cd wasm && cargo build --target wasm32-unknown-emscripten --release",
+    "wasm-lua": "bash wasm/cworks-wasm/build.sh",
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",

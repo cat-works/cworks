@@ -1,4 +1,4 @@
-local cworks = env.cworks
+local cworks = require("cworks").new(session, env)
 local cwd = env.cwd
 local cmdline = env.cmdline -- mkdir ...
 

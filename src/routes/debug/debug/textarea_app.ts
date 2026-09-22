@@ -1,30 +1,35 @@
 import type { Process } from "$lib/session";
+import { FSObj } from "../../../../wasm/cworks-wasm/pkg/cworks";
 
+export async function textarea_main(
+  p: Process,
+  textarea: HTMLTextAreaElement,
+) {
+  const root = await p.fsRoot();
+  const debugApp = root
+    .ensureCompound("run")
+    .ensureCompound("debug-app");
 
-export async function textarea_main(p: Process, textarea: HTMLTextAreaElement) {
-  await p.fs_mkdir("/", "run");
-  await p.fs_mkdir("/run", "debug-app");
+  const taPush = debugApp.ensureFunc("ta-push");
+  const taTake = debugApp.ensureFunc("ta-take");
 
-
-  await p.fs_subscribe("/run/debug-app/ta-push", (caller_pid: bigint, data: any) => {
-    if (typeof data.String === "string") {
-      textarea.value = data.String;
+  await p.subscribe(taPush, (arg) => {
+    if (arg.type() === "String") {
+      textarea.value = arg.string();
     } else {
-      console.log("Invalid data received on /run/debug-app/ta-push:", data);
+      console.log("Invalid data received on /run/debug-app/ta-push:", arg);
     }
-    return true;
   });
 
-  await p.fs_subscribe("/run/debug-app/ta-take", (caller_pid: bigint, data: any) => {
-    if (typeof data.String !== "string") {
-      console.log("Invalid pointer received on /run/debug-app/ta-take:", data);
-    } else {
-      p.fs_publish(data.String, { String: textarea.value });
+  await p.subscribe(taTake, (arg) => {
+    if (arg.type() !== "Func") {
+      console.log("Invalid pointer received on /run/debug-app/ta-take:", arg);
+      return;
     }
-    return true;
+    p.publish(arg, FSObj.newString(textarea.value));
   });
 
   while (1) {
-    await p.wait_for_event();
+    await p.waitForEvent();
   }
 }

@@ -3,17 +3,17 @@ local ed_lib = {}
 function ed_lib.new(cworks, load_back_channel, take_channel, push_channel)
   local self = {}
   self.take_buffer = ""
-  cworks.subscribe(load_back_channel, function(caller, data)
-    if data["String"] == nil then
-      print("Invalid textarea data: " .. json.stringify(data))
+  cworks.subscribe(load_back_channel, function(_, data)
+    if data:type() ~= "String" then
+      print("Invalid textarea data: " .. data:type())
       return
     end
 
-    self.take_buffer = data["String"]
+    self.take_buffer = data:string()
   end)
   function self.take()
     self.take_buffer = ""
-    cworks.publish(take_channel, { String = load_back_channel })
+    cworks.publish(take_channel, cworks.resolve(load_back_channel))
     while self.take_buffer == "" do
       cworks.wait_for_event()
     end

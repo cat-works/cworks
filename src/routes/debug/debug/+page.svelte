@@ -5,7 +5,7 @@
     ITerminalInitOnlyOptions,
     Terminal,
   } from "@battlefieldduck/xterm-svelte";
-  import { Session } from "../../../../wasm/wasm/pkg/cworks";
+  import { Session } from "../../../../wasm/cworks-wasm/pkg/cworks";
   import { Process } from "$lib/session";
   import { stdio_main } from "./stdio_app";
   import { debug_main } from "./debug_app";
@@ -82,7 +82,7 @@
       return;
     }
 
-    const stdio_process = new Process((p) =>
+    const stdio_process = new Process(session, (p) =>
       stdio_main(p, {
         stdin() {
           return new Promise((resolve) => {
@@ -96,26 +96,18 @@
         },
       }),
     );
-    session.add_process(stdio_process.kernel_callback.bind(stdio_process));
 
     await sleep(100);
 
-    const textarea_process = new Process((p) =>
+    const textarea_process = new Process(session, (p) =>
       textarea_main(p, code_editor as HTMLTextAreaElement),
     );
-    session.add_process(
-      textarea_process.kernel_callback.bind(textarea_process),
-    );
 
-    const lua_launcher_process = new Process((p) => lua_launcher(p, session));
-    session.add_process(
-      lua_launcher_process.kernel_callback.bind(lua_launcher_process),
-    );
+    const lua_launcher_process = new Process(session, (p) => lua_launcher(p));
 
     await sleep(100);
 
-    const debug_process = new Process((p) => debug_main(p, sess as Session));
-    session.add_process(debug_process.kernel_callback.bind(debug_process));
+    const debug_process = new Process(session, (p) => debug_main(p));
   }
 </script>
 

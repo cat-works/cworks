@@ -159,6 +159,21 @@ impl LuaFSObj {
         self.add_child(name, &obj).map(LuaFSObj)
     }
 
+    #[lua(name = "add_child")]
+    fn add_child_(&self, name: &str, obj: LuaAnyUserData) -> Result<(), mlua::Error> {
+        let child = obj.borrow::<LuaFSObj>()?.0.clone();
+        self.0
+            .add_child(name, &child)
+            .map_err(|_| mlua::Error::external("add_child failed"))?;
+        Ok(())
+    }
+
+    fn has_child(&self, name: &str) -> Result<bool, mlua::Error> {
+        self.0
+            .has_child(name)
+            .map_err(|_| mlua::Error::external("has_child failed"))
+    }
+
     fn ensure_int(&self, name: &str, value: i128) -> Result<LuaFSObj, mlua::Error> {
         match self.0.get_obj(name) {
             Ok(obj) => Ok(LuaFSObj(obj)),
@@ -270,6 +285,14 @@ struct LuaSession(RustProcessCore);
 impl LuaSession {
     async fn wait_for_event(&self) -> Result<(), mlua::Error> {
         self.0.clone().wait_for_event().await.expect("a");
+        Ok(())
+    }
+
+    async fn wait_for_process(&mut self, pid: u64) -> Result<(), mlua::Error> {
+        self.0
+            .wait_for_process(pid)
+            .await
+            .map_err(|_| mlua::Error::external("wait_for_process failed"))?;
         Ok(())
     }
 

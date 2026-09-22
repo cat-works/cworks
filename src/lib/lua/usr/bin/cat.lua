@@ -1,4 +1,4 @@
-local cworks = env.cworks
+local cworks = require("cworks").new(session, env)
 local cwd = env.cwd
 local cmdline = env.cmdline -- mkdir ...
 
@@ -22,8 +22,8 @@ end
 
 local result_file = path_join(cwd, args)
 local data = cworks.get(result_file)
-if data["String"] == nil then
+if data:type() ~= "String" then
   io.write("File is not a string: " .. result_file .. "\n")
 else
-  io.write(data["String"] .. "\n")
+  io.write(data:string() .. "\n")
 end

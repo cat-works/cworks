@@ -1,4 +1,4 @@
-local cworks = env.cworks
+local cworks = require("cworks").new(session, env)
 local json = require("json")
 
 local function path_join(base, name)
@@ -25,15 +25,15 @@ end
 local lua_process_spawner = {}
 lua_process_spawner.last_pid = nil
 
-cworks.subscribe("/run/debug-app/lua-sp", function(caller, data)
-  if data["String"] == nil then
-    print("Invalid data for lua process spawner: " .. json.stringify(data))
-    return
+cworks.subscribe("/run/debug-app/lua-sp", function(_, data)
+  local pid
+  if data:type() == "Int" then
+    pid = data:int()
+  elseif data:type() == "String" then
+    pid = tonumber(data:string())
   end
-  local pid_str = data["String"]
-  local pid = tonumber(pid_str)
   if pid == nil then
-    print("Invalid pid received: " .. pid_str)
+    print("Invalid pid received: " .. data:type())
     return
   end
 
@@ -41,19 +41,16 @@ cworks.subscribe("/run/debug-app/lua-sp", function(caller, data)
 end)
 
 function lua_process_spawner.spawn_lua_process(lua_path, cwd, cmd_line)
-  local pid_reply_to = "/run/debug-app/lua-sp"
-  cworks.publish("/run/sys/exec-lua", {
-    CompoundFSObj = {
-      children = {
-        path = { String = lua_path },
-        cwd = { String = cwd },
-        cmd_line = { String = cmd_line },
-        stdout = { String = env.stdout },
-        stdin = { String = env.stdin },
-        pid_reply_to = { String = pid_reply_to },
-      }
-    }
-  })
+  local request = cworks.root.new_compound()
+  request:create_string("name", lua_path:match("[^/]+$"))
+  request:create_string("code", cworks.get(lua_path):string())
+  request:create_string("cwd", cwd)
+  request:create_string("cmd_line", cmd_line)
+  request:add_child("stdout", env.stdout)
+  request:add_child("stdin", env.stdin)
+  request:add_child("pid_reply_to", cworks.resolve("/run/debug-app/lua-sp"))
+
+  cworks.publish("/run/sys/exec-lua", request)
 
   while lua_process_spawner.last_pid == nil do
     cworks.wait_for_event()
