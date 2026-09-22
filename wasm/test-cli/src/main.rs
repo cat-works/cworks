@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use kernel::{
-    ProcessClientExt, RustProcess, RustProcessCore, SyscallError,
+    ProcessSession, RustProcess, SyscallError,
     obj_tree::{FSObjRef, Object},
 };
 
@@ -25,7 +25,7 @@ fn get_obj(
     })
 }
 
-async fn eval_mock(mut session: RustProcessCore, _arg: u32) {
+async fn eval_mock(mut session: ProcessSession, _arg: u32) {
     let root = session.fs_root().await.expect("fs_root failed");
     let srv = get_obj(&root, "srv", || {
         FSObjRef::from(Object::CompoundFSObj {
@@ -81,7 +81,7 @@ async fn eval_mock(mut session: RustProcessCore, _arg: u32) {
     }
 }
 
-async fn eval_client(mut session: RustProcessCore, _arg: u32) {
+async fn eval_client(mut session: ProcessSession, _arg: u32) {
     let root = session.fs_root().await.expect("fs_root failed");
     let srv = get_obj(&root, "srv", || {
         FSObjRef::from(Object::CompoundFSObj {

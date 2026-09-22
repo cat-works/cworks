@@ -4,16 +4,14 @@ use std::{
     task::{Context, Poll},
 };
 
-use crate::{PollResult, Process, ProcessClientExt, SyscallData};
-
-use super::process::RustProcessCore;
+use crate::{PollResult, Process, ProcessSession, SyscallData};
 
 pub struct RustProcess<'a, F>
 where
     F: Future<Output = ()>,
 {
     f: F,
-    session: RustProcessCore,
+    session: ProcessSession,
     ctx: Context<'a>,
 }
 
@@ -21,8 +19,8 @@ impl<F> RustProcess<'_, F>
 where
     F: Future<Output = ()>,
 {
-    pub fn new<T>(f: &impl Fn(RustProcessCore, T) -> F, arg: T) -> Self {
-        let session = RustProcessCore::default();
+    pub fn new<T>(f: &impl Fn(ProcessSession, T) -> F, arg: T) -> Self {
+        let session = ProcessSession::default();
 
         Self {
             f: f(session.clone(), arg),

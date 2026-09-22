@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
+use kernel::Process;
+use kernel::ProcessSession;
+use kernel::RustProcess;
 use kernel::obj_tree::{FSObjRef, Object};
-use kernel::{Process, ProcessClientExt};
-use kernel::{RustProcess, RustProcessCore};
 use mlua::UserData;
 use mlua::prelude::*;
 
@@ -159,6 +160,7 @@ impl LuaFSObj {
         self.add_child(name, &obj).map(LuaFSObj)
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     #[lua(name = "add_child")]
     fn add_child_(&self, name: &str, obj: LuaAnyUserData) -> Result<(), mlua::Error> {
         let child = obj.borrow::<LuaFSObj>()?.0.clone();
@@ -279,7 +281,7 @@ impl LuaFSObj {
 }
 
 #[derive(UserData)]
-struct LuaSession(RustProcessCore);
+struct LuaSession(ProcessSession);
 
 #[mlua::userdata_impl]
 impl LuaSession {
@@ -288,37 +290,39 @@ impl LuaSession {
         Ok(())
     }
 
-    async fn wait_for_process(&mut self, pid: u64) -> Result<(), mlua::Error> {
+    async fn wait_for_process(&self, pid: u64) -> Result<(), mlua::Error> {
         self.0
+            .clone()
             .wait_for_process(pid)
             .await
             .map_err(|_| mlua::Error::external("wait_for_process failed"))?;
         Ok(())
     }
 
-    async fn sleep(&mut self, sleep_duration: f32) -> Result<(), mlua::Error> {
-        self.0.sleep(sleep_duration).await;
+    async fn sleep(&self, sleep_duration: f32) -> Result<(), mlua::Error> {
+        self.0.clone().sleep(sleep_duration).await;
         Ok(())
     }
 
-    async fn get_pid(&mut self) -> Result<u64, mlua::Error> {
-        let pid = self.0.get_pid().await.expect("get_pid failed");
+    async fn get_pid(&self) -> Result<u64, mlua::Error> {
+        let pid = self.0.clone().get_pid().await.expect("get_pid failed");
         Ok(pid)
     }
 
-    async fn fs_root(&mut self) -> Result<LuaFSObj, mlua::Error> {
-        let root = self.0.fs_root().await.expect("fs_root failed");
+    async fn fs_root(&self) -> Result<LuaFSObj, mlua::Error> {
+        let root = self.0.clone().fs_root().await.expect("fs_root failed");
         Ok(LuaFSObj(root))
     }
 
     async fn subscribe(
-        &mut self,
+        &self,
         obj: LuaAnyUserData,
         handler: mlua::Function,
     ) -> Result<(), mlua::Error> {
         let obj_ref = obj.borrow::<LuaFSObj>()?.0.clone();
 
         self.0
+            .clone()
             .subscribe(
                 obj_ref,
                 Rc::new(Box::new(move |data| {
@@ -336,9 +340,10 @@ impl LuaSession {
         Ok(())
     }
 
-    async fn unsubscribe(&mut self, obj: LuaAnyUserData) -> Result<(), mlua::Error> {
+    async fn unsubscribe(&self, obj: LuaAnyUserData) -> Result<(), mlua::Error> {
         let obj_ref = obj.borrow::<LuaFSObj>()?.0.clone();
         self.0
+            .clone()
             .unsubscribe(obj_ref)
             .await
             .map_err(|_| mlua::Error::external("unsubscribe failed"))?;
@@ -359,7 +364,7 @@ impl LuaSession {
 
 pub fn new_lua_process(func: mlua::Function) -> Result<impl Process, mlua::Error> {
     let proc = RustProcess::new(
-        &move |rpc: RustProcessCore, ()| {
+        &move |rpc: ProcessSession, ()| {
             let value = func.clone();
             async move {
                 let session = LuaSession(rpc);
