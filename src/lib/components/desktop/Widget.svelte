@@ -48,6 +48,23 @@
     return typeof props.drag === "string" ? props.drag : undefined;
   }
 
+  function boxStyle(props: Record<string, unknown>): string {
+    let style = "";
+    if (typeof props.background === "string") {
+      style += `background:${props.background};`;
+    }
+    if (typeof props.border === "string") {
+      style += `border:${props.border};`;
+    }
+    if (typeof props.color === "string") {
+      style += `color:${props.color};`;
+    }
+    if (props.padding !== undefined) {
+      style += `padding:${Number(props.padding)}px;`;
+    }
+    return style;
+  }
+
   function onInput(event: Event): void {
     emitter.send(widget.id, "input", (event.currentTarget as HTMLInputElement).value);
   }
@@ -62,7 +79,7 @@
 </script>
 
 {#if widget.kind === "grid"}
-  <div style={gridStyle(widget.props)}>
+  <div style={gridStyle(widget.props) + boxStyle(widget.props)}>
     {#each widget.children as child (child.id)}
       <div
         style="{areaStyle(child.props)}{dragOf(child.props)
@@ -76,7 +93,7 @@
     {/each}
   </div>
 {:else if widget.kind === "label"}
-  <span>{widget.props.text}</span>
+  <span style={boxStyle(widget.props)}>{widget.props.text}</span>
 {:else if widget.kind === "button"}
   <Button size="sm" on:click={() => emitter.send(widget.id, "click")}>
     {widget.props.text}
@@ -89,8 +106,9 @@
       ? ""
       : String(widget.props.placeholder)}
     class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    style={boxStyle(widget.props)}
     on:input={onInput}
   />
 {:else if widget.kind === "html"}
-  <div>{@html String(widget.props.html ?? "")}</div>
+  <div style={boxStyle(widget.props)}>{@html String(widget.props.html ?? "")}</div>
 {/if}

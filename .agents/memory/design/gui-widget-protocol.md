@@ -55,3 +55,9 @@ Display (DS 生成/所有, kind="display", control/event 付き)
 - **背景の仕組み**: `Display` の `background` prop（任意の CSS `background` 値）を DS が読み、`Desktop.svelte` のオーバーレイに適用（`state.ts` の `background` store）。既定は WM が `attach` 時に設定（半透明グラデーション＝ターミナルを完全に隠さない）。変更は Display の `background` を書き換えて `changed` を送れば反映（WM が所有者）。
 - DS の reconcile は Display の子を **`type()==="CompoundFSObj"` かつ `kind` を持つものだけ** frame として扱う（`background` 等のプロパティ子を誤読しない）。
 - 検証: CDP `Emulation.setTouchEmulationEnabled` + `Input.dispatchTouchEvent` でタッチのドラッグ/リサイズ/close/入力フォーカスを確認、console error 0。
+
+## フレーム装飾と重なり（2026-09）
+
+- **ウィジェットの汎用 box props**: `background`/`border`/`color`（CSS 文字列）と `padding`（Int px）を `Widget.svelte` の `boxStyle` が全 kind に適用。frame は WM が `background="#1e2127"`, `border="1px solid #3a4150"` を根に、titlebar/footer に `background="#2a303a"` を設定。body は `padding=8`。
+- **重なり解消**: 不透明背景により前面ウィンドウが背面を遮蔽する。
+- **cascade**: WM は `count_frames()`（Display の `CompoundFSObj` かつ `kind` を持つ子を数える）で `hint + n*24` に配置。app が x,y を指定しても cascade する。

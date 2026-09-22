@@ -71,6 +71,22 @@ local function body_of(window)
   return window:get_obj("content"):get_obj("body")
 end
 
+local function count_frames()
+  if display == nil then
+    return 0
+  end
+  local count = 0
+  for _, name in ipairs(display:list()) do
+    if name ~= "." and name ~= ".." then
+      local child = display:get_obj(name)
+      if child:type() == "CompoundFSObj" and child:has_child("kind") then
+        count = count + 1
+      end
+    end
+  end
+  return count
+end
+
 local function remove_frame(window)
   if display == nil then
     return
@@ -86,15 +102,31 @@ local function make_frame(title)
   counter = counter + 1
   local name = "win" .. tostring(counter)
 
-  local frame = gui.widget("grid", { columns = 1, rows = "auto 1fr auto" })
+  local frame = gui.widget("grid", {
+    columns = 1,
+    rows = "auto 1fr auto",
+    background = "#1e2127",
+    border = "1px solid #3a4150",
+  })
 
-  local bar = frame:grid({ id = "titlebar", columns = "1fr auto", gap = 2, area = "0,0-1,1" })
+  local bar = frame:grid({
+    id = "titlebar",
+    columns = "1fr auto",
+    gap = 2,
+    area = "0,0-1,1",
+    background = "#2a303a",
+  })
   bar:label({ id = "grip", text = title, drag = "move", area = "0,0-1,1" })
   local close = bar:button({ id = "close", text = "×", area = "0,1-1,2" })
 
-  local body = frame:grid({ id = "body", area = "1,0-2,1" })
+  local body = frame:grid({ id = "body", area = "1,0-2,1", padding = 8 })
 
-  local footer = frame:grid({ id = "footer", columns = "1fr auto", area = "2,0-3,1" })
+  local footer = frame:grid({
+    id = "footer",
+    columns = "1fr auto",
+    area = "2,0-3,1",
+    background = "#2a303a",
+  })
   footer:label({ id = "spacer", text = "", area = "0,0-1,1" })
   footer:label({ id = "resize", text = "◢", drag = "resize", area = "0,1-1,2" })
 
@@ -142,8 +174,9 @@ cworks.subscribe("/run/gui/wm-req", function(_, data)
     end
     local title = str_prop(data, "title", "Window")
     local frame, body, name = make_frame(title)
-    gui.set(frame.obj, "x", int_prop(data, "x", 40 + counter * 24))
-    gui.set(frame.obj, "y", int_prop(data, "y", 40 + counter * 24))
+    local cascade = count_frames()
+    gui.set(frame.obj, "x", int_prop(data, "x", 40) + cascade * 24)
+    gui.set(frame.obj, "y", int_prop(data, "y", 40) + cascade * 24)
     gui.set(frame.obj, "w", int_prop(data, "w", 360))
     gui.set(frame.obj, "h", int_prop(data, "h", 260))
     gui.set(frame.obj, "z", next_z)
