@@ -23,6 +23,9 @@ export interface WindowState {
 
 export const desktop = writable<WindowState[]>([]);
 
+/** Desktop background (any CSS `background` value), set by the window manager. */
+export const background = writable<string>("transparent");
+
 // Requests sent to the window manager process (see gui_app.ts / wm.lua).
 export const emitter: {
   send: (widgetId: number, event: string, value?: string) => void;

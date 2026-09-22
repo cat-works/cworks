@@ -129,6 +129,9 @@ cworks.subscribe("/run/gui/wm-req", function(_, data)
 
   if op == "attach" then
     display = data:get_obj("display")
+    if not display:has_child("background") then
+      gui.set(display, "background", "linear-gradient(135deg,rgba(24,28,36,0.65),rgba(40,46,58,0.65))")
+    end
     changed(display)
     local ready = cworks.root.new_compound()
     ready:create_string("op", "ready")

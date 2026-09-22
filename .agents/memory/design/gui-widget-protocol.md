@@ -47,3 +47,11 @@ Display (DS 生成/所有, kind="display", control/event 付き)
 
 ## E2E（Playwright, chromium-cdp）
 `pnpm run dev` → `/debug/debug` → ターミナルに `gui-demo` → ウィンドウ表示 → input+Greet でラベル更新 → titlebar drag で移動 → ◢ でリサイズ → × で消滅 → 2窓で focus z-order → console error 0。ターミナル入力は `page.keyboard.type`。
+
+## モバイル対応と背景（2026-09）
+
+- **タッチのドラッグ荒ぶり対策**: ドラッグハンドル（`[data-drag]`）に `touch-action:none;user-select:none;` を付与（`Widget.svelte` の grid item wrapper）。`Window.svelte` は `setPointerCapture` を使い、`pointermove`/`pointerup`/`pointercancel` をハンドル上で受ける（`pointerId` を照合）。これでブラウザのスクロール/ジェスチャによる `pointercancel` と瞬間移動を防止。
+- **フォーカス**: 入力要素はキー付き each により DOM が保持され、タップ後も `document.activeElement` は維持される（touch エミュレーションで確認）。ドラッグハンドルのみ `preventDefault` し、入力タップは阻害しない。
+- **背景の仕組み**: `Display` の `background` prop（任意の CSS `background` 値）を DS が読み、`Desktop.svelte` のオーバーレイに適用（`state.ts` の `background` store）。既定は WM が `attach` 時に設定（半透明グラデーション＝ターミナルを完全に隠さない）。変更は Display の `background` を書き換えて `changed` を送れば反映（WM が所有者）。
+- DS の reconcile は Display の子を **`type()==="CompoundFSObj"` かつ `kind` を持つものだけ** frame として扱う（`background` 等のプロパティ子を誤読しない）。
+- 検証: CDP `Emulation.setTouchEmulationEnabled` + `Input.dispatchTouchEvent` でタッチのドラッグ/リサイズ/close/入力フォーカスを確認、console error 0。

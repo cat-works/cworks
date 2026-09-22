@@ -1,5 +1,6 @@
 import type { Process } from "$lib/session";
 import {
+  background,
   desktop,
   emitter,
   type WidgetState,
@@ -118,7 +119,11 @@ export async function gui_main(p: Process): Promise<void> {
       if (RESERVED.has(name)) {
         continue;
       }
-      windows.push(readFrame(display.getObj(name), controls, events));
+      const child = display.getObj(name);
+      if (child.type() !== "CompoundFSObj" || !child.hasChild("kind")) {
+        continue;
+      }
+      windows.push(readFrame(child, controls, events));
     }
     windows.sort((a, b) => a.z - b.z);
 
@@ -142,6 +147,10 @@ export async function gui_main(p: Process): Promise<void> {
 
     eventHandles = events;
     desktop.set(windows);
+
+    if (display.hasChild("background")) {
+      background.set(display.getObj("background").string());
+    }
 
     if (newSubscriptions.length > 0 && recheck) {
       await reconcile(false);

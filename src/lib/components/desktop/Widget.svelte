@@ -65,7 +65,9 @@
   <div style={gridStyle(widget.props)}>
     {#each widget.children as child (child.id)}
       <div
-        style={areaStyle(child.props)}
+        style="{areaStyle(child.props)}{dragOf(child.props)
+          ? 'touch-action:none;user-select:none;'
+          : ''}"
         data-widget-id={child.id}
         data-drag={dragOf(child.props)}
       >

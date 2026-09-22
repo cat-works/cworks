@@ -44,6 +44,9 @@
     };
 
     const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== event.pointerId) {
+        return;
+      }
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
       if (mode === "move") {
@@ -56,9 +59,16 @@
       }
     };
 
-    const onUp = () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
+    const onEnd = (ev: PointerEvent) => {
+      if (ev.pointerId !== event.pointerId) {
+        return;
+      }
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onEnd);
+      handle.removeEventListener("pointercancel", onEnd);
+      if (handle.hasPointerCapture(event.pointerId)) {
+        handle.releasePointerCapture(event.pointerId);
+      }
       if (raf) {
         cancelAnimationFrame(raf);
         raf = 0;
@@ -66,8 +76,10 @@
       flush();
     };
 
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
+    handle.setPointerCapture(event.pointerId);
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onEnd);
+    handle.addEventListener("pointercancel", onEnd);
   }
 </script>
 
