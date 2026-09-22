@@ -1,5 +1,6 @@
 import type { Process } from "$lib/session";
 import sh_lua from "$lib/lua/usr/bin/sh.lua?raw";
+import wm_lua from "$lib/lua/usr/bin/wm.lua?raw";
 import { FSObj } from "../../../../wasm/cworks-wasm/pkg/cworks";
 
 export async function debug_main(p: Process) {
@@ -35,4 +36,18 @@ export async function debug_main(p: Process) {
   request.addChild("stdin", shellIn);
 
   await p.publish(execLua, request);
+
+  const wmNs = root.ensureCompound("run").ensureCompound("wm");
+  const wmStdout = wmNs.ensureFunc("stdout");
+  const wmStdin = wmNs.ensureFunc("stdin");
+
+  const wmRequest = FSObj.newCompound();
+  wmRequest.createString("name", "wm.lua");
+  wmRequest.createString("code", wm_lua);
+  wmRequest.createString("cmd_line", "wm");
+  wmRequest.createString("cwd", "/");
+  wmRequest.addChild("stdout", wmStdout);
+  wmRequest.addChild("stdin", wmStdin);
+
+  await p.publish(execLua, wmRequest);
 }

@@ -1,35 +1,49 @@
-# GUI ウィジェットプロトコル（2026-09・P0 実装済み）
+# GUI / ウィンドウマネージャ設計（2026-09・案A・WM 分離）
 
-## 方針
-- `/debug/debug` の xterm 上に `<Desktop>` オーバーレイを重ねる（ターミナルは維持）。
-- ウィジェットは FSObj（プロセス非紐付けの値）。**Window もウィジェット**。
-- ウィジェットごとに `control`（変更シグナル）と `event`（ユーザーイベント）の Func チャネル（per-widget）。
-- **FSObj ツリーが唯一の真実**。`control` は `{op="changed"}` / `{op="close", node=...}` のみを送り、サーバがノードを再読込（冪等・dedupe 不要）。将来カーネル FSObj 監視（userspace channel の後）を入れる際は手動シグナルを捨てるだけで移行できる watch-ready 設計。
-- ウィジェット種: Window, Grid, Label, Button, Input(`type`=text/password/number), HTML(raw)。canvas/list/tree/checkbox/select は合成で対応（プロトコル外）。
-- メッセージは CompoundFSObj。Grid 配置は `area = "<row>,<col>-<row_end>,<col_end>"`（0始まり・半開、描画時に CSS grid-area へ +1 変換）。
+## 全体像
+- **Display server (DS)** = `src/routes/debug/debug/gui_app.ts`（JS プロセス）。`/debug/debug` の xterm 上に `<Desktop>` を重ねる。
+- **Window manager (WM)** = `src/lib/lua/usr/bin/wm.lua`（Lua プロセス、既定 WM）。`debug_app.ts` が exec-lua で自動起動。
+- **app** = `gui.lua` で window を要求し、返ってきた **Grid** を直接操作する。
 
-## 構成
-- ウィジェット FSObj の子: `kind`(String), `control`(Func), `event`(Func), `content`(CompoundFSObj), プロパティ。
-- Window の `content` は 1 子のみ（既定 Grid, columns=1）。`win:get_grid()` で取得。
-- 制御チャネル `/run/gui/req` に Window FSObj を publish して登録。サーバが content 以下を再帰走査して購読・描画。
-- 競合対策: (1) 登録時に live ツリーを再帰走査して初期子を拾う、(2) 新規 control 購読確立後に一度 reconcile し直して購読前の変更を拾う、(3) 追加/設定は常にツリーを mutate し `changed` を publish（再読込は冪等）。
+## オブジェクトモデル（id レス）
+```
+Display (DS 生成/所有, kind="display", control/event 付き)
+ └─ frame (WM 構築のウィジェットツリー。根に x,y,w,h,z, wm_name props)
+     ├─ decoration ウィジェット (titlebar=grid[grip(label,drag=move), close(button)], footer=grid[spacer, resize(label,drag=resize)])
+     └─ body (Grid)  ← WM が生成し app に返す content 面
+```
+- ウィンドウ状態は frame FSObj 上の props。**WM は台帳を持たず Display ツリーが台帳**（stacking/配置は Display の子を走査）。
+- メッセージは **FSObj ハンドル**を運ぶ（`window=<frame>`）。数値 id なし。WM は渡された FSObj を直接 mutate。
+- Display の直子はすべて frame として解釈（taskbar 等も frame）。DS は Display ツリーを汎用描画（`x,y,w,h,z` で絶対配置、`rows` prop 付き grid は height:100%）。
+- frame の `wm_name` prop は Display 内の子名（`remove_child` に必要）。
+- ウィンドウ操作は **Grid の `control`**、イベントは **Grid の `event`**。
 
-## Lua API（src/lib/lua/usr/lib/gui.lua）
-`require("gui").new(session, env)` → `gui.window{title,options,x,y,w,h}`（self なし）→ `win:get_grid()` → `grid:label/button/input/html/grid{id,area,...}`、`widget:on(event,fn)`、`widget:set_text/set_value/set_html/set_title/set_options(v)`、`widget:remove()`、`win:close()`、`grid:get(id)`、`widget:prop/value()`。
-- `:on` のコールバックはイベント購読ハンドラ内で**そのまま syscall する**（`set_*`/publish）。`ProcessSession::do_syscall` が invoke を内部でハンドラにディスパッチし、ネスト syscall も応答スロット共有で動く。
-- 注意: require したモジュール env の `print` は `_G`（C レベル fd1）に行き、proc_env の `st.print`（端末）には出ない。モジュール内デバッグ print は端末に表示されない。
+## チャネル / プロトコル（CompoundFSObj）
+- `/run/gui/req`（app→DS）: `{op="create", title, options, x,y,w,h, reply_to:Func}`（DS はプロキシ）
+- `/run/gui/wm-req`（DS→WM）: `attach{display}`, `create{reply_to,...}`, `focus{window}`, `move{window,x,y}`, `resize{window,w,h}`
+- `/run/gui/wm-res`（WM→DS）: `sync`（WM 起動時に publish。DS は `attach` を再送）, `ready`（DS は保留 create を flush）
+- WM→app: Grid.event に `{event="focus"|"move"|"resize"|"close", x,y,w,h}`
+- app→WM: Grid.control に `{op="close"}`（WM が購読）
+- 変更通知: WM は Display/frame を mutate し Display.control に `{op="changed"}`。DS は Display を再走査（全 control 購読、subscribe 後 recheck）。
 
-## 実装ファイル
-- `src/routes/debug/debug/gui_app.ts`（JS サーバ。常時 Running で待機＝外部起点 publish を pump させる）
-- `src/lib/desktop/state.ts`（Svelte `writable` store + `emitter.send`）
-- `src/lib/components/Desktop.svelte`, `src/lib/components/desktop/{Window,Widget}.svelte`（Card/Button 再利用）
-- `src/lib/lua/usr/lib/gui.lua`, `src/lib/lua/usr/bin/gui-demo.lua`
-- `src/routes/debug/debug/+page.svelte` に `<Desktop>` と gui プロセス起動を追加
+## Lua API（`gui.lua`）
+- `local grid = gui.request{ title, options, x,y,w,h }`（reply 待ち）→ Grid を操作。
+- `grid:label/button/input/html/grid{id, area, ...}`、`grid:on(event, fn)`、`grid:get(id)`、`grid:set(key,v)`、`grid:close()`。
+- **重要**: `ProcessSession` は 1 Func につき 1 ハンドラ（`data_handlers` を as_ptr でキー）。よって `:on` は widget ごとに **1 回だけ subscribe し、内部でイベント名→複数ハンドラに多重化**する。wrapper は `children` でキャッシュし、同一 widget には同一 wrapper を返す（再 subscribe で上書きされないため）。
+- `api.widget(kind, opts)` は窓登録を伴わないスタンドアロンツリー（WM の frame 構築用）。
+- ウィジェット prop: `area="r,c-r2,c2"`（0始まり半開、CSS grid-area へ +1）、`drag="move"|"resize"`（DS が pointer 捕捉）、`columns`/`rows` は数値 or 文字列テンプレート。
 
-## 未実装（P1/P2）
-- ウィンドウのドラッグ/リサイズ/最小化/最大化/スナップ。現状はクリックで前面（簡易 z-order）のみ。
-- `set_content`、`resize` イベント。HTML は `{@html}` で XSS 許容（協調前提）。
+## DS の要点
+- **常時 Running**（`await new Promise(() => {})`）。`waitForEvent` で休眠すると DOM 起点の `emitter.*` publish が pump されない。
+- `emitter.send(widgetId, event, value)` は widget.event へ、`emitter.focus/move/resize(window, ...)` は wm-req へ。
+- `Window.svelte` が frame ツリーを描画し、`on:pointerdown` で focus 送信＋`[data-drag]` から WM 駆動 drag/resize（rAF スロットル、ローカル移動なし）。
+- `Widget.svelte` の grid item wrapper に `data-widget-id`/`data-drag` を付与。HashMap 順序に依存しないよう **frame 内は area で明示配置**。
+
+## 落とし穴
+- Display の子は HashMap 順 → frame 内の titlebar/body/footer は必ず `area` で配置。
+- `require` したモジュール env の `print` は C fd1（端末に出ない）。
+- close ボタン click は window の pointerdown も発火し focus も送られる（正常）。
+- 本設計は旧 Window ウィジェット実装の作り直し（破壊的）。
 
 ## E2E（Playwright, chromium-cdp）
-`nix develop --command pnpm run dev` → `/debug/debug` → ターミナルに `gui-demo` → ウィンドウ表示 → Input 入力 + Greet → ラベル更新 → Close で消滅、console error 0。
-- ターミナル入力は xterm のため `page.keyboard.type` を使う（`fill` は不可）。`+page.svelte` の `onData` をバッファリング化して高速入力の取りこぼしを解消。
+`pnpm run dev` → `/debug/debug` → ターミナルに `gui-demo` → ウィンドウ表示 → input+Greet でラベル更新 → titlebar drag で移動 → ◢ でリサイズ → × で消滅 → 2窓で focus z-order → console error 0。ターミナル入力は `page.keyboard.type`。

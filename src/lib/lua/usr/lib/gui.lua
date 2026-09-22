@@ -1,25 +1,25 @@
 --[[ gui.lua
 
-Widget protocol client for the Cat Workspace GUI server.
+Widget protocol client for the Cat Workspace GUI server (display server).
 
 A widget is a CompoundFSObj value with:
 
-  kind    (String)         : "window" | "grid" | "label" | "button" | "input" | "html"
-  control (Func)           : change/close signals sent to the GUI server
-  event   (Func)           : user events delivered from the GUI server
-  content (CompoundFSObj)  : child widgets (a window holds exactly one)
+  kind    (String)         : "grid" | "label" | "button" | "input" | "html"
+  control (Func)           : change signals sent to the display server / WM
+  event   (Func)           : user events delivered from the display server / WM
+  content (CompoundFSObj)  : child widgets
   <props> (String/Int/...) : widget-specific properties (text, value, area, ...)
 
 The FSObj tree is the single source of truth. `control` only carries a
-"changed" signal; the server re-reads the node. This keeps the application
-side ready for a future kernel-level FSObj watch mechanism (the signal is
-simply dropped then).
+"changed" signal; the display server re-reads the node.
 
-Usage:
-  local gui = require("gui").new(session, env)
-  local win = gui.window{ title = "Demo" }
-  local grid = win:get_grid()
-  grid:label{ id = "msg", text = "hello", area = "0,0-1,1" }
+Window creation:
+  local grid = gui.request{ title = "Demo" }   -- asks the DS, the WM replies
+                                               -- with the window's content Grid
+  grid:label{ text = "hello" }
+
+The window itself (frame, decoration, geometry) is owned by the window manager
+process. `gui.request` returns only the content Grid the app should populate.
 ]]
 
 local cworks_mod = require("cworks")
@@ -72,7 +72,10 @@ function gui.new(session, env)
   Widget.__index = Widget
 
   local function wrap(obj, parent, name)
-    return setmetatable({ obj = obj, parent = parent, name = name }, Widget)
+    return setmetatable(
+      { obj = obj, parent = parent, name = name, handlers = {}, subscribed = false, children = {} },
+      Widget
+    )
   end
 
   function Widget:_content()
@@ -101,10 +104,6 @@ function gui.new(session, env)
     return self:set("title", value)
   end
 
-  function Widget:set_options(value)
-    return self:set("options", value)
-  end
-
   function Widget:prop(key)
     if self.obj:has_child(key) then
       return self.obj:get_obj(key)
@@ -121,18 +120,41 @@ function gui.new(session, env)
   end
 
   function Widget:on(event, handler)
-    session:subscribe(self.obj:get_obj("event"), function(data)
-      local ev = { event = event }
-      if data:type() == "CompoundFSObj" then
-        if data:has_child("event") then
-          ev.event = data:get_obj("event"):string()
+    self.handlers[event] = self.handlers[event] or {}
+    table.insert(self.handlers[event], handler)
+    if not self.subscribed then
+      self.subscribed = true
+      local widget = self
+      session:subscribe(self.obj:get_obj("event"), function(data)
+        local ev = { event = nil }
+        if data:type() == "CompoundFSObj" then
+          if data:has_child("event") then
+            ev.event = data:get_obj("event"):string()
+          end
+          if data:has_child("value") then
+            ev.value = data:get_obj("value"):string()
+          end
+          if data:has_child("x") then
+            ev.x = data:get_obj("x"):int()
+          end
+          if data:has_child("y") then
+            ev.y = data:get_obj("y"):int()
+          end
+          if data:has_child("w") then
+            ev.w = data:get_obj("w"):int()
+          end
+          if data:has_child("h") then
+            ev.h = data:get_obj("h"):int()
+          end
         end
-        if data:has_child("value") then
-          ev.value = data:get_obj("value"):string()
+        local list = widget.handlers[ev.event]
+        if list ~= nil then
+          for _, fn in ipairs(list) do
+            fn(ev)
+          end
         end
-      end
-      handler(ev)
-    end)
+      end)
+    end
     return self
   end
 
@@ -148,6 +170,7 @@ function gui.new(session, env)
     end
     self:_content():add_child(name, child)
     local widget = wrap(child, self, name)
+    self.children[name] = widget
     signal(self)
     return widget
   end
@@ -173,8 +196,13 @@ function gui.new(session, env)
   end
 
   function Widget:get(name)
+    if self.children[name] ~= nil then
+      return self.children[name]
+    end
     local child = self:_content():get_obj(name)
-    return wrap(child, self, name)
+    local widget = wrap(child, self, name)
+    self.children[name] = widget
+    return widget
   end
 
   function Widget:remove()
@@ -188,44 +216,69 @@ function gui.new(session, env)
   function Widget:close()
     local msg = root.new_compound()
     msg:create_string("op", "close")
-    msg:add_child("node", self.obj)
     session:publish(self.obj:get_obj("control"), msg)
   end
 
   local api = {}
 
-  function api.window(opts)
-    opts = opts or {}
-    local win = make_widget("window")
-    set_prop(win, "title", opts.title or "Window")
-    set_prop(win, "options", opts.options or "")
-    if opts.x ~= nil then
-      set_prop(win, "x", opts.x)
+  -- Build a standalone widget tree (used by the window manager to construct
+  -- window frames). Not registered with the display server.
+  function api.widget(kind, opts)
+    local obj = make_widget(kind)
+    if opts ~= nil then
+      for key, value in pairs(opts) do
+        if key ~= "id" then
+          set_prop(obj, key, value)
+        end
+      end
     end
-    if opts.y ~= nil then
-      set_prop(win, "y", opts.y)
-    end
-    if opts.w ~= nil then
-      set_prop(win, "w", opts.w)
-    end
-    if opts.h ~= nil then
-      set_prop(win, "h", opts.h)
-    end
-
-    local grid = make_widget("grid")
-    set_prop(grid, "columns", opts.columns or 1)
-    set_prop(grid, "gap", opts.gap or 0)
-    win:get_obj("content"):add_child("0", grid)
-
-    session:publish(control_ch, win)
-
-    local window = wrap(win, nil, nil)
-    window.grid = wrap(grid, window, "0")
-    return window
+    return wrap(obj, nil, nil)
   end
 
-  function Widget:get_grid()
-    return self.grid
+  function api.set(obj, key, value)
+    set_prop(obj, key, value)
+  end
+
+  function api.signal(obj)
+    local msg = root.new_compound()
+    msg:create_string("op", "changed")
+    session:publish(obj:get_obj("control"), msg)
+  end
+
+  -- Ask the display server for a new window; the window manager replies with
+  -- the window's content Grid. Blocks until the Grid arrives.
+  function api.request(opts)
+    opts = opts or {}
+    local reply = root.new_func()
+    local grid = nil
+    session:subscribe(reply, function(data)
+      grid = data
+    end)
+
+    local msg = root.new_compound()
+    msg:create_string("op", "create")
+    set_prop(msg, "title", opts.title or "Window")
+    set_prop(msg, "options", opts.options or "")
+    if opts.x ~= nil then
+      set_prop(msg, "x", opts.x)
+    end
+    if opts.y ~= nil then
+      set_prop(msg, "y", opts.y)
+    end
+    if opts.w ~= nil then
+      set_prop(msg, "w", opts.w)
+    end
+    if opts.h ~= nil then
+      set_prop(msg, "h", opts.h)
+    end
+    msg:add_child("reply_to", reply)
+    session:publish(control_ch, msg)
+
+    while grid == nil do
+      session:wait_for_event()
+    end
+
+    return wrap(grid, nil, nil)
   end
 
   return api

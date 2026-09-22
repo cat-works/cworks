@@ -8,10 +8,24 @@
   let inputEl: HTMLInputElement | undefined;
   let lastValue: unknown;
 
+  function trackTemplate(value: unknown, fallback: string): string {
+    if (typeof value === "string") {
+      return value;
+    }
+    const count = Number(value) || 1;
+    return `repeat(${count},minmax(0,1fr))`;
+  }
+
   function gridStyle(props: Record<string, unknown>): string {
-    const columns = Number(props.columns) || 1;
     const gap = Number(props.gap) || 0;
-    return `display:grid;grid-template-columns:repeat(${columns},minmax(0,1fr));gap:${gap}px;`;
+    let style =
+      `display:grid;` +
+      `grid-template-columns:${trackTemplate(props.columns, "1fr")};` +
+      `gap:${gap}px;`;
+    if (props.rows !== undefined) {
+      style += `grid-template-rows:${trackTemplate(props.rows, "1fr")};height:100%;`;
+    }
+    return style;
   }
 
   function areaStyle(props: Record<string, unknown>): string {
@@ -30,6 +44,10 @@
     return `grid-row:${r1 + 1} / ${r2 + 1};grid-column:${c1 + 1} / ${c2 + 1};`;
   }
 
+  function dragOf(props: Record<string, unknown>): string | undefined {
+    return typeof props.drag === "string" ? props.drag : undefined;
+  }
+
   function onInput(event: Event): void {
     emitter.send(widget.id, "input", (event.currentTarget as HTMLInputElement).value);
   }
@@ -46,7 +64,11 @@
 {#if widget.kind === "grid"}
   <div style={gridStyle(widget.props)}>
     {#each widget.children as child (child.id)}
-      <div style={areaStyle(child.props)}>
+      <div
+        style={areaStyle(child.props)}
+        data-widget-id={child.id}
+        data-drag={dragOf(child.props)}
+      >
         <Widget widget={child} />
       </div>
     {/each}

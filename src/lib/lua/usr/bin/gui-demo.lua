@@ -1,7 +1,7 @@
 local cworks = require("cworks").new(session, env)
 local gui = require("gui").new(session, env)
 
-local win = gui.window {
+local grid = gui.request {
   title = "GUI Demo",
   options = "+StandardApp",
   x = 40,
@@ -9,7 +9,6 @@ local win = gui.window {
   w = 360,
   h = 240,
 }
-local grid = win:get_grid()
 
 grid:label { id = "msg", text = "Hello, world!", area = "0,0-1,2" }
 local name_input = grid:input {
@@ -34,8 +33,12 @@ greet:on("click", function()
   grid:get("msg"):set_text(text)
 end)
 
-win:on("close", function()
-  win:close()
+grid:on("focus", function()
+  print("[gui-demo] focus")
+end)
+
+grid:on("close", function()
+  print("[gui-demo] close")
 end)
 
 while true do

@@ -4,7 +4,7 @@
 </script>
 
 <div class="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-  {#each $desktop as win (win.id)}
+  {#each $desktop as win (win.obj.id())}
     <Window {win} />
   {/each}
 </div>
