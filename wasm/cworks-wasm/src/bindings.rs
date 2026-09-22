@@ -155,6 +155,15 @@ impl FSObj {
         Ok(FSObj(AssertUnwindSafe(obj.0.0.clone())))
     }
 
+    #[wasm_bindgen(js_name = removeChild)]
+    pub fn remove_child_(&self, name: &str) -> Result<(), JsError> {
+        self.0
+            .0
+            .remove_child(name)
+            .map_err(|e| JsError::new(&e.to_string()))?;
+        Ok(())
+    }
+
     #[wasm_bindgen(js_name = type)]
     pub fn type_(&self) -> String {
         match &**self.0.0.borrow() {

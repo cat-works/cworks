@@ -1,6 +1,8 @@
 use std::{
+    cell::RefCell,
     collections::HashMap,
     fmt::{Debug, Display},
+    rc::Weak,
 };
 
 use crate::obj_tree::FSObjRef;
@@ -14,7 +16,7 @@ pub enum Object {
     Bytes(Vec<u8>),
     Null,
     CompoundFSObj {
-        parent: Option<FSObjRef>,
+        parent: Option<Weak<RefCell<Box<Object>>>>,
         children: HashMap<String, FSObjRef>,
     },
     Func {
@@ -33,7 +35,10 @@ impl Debug for Object {
             Self::Bytes(x) => write!(f, "Bytes({x:?})"),
             Self::Null => write!(f, "Null"),
             Self::CompoundFSObj { parent, children } => {
-                let parent_ptr = parent.as_ref().map(|x| x.as_ptr() as usize);
+                let parent_ptr = parent
+                    .as_ref()
+                    .and_then(Weak::upgrade)
+                    .map(|x| std::rc::Rc::as_ptr(&x) as usize);
                 let children = children
                     .iter()
                     .map(|(k, v)| format!("{k}: {v:?}"))
@@ -63,7 +68,10 @@ impl Display for Object {
             Self::Bytes(x) => write!(f, "{x:?}"),
             Self::Null => write!(f, "Null"),
             Self::CompoundFSObj { parent, children } => {
-                let parent_ptr = parent.as_ref().map(|x| x.as_ptr() as usize);
+                let parent_ptr = parent
+                    .as_ref()
+                    .and_then(Weak::upgrade)
+                    .map(|x| std::rc::Rc::as_ptr(&x) as usize);
                 let children = children
                     .iter()
                     .map(|(k, v)| format!("{k}: {v:?}"))

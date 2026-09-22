@@ -15,6 +15,7 @@ export interface FSObj {
   list(): string[];
   hasChild(name: string): boolean;
   addChild(name: string, obj: FSObj): FSObj;
+  removeChild(name: string): void;
   type(): string;
   string(): string;
   int(): number;

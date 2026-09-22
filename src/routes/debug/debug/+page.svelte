@@ -7,10 +7,12 @@
   } from "@battlefieldduck/xterm-svelte";
   import { Session } from "../../../../wasm/cworks-wasm/pkg/cworks";
   import { Process } from "$lib/session";
+  import Desktop from "$lib/components/Desktop.svelte";
   import { stdio_main } from "./stdio_app";
   import { debug_main } from "./debug_app";
   import { textarea_main } from "./textarea_app";
   import { lua_launcher } from "./lua_launcher";
+  import { gui_main } from "./gui_app";
 
   function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -59,13 +61,15 @@
   const canonicalize_newline = (data: string): string =>
     data.replace(/\r(\n)?/g, "\n");
 
-  let key_promise: ((key: string) => void) | null = null;
+  let input_buffer = "";
+  let input_resolvers: Array<(key: string) => void> = [];
   function onData(data: string) {
-    if (key_promise) {
-      key_promise(data);
-      key_promise = null;
+    const key = canonicalize_newline(data);
+    const resolve = input_resolvers.shift();
+    if (resolve) {
+      resolve(key);
     } else {
-      terminal.write("\x1b[2m" + canonicalize_newline(data) + "\x1b[0m");
+      input_buffer += key;
     }
   }
 
@@ -86,9 +90,13 @@
       stdio_main(p, {
         stdin() {
           return new Promise((resolve) => {
-            key_promise = (key: string) => {
-              resolve(canonicalize_newline(key));
-            };
+            if (input_buffer.length > 0) {
+              const buffered = input_buffer;
+              input_buffer = "";
+              resolve(buffered);
+            } else {
+              input_resolvers.push(resolve);
+            }
           });
         },
         write(data) {
@@ -105,16 +113,22 @@
 
     const lua_launcher_process = new Process(session, (p) => lua_launcher(p));
 
+    const gui_process = new Process(session, (p) => gui_main(p));
+
     await sleep(100);
 
     const debug_process = new Process(session, (p) => debug_main(p));
   }
 </script>
 
-{#await session_promise}
-  Waiting for kernel initialized...
-{:then sess}
-  <Xterm bind:terminal {options} {onLoad} {onData} {onKey} />
-{/await}
+<div class="relative">
+  {#await session_promise}
+    Waiting for kernel initialized...
+  {:then sess}
+    <Xterm bind:terminal {options} {onLoad} {onData} {onKey} />
+  {/await}
+
+  <Desktop />
+</div>
 
 <textarea bind:this={code_editor} rows="10" cols="50"> </textarea>

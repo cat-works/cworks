@@ -148,10 +148,7 @@ impl LuaFSObj {
     }
 
     fn create_compound(&self, name: &str) -> Result<LuaFSObj, mlua::Error> {
-        let obj = FSObjRef::from(Object::CompoundFSObj {
-            parent: Some(self.0.clone()),
-            children: std::collections::HashMap::new(),
-        });
+        let obj = FSObjRef::new_compound(self.0.clone());
         self.add_child(name, &obj).map(LuaFSObj)
     }
 
@@ -167,6 +164,13 @@ impl LuaFSObj {
         self.0
             .add_child(name, &child)
             .map_err(|_| mlua::Error::external("add_child failed"))?;
+        Ok(())
+    }
+
+    fn remove_child(&self, name: &str) -> Result<(), mlua::Error> {
+        self.0
+            .remove_child(name)
+            .map_err(|_| mlua::Error::external("remove_child failed"))?;
         Ok(())
     }
 

@@ -49,3 +49,9 @@
 - **pid は 1 開始**（0 はカーネル予約）。createVFS 設計の「PID=0 ⇒ Kernel」と整合
 - **アイドルリセットが `processes.clear()` に変更**（旧: `AutoMap::new()` で作り直し）→ pid カウンタが保持され、**セッション内での pid 再利用は発生しなくなった**。旧特性 #3「pid 再利用によるチャネル誤配送」は解消（callee_pid 残留問題は今後は死亡 pid 参照=NoSuchEntry 系に変化）
 - test-cli は簡素化（cworks-lua/mlua/serde_json 依存除去、純 Rust プロセスの playground に回帰）
+
+## wasm-bindgen 移行後のランタイム特性（2026-09）
+
+- **JS Process が waitForEvent で休眠中に外部起点の要求は送れない**: 現行 `Process`（src/lib/session/process.ts）は `request()` でキューに積むだけで、送信（pump）は `kernelCallback` の**非 invoke 経路**でのみ実行される。`emitter.send`（DOM イベント起点）のようにカーネルコールバック外から `p.publish` すると、プロセスが WaitingForEvent のままだと次の poll が来ず永久に送信されない。→ 外部起点で publish するサーバプロセスは**常時 Running** を保つ（`while(1) await p.waitForEvent()` ではなく `await new Promise(() => {})`）。stdio_app が機能するのは常時 Running（waitForEvent を呼ばない）ため。
+- **wasm-bindgen/emscripten の HEAP アクセサ shim**: 生成 JS が `HEAP320()` / `HEAPU80()` / `HEAP_DATA_VIEW0()` を呼ぶが未定義。`wasm/cworks-wasm/pre.js` に `HEAP320()->HEAP32`, `HEAPU80()->HEAPU8`, `HEAP_DATA_VIEW0()->new DataView(HEAPU8.buffer)`（buffer 変化時に再生成）を定義する。`FSObj.list()`（`Vec<String>` 返却）で `getArrayJsValueFromWasm0` 経由で顕在化した。
+- **FSObj ツリーの親は Weak 化済み**: `Object::CompoundFSObj.parent` は `Weak<RefCell<Box<Object>>>`（Rc サイクル解消）。`FSObjRef::remove_child(name)` を新設（親 children から除去＋子 parent=None、`NoSuchEntry`）。Lua `remove_child` / JS `removeChild` に公開。外部 crate から `Object::CompoundFSObj` を直接構築する場合は `FSObjRef::new_compound(parent)` を使う（`Rc::downgrade` は crate 外から不可）。

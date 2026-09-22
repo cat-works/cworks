@@ -4,7 +4,6 @@
 //! `evalexpr`, and publishes the result to `/srv/eval/res`.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use cworks_sdk::prelude::*;
@@ -16,18 +15,12 @@ async fn main(session: Session) {
 
 async fn run(mut session: Session) -> Result<(), SyscallError> {
     let root = session.fs_root().await?;
-    let srv = root.get_obj("srv").unwrap_or_else(|_| {
-        FSObjRef::from(Object::CompoundFSObj {
-            parent: Some(root.clone()),
-            children: HashMap::new(),
-        })
-    });
-    let eval_ns = root.get_obj("eval").unwrap_or_else(|_| {
-        FSObjRef::from(Object::CompoundFSObj {
-            parent: Some(srv),
-            children: HashMap::new(),
-        })
-    });
+    let srv = root
+        .get_obj("srv")
+        .unwrap_or_else(|_| FSObjRef::new_compound(root.clone()));
+    let eval_ns = root
+        .get_obj("eval")
+        .unwrap_or_else(|_| FSObjRef::new_compound(srv));
     let req_ch = eval_ns
         .get_obj("req")
         .unwrap_or_else(|_| FSObjRef::from(Object::Func { callee_pid: vec![] }));

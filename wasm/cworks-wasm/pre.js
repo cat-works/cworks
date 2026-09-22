@@ -12,6 +12,19 @@ function HEAP320() {
   return HEAP32;
 }
 
+function HEAPU80() {
+  return HEAPU8;
+}
+
+var __wbg_data_view;
+function HEAP_DATA_VIEW0() {
+  const buffer = HEAPU8.buffer;
+  if (!__wbg_data_view || __wbg_data_view.buffer !== buffer) {
+    __wbg_data_view = new DataView(buffer);
+  }
+  return __wbg_data_view;
+}
+
 function __wbg_call_abort_hook() {
   __wbg_called_abort = true;
   try {

@@ -27,20 +27,10 @@ fn get_obj(
 
 async fn eval_mock(mut session: ProcessSession, _arg: u32) {
     let root = session.fs_root().await.expect("fs_root failed");
-    let srv = get_obj(&root, "srv", || {
-        FSObjRef::from(Object::CompoundFSObj {
-            parent: Some(root.clone()),
-            children: std::collections::HashMap::new(),
-        })
-    })
-    .expect("srv namespace creation failed");
-    let eval_ns = get_obj(&srv, "eval", || {
-        FSObjRef::from(Object::CompoundFSObj {
-            parent: Some(srv.clone()),
-            children: std::collections::HashMap::new(),
-        })
-    })
-    .expect("eval namespace creation failed");
+    let srv = get_obj(&root, "srv", || FSObjRef::new_compound(root.clone()))
+        .expect("srv namespace creation failed");
+    let eval_ns = get_obj(&srv, "eval", || FSObjRef::new_compound(srv.clone()))
+        .expect("eval namespace creation failed");
     let request_channel = get_obj(&eval_ns, "req", || {
         FSObjRef::from(Object::Func { callee_pid: vec![] })
     })
@@ -83,20 +73,10 @@ async fn eval_mock(mut session: ProcessSession, _arg: u32) {
 
 async fn eval_client(mut session: ProcessSession, _arg: u32) {
     let root = session.fs_root().await.expect("fs_root failed");
-    let srv = get_obj(&root, "srv", || {
-        FSObjRef::from(Object::CompoundFSObj {
-            parent: Some(root.clone()),
-            children: std::collections::HashMap::new(),
-        })
-    })
-    .expect("srv namespace creation failed");
-    let eval_ns = get_obj(&srv, "eval", || {
-        FSObjRef::from(Object::CompoundFSObj {
-            parent: Some(srv.clone()),
-            children: std::collections::HashMap::new(),
-        })
-    })
-    .expect("eval namespace creation failed");
+    let srv = get_obj(&root, "srv", || FSObjRef::new_compound(root.clone()))
+        .expect("srv namespace creation failed");
+    let eval_ns = get_obj(&srv, "eval", || FSObjRef::new_compound(srv.clone()))
+        .expect("eval namespace creation failed");
 
     session.sleep(0.2).await;
     let request_ch = eval_ns.get_obj("req").expect("req channel not found");
