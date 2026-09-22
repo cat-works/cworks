@@ -18,6 +18,21 @@
 			"clippy::pedantic",
 			"-A",
 			"clippy::missing_errors_doc",
+		],
+		"Lua.completion.autoRequire": true,
+		"Lua.codeLens.enable": true,
+		"Lua.runtime.version": "Lua 5.4",
+		"Lua.runtime.path": [
+			"?.lua",
+			"?/init.lua",
+			"src/lib/lua/usr/lib/?.lua"
+		],
+		"Lua.workspace.library": [
+			"src/lib/lua/types"
+		],
+		"Lua.diagnostics.globals": [
+			"session",
+			"env"
 		]
 	}
 }

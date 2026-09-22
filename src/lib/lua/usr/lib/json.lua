@@ -1,3 +1,4 @@
+---@diagnostic disable: need-check-nil, cast-local-type
 --[[ json.lua
 
 A compact pure-Lua JSON library.

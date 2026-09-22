@@ -1,4 +1,5 @@
 local cworks = require("cworks").new(session, env)
+local json = require("json")
 
 io.write("Entering REPL mode. Type 'exit' to leave.\n")
 -- 1 ==> 1
