@@ -72,3 +72,10 @@ Display (DS 生成/所有, kind="display", control/event 付き)
 - **Lua API**: `Widget:embed(kind, opts)`（`opts.channels` の子 Func を生成し、プロパティ＋チャネル生成後に一度だけ signal）。`:channel`/`:func` は無し（`.obj` 直アクセス）。`usr/bin/term.lua` が `gui.request` → `grid:embed("terminal", {channels={"output","input"}})` → `sh.lua` を exec-lua で起動。
 - **制約**: シェルに SIGWINCH 無し（折り返しは端末幅に厳密一致しない）。ウィンドウを閉じても子シェルは残る（kill 機構なし）。
 - 検証: `term` → プロンプト/緑バナー（SGR）→ `ls --color` の色 → `clear`（`\x1b[2J`）→ 複数ターミナル → × で xterm dispose、console error 0。
+
+## 端末の入力エコーとバックスペース（2026-09）
+
+- プロセス（`stdio.lua`）は入力をエコーしない。エコーは端末側の責務（ページは `stdio_app.ts` が `terminal.write`）。
+- `XtermRenderer.svelte` の `onData` にローカルエコーを追加: `\r`→`\n`、`\x7f`→`\b \b`、他はそのまま write。これでターミナルウィジェットに入力フィードバックが出る。
+- `stdio.lua` の stdin ハンドラで `\x7f`/`\b` を処理し `in_buf` の末尾 1 文字を削除（コマンドレベルのバックスペース）。
+- ページ側も `stdio_app.ts` のエコーを `key.replace(/\x7f/g, "\b \b")` に修正（DEL をそのまま xterm に書くと `Parsing error: code 127` になるため）。

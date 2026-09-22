@@ -53,6 +53,19 @@
   }
 
   function onData(data: string): void {
+    // The process does not echo, so mirror the input locally (as the page
+    // terminal does): Enter advances the line, Backspace erases a character.
+    if (terminal) {
+      for (const ch of data) {
+        if (ch === "\r") {
+          terminal.write("\n");
+        } else if (ch === "\x7f") {
+          terminal.write("\b \b");
+        } else {
+          terminal.write(ch);
+        }
+      }
+    }
     host.publishString("input", data);
   }
 

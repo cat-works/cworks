@@ -158,7 +158,16 @@ function stdio.build(env, sess)
       return
     end
     local s = (data:string():gsub("\r\n", "\n"):gsub("\r", "\n"))
-    in_buf = in_buf .. s
+    for i = 1, #s do
+      local c = s:sub(i, i)
+      if c == "\x7f" or c == "\b" then
+        if #in_buf > 0 then
+          in_buf = in_buf:sub(1, -2)
+        end
+      else
+        in_buf = in_buf .. c
+      end
+    end
   end)
 
   local function format_print_args(...)

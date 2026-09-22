@@ -20,7 +20,7 @@ export async function stdio_main(
 
   while (1) {
     const key = await terminal.stdin();
-    terminal.write(key);
+    terminal.write(key.replace(/\x7f/g, "\b \b"));
     await p.publish(shellIn, FSObj.newString(key));
   }
 }
