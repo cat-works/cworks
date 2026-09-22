@@ -1,24 +1,7 @@
 local cworks = require("cworks").new(session, env)
 local json = require("json")
 
-local function path_join(base, name)
-  if base == "" then
-    return name
-  end
-  if name == "" then
-    return base
-  end
-
-  if base:sub(-1) ~= "/" then
-    base = base .. "/"
-  end
-  local result = base .. name
-  if result:sub(-1) == "/" then
-    result = result:sub(1, -2)
-  end
-
-  return result
-end
+local path_join = require("path").join
 
 --- child lua process spawner
 

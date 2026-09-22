@@ -9,6 +9,9 @@ if args == nil or args == "" then
 end
 
 local current_path = cwd
+if args:sub(1, 1) == "/" then
+  current_path = ""
+end
 for segment in args:gmatch("[^/]+") do
   local new_path = current_path .. "/" .. segment
   local st = cworks.stat(new_path)
