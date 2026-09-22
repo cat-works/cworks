@@ -61,3 +61,14 @@ Display (DS 生成/所有, kind="display", control/event 付き)
 - **ウィジェットの汎用 box props**: `background`/`border`/`color`（CSS 文字列）と `padding`（Int px）を `Widget.svelte` の `boxStyle` が全 kind に適用。frame は WM が `background="#1e2127"`, `border="1px solid #3a4150"` を根に、titlebar/footer に `background="#2a303a"` を設定。body は `padding=8`。
 - **重なり解消**: 不透明背景により前面ウィンドウが背面を遮蔽する。
 - **cascade**: WM は `count_frames()`（Display の `CompoundFSObj` かつ `kind` を持つ子を数える）で `hint + n*24` に配置。app が x,y を指定しても cascade する。
+
+## ホスト型レンダラとターミナル（2026-09）
+
+- **プロトコルを増やさず kind を拡張**: DS の `renderers` レジストリ（`src/lib/desktop/renderers.ts`）が未知 kind を解決。ビルトインは `Widget.svelte` の分岐、未知は `{:else if Renderer}<Renderer {widget} />`（`$: Renderer = renderers[widget.kind]`）。
+- **Svelte context の host**: `src/lib/desktop/host.ts` の `RendererHost`（`obj: FSObj`, `subscribe/unsubscribe/publishString/emit/dispose`）を `Widget.svelte` が init で `setContext(HOST_KEY, hostFactory.create(widget.obj))`、`onDestroy` で `dispose`。`hostFactory` は DS（`gui_app.ts`）が実装し `Process` を閉じ込める。レンダラは wasm/Process を知らない。
+- **WidgetState に `obj: FSObj` を追加**（host 用）。Func 子は props から除外（チャネルは host 経由）。
+- **ターミナル**: `XtermRenderer.svelte` が `renderers.terminal`。既存 `<Xterm>` + `XtermAddon.FitAddon` を再利用。`onLoad` で FitAddon→`host.subscribe("output", arg=>term.write(arg.string()))`→`host.emit("ready")`、`onData`→`host.publishString("input", data)`、`onDestroy`→`term.dispose()`。
+- **ready ハンドシェイク**: 購読確立後に `host.emit("ready")`。app は ready を待ってからシェルを spawn（購読前の出力取りこぼし防止）。
+- **Lua API**: `Widget:embed(kind, opts)`（`opts.channels` の子 Func を生成し、プロパティ＋チャネル生成後に一度だけ signal）。`:channel`/`:func` は無し（`.obj` 直アクセス）。`usr/bin/term.lua` が `gui.request` → `grid:embed("terminal", {channels={"output","input"}})` → `sh.lua` を exec-lua で起動。
+- **制約**: シェルに SIGWINCH 無し（折り返しは端末幅に厳密一致しない）。ウィンドウを閉じても子シェルは残る（kill 機構なし）。
+- 検証: `term` → プロンプト/緑バナー（SGR）→ `ls --color` の色 → `clear`（`\x1b[2J`）→ 複数ターミナル → × で xterm dispose、console error 0。

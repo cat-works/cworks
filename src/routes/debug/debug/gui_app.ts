@@ -6,6 +6,7 @@ import {
   type WidgetState,
   type WindowState,
 } from "$lib/desktop/state";
+import { hostFactory, type RendererHost } from "$lib/desktop/host";
 import { FSObj } from "../../../../wasm/cworks-wasm/pkg/cworks";
 
 const RESERVED = new Set(["kind", "control", "event", "content", ".", ".."]);
@@ -38,7 +39,11 @@ function readWidget(
     if (RESERVED.has(child)) {
       continue;
     }
-    props[child] = readValue(obj.getObj(child));
+    const value = obj.getObj(child);
+    if (value.type() === "Func") {
+      continue;
+    }
+    props[child] = readValue(value);
   }
 
   const children: WidgetState[] = [];
@@ -54,7 +59,7 @@ function readWidget(
 
   controls.set(obj.id(), obj.getObj("control"));
   events.set(obj.id(), obj.getObj("event"));
-  return { id: obj.id(), name, kind: obj.getObj("kind").string(), props, children };
+  return { id: obj.id(), name, kind: obj.getObj("kind").string(), obj, props, children };
 }
 
 function readFrame(
@@ -90,6 +95,42 @@ export async function gui_main(p: Process): Promise<void> {
   const pendingCreates: FSObj[] = [];
   let wmReady = false;
   let eventHandles = new Map<number, FSObj>();
+
+  hostFactory.create = (obj: FSObj): RendererHost => {
+    const subscriptions = new Map<string, FSObj>();
+    return {
+      obj,
+      subscribe(channel: string, handler: (arg: FSObj) => void): void {
+        const handle = obj.getObj(channel);
+        subscriptions.set(channel, handle);
+        void p.subscribe(handle, handler);
+      },
+      unsubscribe(channel: string): void {
+        const handle = subscriptions.get(channel);
+        if (handle) {
+          subscriptions.delete(channel);
+          void p.unsubscribe(handle);
+        }
+      },
+      publishString(channel: string, value: string): void {
+        void p.publish(obj.getObj(channel), FSObj.newString(value));
+      },
+      emit(event: string, value?: string): void {
+        const msg = FSObj.newCompound();
+        msg.createString("event", event);
+        if (value !== undefined) {
+          msg.createString("value", value);
+        }
+        void p.publish(obj.getObj("event"), msg);
+      },
+      dispose(): void {
+        for (const [channel, handle] of subscriptions) {
+          subscriptions.delete(channel);
+          void p.unsubscribe(handle);
+        }
+      },
+    };
+  };
 
   function attachDisplay(): void {
     const msg = FSObj.newCompound();

@@ -195,6 +195,30 @@ function gui.new(session, env)
     return self:add("html", opts)
   end
 
+  -- Create a hosted (browser-rendered) widget of an arbitrary kind. The
+  -- display server resolves the kind through its renderer registry.
+  -- `opts.channels` lists child Func channels to create before the change
+  -- signal is sent, so the server sees them in the same read.
+  function Widget:embed(kind, opts)
+    opts = opts or {}
+    counter = counter + 1
+    local name = opts.id or ("w" .. tostring(counter))
+    local child = make_widget(kind)
+    for key, value in pairs(opts) do
+      if key ~= "id" and key ~= "channels" then
+        set_prop(child, key, value)
+      end
+    end
+    for _, channel in ipairs(opts.channels or {}) do
+      child:add_child(channel, root.new_func())
+    end
+    self:_content():add_child(name, child)
+    local widget = wrap(child, self, name)
+    self.children[name] = widget
+    signal(self)
+    return widget
+  end
+
   function Widget:get(name)
     if self.children[name] ~= nil then
       return self.children[name]

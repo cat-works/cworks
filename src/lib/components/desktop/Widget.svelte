@@ -1,9 +1,18 @@
 <script lang="ts">
+  import { onDestroy, setContext } from "svelte";
   import { emitter, type WidgetState } from "$lib/desktop/state";
+  import { HOST_KEY, hostFactory } from "$lib/desktop/host";
+  import { renderers } from "$lib/desktop/renderers";
   import { Button } from "$lib/components/ui/button";
   import Widget from "./Widget.svelte";
 
   export let widget: WidgetState;
+
+  const host = hostFactory.create(widget.obj);
+  setContext(HOST_KEY, host);
+  onDestroy(() => host.dispose());
+
+  $: Renderer = renderers[widget.kind];
 
   let inputEl: HTMLInputElement | undefined;
   let lastValue: unknown;
@@ -111,4 +120,6 @@
   />
 {:else if widget.kind === "html"}
   <div style={boxStyle(widget.props)}>{@html String(widget.props.html ?? "")}</div>
+{:else if Renderer}
+  <Renderer {widget} />
 {/if}

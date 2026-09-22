@@ -5,6 +5,8 @@ export interface WidgetState {
   id: number;
   name: string;
   kind: string;
+  /** Raw widget FSObj (shared with hosted renderers via the context host). */
+  obj: FSObj;
   props: Record<string, unknown>;
   children: WidgetState[];
 }
