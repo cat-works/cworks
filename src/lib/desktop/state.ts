@@ -35,8 +35,8 @@ export const emitter: {
   move: (window: FSObj, x: number, y: number) => void;
   resize: (window: FSObj, w: number, h: number) => void;
 } = {
-  send: () => {},
-  focus: () => {},
-  move: () => {},
-  resize: () => {},
+  send: () => { },
+  focus: () => { },
+  move: () => { },
+  resize: () => { },
 };

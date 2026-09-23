@@ -142,8 +142,8 @@ local function make_frame(title)
   -- app-initiated close (grid:close())
   session:subscribe(body.obj:get_obj("control"), function(data)
     if data:type() == "CompoundFSObj"
-      and data:has_child("op")
-      and data:get_obj("op"):string() == "close"
+        and data:has_child("op")
+        and data:get_obj("op"):string() == "close"
     then
       remove_frame(frame.obj)
       publish_event(body.obj, "close")
@@ -162,7 +162,7 @@ cworks.subscribe("/run/gui/wm-req", function(_, data)
   if op == "attach" then
     display = data:get_obj("display")
     if not display:has_child("background") then
-      gui.set(display, "background", "linear-gradient(135deg,rgba(24,28,36,0.65),rgba(40,46,58,0.65))")
+      gui.set(display, "background", "transparent")
     end
     changed(display)
     local ready = cworks.root.new_compound()
