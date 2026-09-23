@@ -1,6 +1,7 @@
 import type { Process } from "$lib/session";
 import sh_lua from "$lib/lua/usr/bin/sh.lua?raw";
 import wm_lua from "$lib/lua/usr/bin/wm.lua?raw";
+import term_lua from "$lib/lua/usr/bin/term.lua?raw";
 import { FSObj } from "../../../../wasm/cworks-wasm/pkg/cworks";
 
 export async function debug_main(p: Process) {
@@ -28,8 +29,8 @@ export async function debug_main(p: Process) {
   const shellIn = debugApp.ensureFunc("shell-in");
 
   const request = FSObj.newCompound();
-  request.createString("name", "shell.lua");
-  request.createString("code", sh_lua);
+  request.createString("name", "term.lua");
+  request.createString("code", term_lua);
   request.createString("cmd_line", "sh");
   request.createString("cwd", "/");
   request.addChild("stdout", shellOut);

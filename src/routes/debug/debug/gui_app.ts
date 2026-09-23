@@ -243,5 +243,5 @@ export async function gui_main(p: Process): Promise<void> {
 
   // Keep the process Running (rather than blocking in waitForEvent) so that
   // requests queued from DOM events (emitter.*) are pumped on the next step.
-  await new Promise<void>(() => {});
+  await new Promise<void>(() => { });
 }

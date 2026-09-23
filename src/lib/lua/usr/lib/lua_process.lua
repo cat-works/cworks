@@ -74,16 +74,14 @@ function LuaProcessSpawner:spawn(name, code, cwd, cmd_line, stdout, stdin)
   request:add_child("stdin", stdin_obj)
   request:add_child("pid_reply_to", self.reply_to)
 
+  self.last_pid = nil
   self.session:publish(self.request_to, request)
 
   while self.last_pid == nil do
     self.session:wait_for_event()
   end
 
-  local pid = self.last_pid
-  self.last_pid = nil
-
-  return pid
+  return self.last_pid
 end
 
 local lua_process = {}
