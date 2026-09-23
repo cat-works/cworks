@@ -1,4 +1,5 @@
-local cworks = require("cworks").new(session, env)
+local root = session:fs_root()
+local lua_process_spawner = require("lua_process").LuaProcessSpawner.new(session, root, env)
 local gui = require("gui").new(session, env)
 
 local grid = gui.request {
@@ -21,19 +22,17 @@ term:on("ready", function()
   ready = true
 end)
 while not ready do
-  cworks.wait_for_event()
+  session:wait_for_event()
 end
 
-local sh = cworks.get("/usr/bin/sh.lua"):string()
-local req = cworks.root.new_compound()
-req:create_string("name", "sh.lua")
-req:create_string("code", sh)
-req:create_string("cmd_line", "sh")
-req:create_string("cwd", "/")
-req:add_child("stdout", term.obj:get_obj("output"))
-req:add_child("stdin", term.obj:get_obj("input"))
-cworks.publish("/run/sys/exec-lua", req)
+local sh_obj = root:get_obj("usr"):get_obj("bin"):get_obj("sh.lua")
+if sh_obj == nil then
+  error("sh.lua not found")
+end
+local sh = sh_obj:string()
+
+lua_process_spawner:spawn("sh.lua", sh, "/", "sh", term.obj:get_obj("output"), term.obj:get_obj("input"))
 
 while true do
-  cworks.wait_for_event()
+  session:wait_for_event()
 end

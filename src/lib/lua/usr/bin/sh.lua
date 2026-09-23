@@ -1,49 +1,9 @@
-local cworks = require("cworks").new(session, env)
-local json = require("json")
+local path = require("path")
 
-local path_join = require("path").join
+local root = session:fs_root()
+local lua_process_spawner = require("lua_process").LuaProcessSpawner.new(session, root, env)
 
---- child lua process spawner
 
-local lua_process_spawner = {}
-lua_process_spawner.last_pid = nil
-
-cworks.subscribe("/run/debug-app/lua-sp", function(_, data)
-  local pid
-  if data:type() == "Int" then
-    pid = data:int()
-  elseif data:type() == "String" then
-    pid = tonumber(data:string())
-  end
-  if pid == nil then
-    print("Invalid pid received: " .. data:type())
-    return
-  end
-
-  lua_process_spawner.last_pid = pid
-end)
-
-function lua_process_spawner.spawn_lua_process(lua_path, cwd, cmd_line)
-  local request = cworks.root.new_compound()
-  request:create_string("name", lua_path:match("[^/]+$"))
-  request:create_string("code", cworks.get(lua_path):string())
-  request:create_string("cwd", cwd)
-  request:create_string("cmd_line", cmd_line)
-  request:add_child("stdout", env.stdout)
-  request:add_child("stdin", env.stdin)
-  request:add_child("pid_reply_to", cworks.resolve("/run/debug-app/lua-sp"))
-
-  cworks.publish("/run/sys/exec-lua", request)
-
-  while lua_process_spawner.last_pid == nil do
-    cworks.wait_for_event()
-  end
-
-  local pid = lua_process_spawner.last_pid
-  lua_process_spawner.last_pid = nil
-
-  return pid
-end
 
 --- end of child lua process spawner
 
@@ -63,31 +23,41 @@ while true do
   if command == "cd" then
     if args == "" then
       pwd = "/"
-    else
-      local new_path = path_join(pwd, args)
-      local st = cworks.stat(new_path)
-      if st and st["kind"] == "Directory" then
-        pwd = new_path
-      else
-        print("No such directory: " .. new_path .. "")
-      end
+      goto continue
     end
-  elseif command:sub(0, 2) == "./" then
-    local lua_path = path_join(pwd, command:sub(3) .. ".lua")
-    if cworks.stat(lua_path) then
-      local pid = lua_process_spawner.spawn_lua_process(lua_path, pwd, line)
-      cworks.wait_for_process(pid)
-    else
-      print("No such file: " .. lua_path .. "")
+    local new_path = path.join(pwd, args)
+    local obj = path.resolve_object(root, new_path)
+    if obj == nil then
+      print("No such directory: " .. new_path .. "obj is nil")
+      goto continue
     end
+    if obj:type() ~= "CompoundFSObj" then
+      print("No such directory: " .. new_path .. "obj is not a directory")
+      goto continue
+    end
+
+    pwd = new_path
   else
-    local lua_path = "/usr/bin/" .. command .. ".lua"
-    if cworks.stat(lua_path) then
-      local pid = lua_process_spawner.spawn_lua_process(lua_path, pwd, line)
-      cworks.wait_for_process(pid)
+    local lua_path
+    if command:sub(0, 2) == "./" then
+      lua_path = path.join(pwd, command:sub(3) .. ".lua")
     else
-      print("Unknown command: " .. command .. "")
+      lua_path = "/usr/bin/" .. command .. ".lua"
     end
+
+    local lua_obj = path.resolve_object(root, lua_path)
+    if lua_obj == nil then
+      print("No such file: " .. lua_path .. "")
+      goto continue
+    end
+    if lua_obj:type() ~= "String" then
+      print("No such file: " .. lua_path .. "obj is not a string")
+      goto continue
+    end
+    local lua_code = lua_obj:string()
+    local name = lua_path:match("([^/]+)%.lua$")
+    local pid = lua_process_spawner:spawn(name, lua_code, pwd, line)
+    session:wait_for_process(pid)
   end
 
   ::continue::

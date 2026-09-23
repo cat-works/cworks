@@ -1,4 +1,3 @@
-local cworks = require("cworks").new(session, env)
 local gui = require("gui").new(session, env)
 
 local grid = gui.request {
@@ -42,5 +41,5 @@ grid:on("close", function()
 end)
 
 while true do
-  cworks.wait_for_event()
+  session:wait_for_event()
 end
