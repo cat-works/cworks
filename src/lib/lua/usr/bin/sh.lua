@@ -1,7 +1,7 @@
 local path = require("path")
 
 local root = session:fs_root()
-local lua_process_spawner = require("lua_process").LuaProcessSpawner.new(session, root, env)
+local lua_process_spawner = require("lua_process").LuaProcessSpawner.new(session, env)
 
 
 

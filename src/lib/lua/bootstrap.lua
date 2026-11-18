@@ -117,7 +117,12 @@ function bootstrap.run(session, user_src, name)
 
   local st = stdio_mod.build(env, session)
 
-  env.exit = function()
+  local fake_os = {};
+  -- clone os to fake_os
+  for k, v in pairs(os) do
+    fake_os[k] = v
+  end
+  fake_os.exit = function()
     st.flush()
     c_error(EXIT)
   end
@@ -127,6 +132,7 @@ function bootstrap.run(session, user_src, name)
     session = session,
     print = st.print,
     io = st.io,
+    os = fake_os,
     require = proc_require(root),
   }, { __index = _G })
 

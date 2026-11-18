@@ -1,9 +1,15 @@
 local ed_lib = {}
 
-function ed_lib.new(cworks, load_back_channel, take_channel, push_channel)
+---create a new editor instance
+---@param session LuaSession
+---@param load_back_channel FSObj
+---@param take_channel FSObj
+---@param push_channel FSObj
+---@return table
+function ed_lib.new(session, load_back_channel, take_channel, push_channel)
   local self = {}
   self.take_buffer = ""
-  cworks.subscribe(load_back_channel, function(_, data)
+  session:subscribe(load_back_channel, function(data)
     if data:type() ~= "String" then
       print("Invalid textarea data: " .. data:type())
       return
@@ -13,9 +19,9 @@ function ed_lib.new(cworks, load_back_channel, take_channel, push_channel)
   end)
   function self.take()
     self.take_buffer = ""
-    cworks.publish(take_channel, cworks.resolve(load_back_channel))
+    session:publish(take_channel, load_back_channel)
     while self.take_buffer == "" do
-      cworks.wait_for_event()
+      session:wait_for_event()
     end
 
     local buffer = self.take_buffer
@@ -24,7 +30,7 @@ function ed_lib.new(cworks, load_back_channel, take_channel, push_channel)
   end
 
   function self.push(data)
-    cworks.publish(push_channel, { String = data })
+    session:publish(push_channel, { String = data })
   end
 
   return self

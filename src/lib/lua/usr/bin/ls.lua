@@ -1,9 +1,7 @@
-local cworks = require("cworks").new(session, env)
-
-local path_join = require("path").join
+local path = require("path")
 
 --- parse command line arguments (env.cmdline -> following)
-local path = ""
+local ls_path = ""
 local recursive = false
 local color = false
 
@@ -16,18 +14,18 @@ for arg in env.cmdline:gmatch("%S+") do
   elseif arg == "--color" then
     color = true
   else
-    path = arg
+    ls_path = arg
   end
 end
 
 if path:sub(1, 1) ~= "/" then
-  path = path_join(env.cwd, path)
+  ls_path = path.join(env.cwd, ls_path)
 end
 
---- parse command line arguments
-if not cworks.stat(path) then
-  io.write("No such file or directory: " .. path .. "\n")
-  cworks.exit()
+local ls_obj = path.resolve_object(session:fs_root(), ls_path)
+if not ls_obj then
+  io.write("No such file or directory: " .. ls_path .. "\n")
+  os.exit()
 end
 
 local formatter_color = {
@@ -56,32 +54,41 @@ local formatter_plain = {
 
 local formatter = color and formatter_color or formatter_plain
 
-local function ls_rec(cworks, dir, depth)
-  local list = cworks.list(dir)
+---List Recursive
+---@param dir FSObj
+---@param depth integer
+local function ls_rec(dir, depth)
+  local list = dir:list()
   table.sort(list)
 
   for _, item in ipairs(list) do
     if item == "." or item == ".." then
       goto continue
     end
-    local st = cworks.stat(path_join(dir, item))
+    local obj = dir:get_obj(item)
+    if not obj then
+      print("Failed to get object for " .. item)
+      goto continue
+    end
+    local st = obj:stat()
+
     local kind = st["kind"] ---@type string
-    local display_name = recursive and path_join(dir, item) or item
+    local item = item
     if kind == "Channel" then
-      print(formatter.Channel(display_name))
+      print(("  "):rep(depth) .. formatter.Channel(item))
     elseif kind == "File" then
-      print(formatter.File(display_name))
+      print(("  "):rep(depth) .. formatter.File(item))
     elseif kind == "Directory" then
-      print(formatter.Directory(display_name))
+      print(("  "):rep(depth) .. formatter.Directory(item))
       if recursive then
-        ls_rec(cworks, path_join(dir, item), depth + 1)
+        ls_rec(obj, depth + 1)
       end
     else
-      print("Unknown kind: " .. kind .. " for " .. path_join(dir, item) .. "")
+      print(("  "):rep(depth) .. "Unknown kind: " .. kind .. " for item: " .. item)
     end
 
     ::continue::
   end
 end
 
-ls_rec(cworks, path, 0)
+ls_rec(ls_obj, 0)

@@ -65,4 +65,21 @@ function path.resolve_object(root, resolve_path)
   return current
 end
 
+--- Split `path` into its parent directory and the last component.
+--- @param path_str string
+--- @return string, string
+function path.split_parent(path_str)
+  local parts = path.split(path_str)
+  if #parts == 0 then
+    return "", ""
+  end
+  local parent_parts = {}
+  for i = 1, #parts - 1 do
+    parent_parts[#parent_parts + 1] = parts[i]
+  end
+  local parent = "/" .. table.concat(parent_parts, "/")
+  local last = parts[#parts]
+  return parent, last
+end
+
 return path

@@ -22,8 +22,6 @@ The window itself (frame, decoration, geometry) is owned by the window manager
 process. `gui.request` returns only the content Grid the app should populate.
 ]]
 
-local cworks_mod = require("cworks")
-
 local gui = {}
 
 local function set_prop(obj, key, value)
@@ -46,10 +44,13 @@ local function set_prop(obj, key, value)
   end
 end
 
+---comment
+---@param session LuaSession
+---@param env Env
+---@return table
 function gui.new(session, env)
   local root = env.root
-  local cworks = cworks_mod.new(session, env)
-  local control_ch = cworks.resolve("/run/gui/req")
+  local control_ch = session:fs_root():get_obj("run"):get_obj("gui"):ensure_func("req")
 
   local counter = 0
 
@@ -245,8 +246,10 @@ function gui.new(session, env)
 
   local api = {}
 
-  -- Build a standalone widget tree (used by the window manager to construct
-  -- window frames). Not registered with the display server.
+  --- Build a standalone widget tree (used by the window manager to construct
+  --- window frames). Not registered with the display server.
+  ---@param kind string
+  ---@param opts table|nil
   function api.widget(kind, opts)
     local obj = make_widget(kind)
     if opts ~= nil then
@@ -259,10 +262,16 @@ function gui.new(session, env)
     return wrap(obj, nil, nil)
   end
 
+  ---@param obj FSObj
+  ---@param key string
+  ---@param value any
   function api.set(obj, key, value)
     set_prop(obj, key, value)
   end
 
+  ---Signal the display server that a widget has changed. The server re-reads the
+  ---widget's FSObj. This is only needed for widgets that are not part of a window
+  ---@param obj FSObj
   function api.signal(obj)
     local msg = root.new_compound()
     msg:create_string("op", "changed")
@@ -271,6 +280,9 @@ function gui.new(session, env)
 
   -- Ask the display server for a new window; the window manager replies with
   -- the window's content Grid. Blocks until the Grid arrives.
+  ---Request
+  ---@param opts {title?: string, options?: string, x?: number, y?: number, w?: number, h?: number}
+  ---@return table
   function api.request(opts)
     opts = opts or {}
     local reply = root.new_func()
@@ -281,8 +293,8 @@ function gui.new(session, env)
 
     local msg = root.new_compound()
     msg:create_string("op", "create")
-    set_prop(msg, "title", opts.title or "Window")
-    set_prop(msg, "options", opts.options or "")
+    msg:create_string("title", opts.title or "Window")
+    msg:create_string("options", opts.options or "")
     if opts.x ~= nil then
       set_prop(msg, "x", opts.x)
     end

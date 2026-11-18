@@ -1,6 +1,5 @@
 --- @class LuaProcessSpawner
 --- @field session LuaSession
---- @field root FSObj
 --- @field last_pid integer|nil
 --- @field reply_to FSObj
 --- @field request_to FSObj
@@ -11,15 +10,14 @@ LuaProcessSpawner.__index = LuaProcessSpawner
 
 --- Creates a new LuaProcessSpawner instance
 --- @param session LuaSession
---- @param root FSObj
 --- @param env Env
 --- @return LuaProcessSpawner
-function LuaProcessSpawner.new(session, root, env)
+function LuaProcessSpawner.new(session, env)
+  local root = session:fs_root()
   local reply_to = root:ensure_compound("run"):ensure_compound("debug-app"):ensure_func("lua-sp")
   local request_to = root:ensure_compound("run"):ensure_compound("sys"):ensure_func("exec-lua")
   local obj = setmetatable({
     session = session,
-    root = root,
     last_pid = nil,
     reply_to = reply_to,
     request_to = request_to,
@@ -65,7 +63,7 @@ function LuaProcessSpawner:spawn(name, code, cwd, cmd_line, stdout, stdin)
     error("No stdin object provided and no default stdin available")
   end
 
-  local request = self.root:new_compound()
+  local request = self.session:fs_root():new_compound()
   request:create_string("name", name)
   request:create_string("code", code)
   request:create_string("cwd", cwd)

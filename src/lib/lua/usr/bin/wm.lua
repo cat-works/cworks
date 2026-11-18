@@ -16,7 +16,6 @@ Protocol (see gui_app.ts):
   /run/gui/wm-res (WM -> DS) : sync, ready
 ]]
 
-local cworks = require("cworks").new(session, env)
 local gui = require("gui").new(session, env)
 
 local display = nil
@@ -47,13 +46,13 @@ local function changed(obj)
   if obj == nil then
     return
   end
-  local msg = cworks.root.new_compound()
+  local msg = session:fs_root().new_compound()
   msg:create_string("op", "changed")
   session:publish(obj:get_obj("control"), msg)
 end
 
 local function publish_event(grid, event, fields)
-  local msg = cworks.root.new_compound()
+  local msg = session:fs_root().new_compound()
   msg:create_string("event", event)
   if fields ~= nil then
     for key, value in pairs(fields) do
@@ -153,7 +152,10 @@ local function make_frame(title)
   return frame, body, name
 end
 
-cworks.subscribe("/run/gui/wm-req", function(_, data)
+local root = session:fs_root()
+local wm_req = root:get_obj("run"):get_obj("gui"):ensure_func("wm-req")
+local wm_res = root:get_obj("run"):get_obj("gui"):ensure_func("wm-res")
+session:subscribe(wm_req, function(data)
   if data:type() ~= "CompoundFSObj" then
     return
   end
@@ -165,9 +167,9 @@ cworks.subscribe("/run/gui/wm-req", function(_, data)
       gui.set(display, "background", "transparent")
     end
     changed(display)
-    local ready = cworks.root.new_compound()
+    local ready = root.new_compound()
     ready:create_string("op", "ready")
-    cworks.publish("/run/gui/wm-res", ready)
+    session:publish(wm_res, ready)
   elseif op == "create" then
     if display == nil then
       return
@@ -210,10 +212,10 @@ cworks.subscribe("/run/gui/wm-req", function(_, data)
 end)
 
 -- Ask the display server for the Display object.
-local sync = cworks.root.new_compound()
+local sync = root.new_compound()
 sync:create_string("op", "sync")
-cworks.publish("/run/gui/wm-res", sync)
+session:publish(wm_res, sync)
 
 while true do
-  cworks.wait_for_event()
+  session:wait_for_event()
 end
