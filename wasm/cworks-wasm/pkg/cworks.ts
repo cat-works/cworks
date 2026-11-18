@@ -41,6 +41,8 @@ export interface FSObj {
   ensureNull(name: string): FSObj;
   ensureCompound(name: string): FSObj;
   ensureFunc(name: string): FSObj;
+  subscribe(callback: (obj: FSObj) => void): () => void;
+  publish(data: FSObj): Promise<undefined>;
 }
 
 export interface FSObjClass {
@@ -61,9 +63,6 @@ export interface JsProcessHandle {
   waitForEvent(): void;
   sleep(seconds: number): void;
   getPid(): void;
-  subscribe(obj: FSObj): void;
-  unsubscribe(obj: FSObj): void;
-  publish(obj: FSObj, data: FSObj): void;
 }
 
 export interface Session {

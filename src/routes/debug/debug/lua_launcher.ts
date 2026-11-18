@@ -31,7 +31,7 @@ export async function lua_launcher(p: Process) {
   const execLua = root.ensureCompound("run").ensureCompound("sys").ensureFunc("exec-lua");
   const procNs = root.ensureCompound("run").ensureCompound("proc");
 
-  await p.subscribe(execLua, (arg) => {
+  await execLua.subscribe(arg => {
     if (arg.type() !== "CompoundFSObj") {
       console.warn("Invalid data received for exec-lua:", arg);
       return;
@@ -45,7 +45,7 @@ export async function lua_launcher(p: Process) {
       const pid = createLuaProcess(name, buildThinChunk(code, name));
       procNs.addChild(pid.toString(), arg);
       if (pidReplyTo) {
-        p.publish(pidReplyTo, FSObj.newInt(Number(pid)));
+        pidReplyTo.publish(FSObj.newInt(Number(pid)));
       }
     });
   });

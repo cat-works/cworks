@@ -37,7 +37,7 @@ export async function debug_main(p: Process) {
     req.addChild("stdout", stdout);
     req.addChild("stdin", stdin);
 
-    await p.publish(execLua, req);
+    await execLua.publish(req);
   }
 
   {
@@ -53,6 +53,6 @@ export async function debug_main(p: Process) {
     req.addChild("stdout", stdout);
     req.addChild("stdin", stdin);
 
-    await p.publish(execLua, req);
+    await execLua.publish(req);
   }
 }

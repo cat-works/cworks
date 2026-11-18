@@ -91,29 +91,31 @@ export async function gui_main(p: Process): Promise<void> {
   const displayControl = display.ensureFunc("control");
   display.ensureFunc("event");
 
-  const subscribedControls = new Map<number, FSObj>();
+  const subscribedControls = new Map<number, {obj: FSObj, unsubscribe: () => void}>();
   const pendingCreates: FSObj[] = [];
   let wmReady = false;
   let eventHandles = new Map<number, FSObj>();
 
   hostFactory.create = (obj: FSObj): RendererHost => {
-    const subscriptions = new Map<string, FSObj>();
+    const subscriptions = new Map<string, { obj: FSObj, unsubscribe: () => void }>();
     return {
       obj,
       subscribe(channel: string, handler: (arg: FSObj) => void): void {
         const handle = obj.getObj(channel);
-        subscriptions.set(channel, handle);
-        void p.subscribe(handle, handler);
+        subscriptions.set(channel, {
+          obj: handle,
+          unsubscribe: handle.subscribe(handler)
+        });
       },
       unsubscribe(channel: string): void {
         const handle = subscriptions.get(channel);
         if (handle) {
+          handle.unsubscribe();
           subscriptions.delete(channel);
-          void p.unsubscribe(handle);
         }
       },
       publishString(channel: string, value: string): void {
-        void p.publish(obj.getObj(channel), FSObj.newString(value));
+        obj.getObj(channel).publish(FSObj.newString(value));
       },
       emit(event: string, value?: string): void {
         const msg = FSObj.newCompound();
@@ -121,12 +123,12 @@ export async function gui_main(p: Process): Promise<void> {
         if (value !== undefined) {
           msg.createString("value", value);
         }
-        void p.publish(obj.getObj("event"), msg);
+        void obj.getObj("event").publish(msg);
       },
       dispose(): void {
         for (const [channel, handle] of subscriptions) {
           subscriptions.delete(channel);
-          void p.unsubscribe(handle);
+          void handle.unsubscribe();
         }
       },
     };
@@ -136,7 +138,7 @@ export async function gui_main(p: Process): Promise<void> {
     const msg = FSObj.newCompound();
     msg.createString("op", "attach");
     msg.addChild("display", display);
-    void p.publish(wmReq, msg);
+    void wmReq.publish(msg);
   }
 
   function wmSend(op: string, window: FSObj, extra?: Record<string, number>): void {
@@ -148,7 +150,7 @@ export async function gui_main(p: Process): Promise<void> {
         msg.createInt(key, value);
       }
     }
-    void p.publish(wmReq, msg);
+    void wmReq.publish(msg);
   }
 
   async function reconcile(recheck = true): Promise<void> {
@@ -171,20 +173,18 @@ export async function gui_main(p: Process): Promise<void> {
     for (const [id, obj] of [...subscribedControls]) {
       if (!controls.has(id)) {
         subscribedControls.delete(id);
-        void p.unsubscribe(obj);
+        obj.unsubscribe();
       }
     }
 
-    const newSubscriptions: Array<[number, FSObj]> = [];
+    const newSubscriptions: Array<[number, {obj: FSObj, unsubscribe: ()=>void}]> = [];
     for (const [id, obj] of controls) {
       if (!subscribedControls.has(id)) {
-        subscribedControls.set(id, obj);
-        newSubscriptions.push([id, obj]);
+        const unsubscribe = obj.subscribe(obj => reconcile())
+        subscribedControls.set(id, {obj, unsubscribe});
+        newSubscriptions.push([id, {obj, unsubscribe}]);
       }
     }
-    await Promise.all(
-      newSubscriptions.map(([, obj]) => p.subscribe(obj, () => void reconcile())),
-    );
 
     eventHandles = events;
     desktop.set(windows);
@@ -208,23 +208,23 @@ export async function gui_main(p: Process): Promise<void> {
     if (value !== undefined) {
       msg.createString("value", value);
     }
-    void p.publish(handle, msg);
+    void handle.publish(msg);
   };
   emitter.focus = (window) => wmSend("focus", window);
   emitter.move = (window, x, y) => wmSend("move", window, { x, y });
   emitter.resize = (window, w, h) => wmSend("resize", window, { w, h });
 
-  await p.subscribe(displayControl, () => void reconcile());
+  displayControl.subscribe(() => void reconcile());
 
-  await p.subscribe(appReq, (arg) => {
+  appReq.subscribe((arg) => {
     if (wmReady) {
-      void p.publish(wmReq, arg);
+      wmReq.publish(arg);
     } else {
       pendingCreates.push(arg);
     }
   });
 
-  await p.subscribe(wmRes, (arg) => {
+  wmRes.subscribe((arg) => {
     if (arg.type() !== "CompoundFSObj" || !arg.hasChild("op")) {
       return;
     }
@@ -234,7 +234,7 @@ export async function gui_main(p: Process): Promise<void> {
     } else if (op === "ready") {
       wmReady = true;
       for (const create of pendingCreates.splice(0)) {
-        void p.publish(wmReq, create);
+        void wmReq.publish(create);
       }
     }
   });

@@ -101,21 +101,4 @@ export class Process {
     const data = await this.request(() => this.handle.getPid());
     return data.kind === "getPid" ? data.pid : 0;
   }
-
-  public async subscribe(
-    obj: FSObj,
-    handler: (arg: FSObj) => void,
-  ): Promise<void> {
-    this.handlers.set(obj.id(), handler);
-    await this.request(() => this.handle.subscribe(obj));
-  }
-
-  public async unsubscribe(obj: FSObj): Promise<void> {
-    this.handlers.delete(obj.id());
-    await this.request(() => this.handle.unsubscribe(obj));
-  }
-
-  public async publish(obj: FSObj, data: FSObj): Promise<void> {
-    await this.request(() => this.handle.publish(obj, data));
-  }
 }
