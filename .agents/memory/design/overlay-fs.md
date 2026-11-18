@@ -42,4 +42,4 @@ list(/ov)={a,b} / get(/ov/a)=/up/a / get(/ov/b/c)=/lo/b/c（成分単位多段�
 
 ## 関連
 - `design/wasm-crate-role` — Native LuaProcess アーキテクチャ
-- `design/cworks-runtime-quirks` — LIFO 配送等のカーネル特性
+- `design/cworks-runtime-quirks` — FIFO 配送・pid 非再利用等のカーネル特性

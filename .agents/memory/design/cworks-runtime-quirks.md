@@ -8,9 +8,9 @@
 - Gate D: 循環 require（a.b.a=true）・子コルーチン require・__tostring 内 print の遅延チャンク全件・マルチプロセス隔離・io.read("*n")=42・stdout 失敗→C print フォールバック
 
 ## カーネル特性（kernel.rs は変更禁止の前提のため対処は Lua/TS 側）
-1. **チャネル配送は LIFO**: 購読プロセスの `outgoing_data_buffer` は `Vec::pop()`（kernel.rs:66）。同一サブスクライバへの**急速な連続 publish は逆順で届く**。実シェルでは syscall 間隔で publish が離れるため問題化しない。→ 生成チャンクで一度に複数 publish する処理は順序が逆転しうる（仕様として許容）
-2. **アイドルリセット**: 全プロセスが WaitingForEvent/Sleeping でないと kernel.rs:321-323 が `AutoMap::new()` で**全プロセスを消去**。実アプリは stdio_app が常時 Running（wait_for_event を呼ばない）ため回避。テストハーネスでは keepalive（`p.sleep(0.01)` ループ）が必要
-3. **pid 再利用**: AutoMap が空き pid を再利用。FS のチャネル callee_pid リストに**古い pid が残ると、再利用後の新プロセスに誤配送**される
+1. **チャネル配送は FIFO**: 購読プロセスの `outgoing_data_buffer` は `VecDeque::pop_front()`（kernel.rs:191）。同一サブスクライバへの publish は**publish 順に届く**。旧記述の LIFO（`Vec::pop()` / kernel.rs:66）は 2026-09-23 時点で実装と不一致だったことを確認し訂正。→ 生成チャンクで一度に複数 publish する処理も順序が保たれる
+2. **アイドルリセット（kernel 終了）**: Running/Sleeping のプロセスが 1 つも無いと kernel.rs:211-213 が `self.processes.clear()` して `start()` のループが抜ける＝**カーネル自体が終了**する（旧実装の `AutoMap::new()` によるプロセス全消去から変更済み）。実アプリは stdio_app が常時 Running（wait_for_event を呼ばない）ため回避。テストハーネスでは keepalive（`p.sleep(0.01)` ループ）が必要
+3. **pid 再利用は解消済み**: 旧実装は `AutoMap::new()` によりセッション内で pid を再利用し、FS のチャネル callee_pid リストに残った古い pid が新プロセスに誤配送された。`processes.clear()` 変更により pid カウンタが保持され再利用しない（详见「PID 周辺の変更」節）
 4. **Invoke の caller_pid は購読者自身**: kernel.rs:268 は `caller_pid: pid`（publish 元でなく）。Lua ハンドラの caller 引数は信用しないこと
 
 ## Lua ランタイムの既知の制約

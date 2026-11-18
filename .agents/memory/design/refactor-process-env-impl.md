@@ -31,7 +31,7 @@ design/process-env-isolation 実装（git diff 内）のリファクタ。**挙�
 1. lua5.2 で `/tmp/opencode/cworks-e2e/test_stdio.lua` 再実行 → 全 PASS
 2. dev server + Playwright Gate A（**薄いチャンクの mlua 動作を必ず確認**）→ Gate B → Gate D
 3. svelte-check 変更ファイルにエラーなし
-4. 既知挙動（LIFO 配送・子コルーチン制約・アイドルリセット）が変化しないこと
+4. 既知挙動（FIFO 配送・pid 非再利用・子コルーチン制約・カーネル終了）が変化しないこと
 
 ## リスク
 - mlua が関数呼び出し引数内テーブルリテラルでクセを踏む可能性（過去に json.parse インライン引数で env が string 化）→ **変数代入形式 `local env = {...}` を既定**、Gate A で確認
