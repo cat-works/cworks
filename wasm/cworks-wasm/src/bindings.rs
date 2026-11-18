@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::panic::AssertUnwindSafe;
 use std::rc::Rc;
 
+use js_sys::Promise;
 use kernel::obj_tree::{FSObjRef, Object};
 use kernel::{Kernel, PollResult, Process, SyscallData};
 use wasm_bindgen::prelude::*;
@@ -369,6 +370,39 @@ impl FSObj {
             Ok(obj) => Ok(FSObj(AssertUnwindSafe(obj))),
             Err(_) => self.create_func(name),
         }
+    }
+
+    #[wasm_bindgen(js_name = subscribe)]
+    pub fn subscribe(&self, callback: &js_sys::Function) -> Result<js_sys::Function, JsError> {
+        let cb = callback.clone();
+        let unsubscribe = self
+            .0
+            .0
+            .subscribe(Box::new(move |data: &FSObjRef| {
+                let payload = FSObj(AssertUnwindSafe(data.clone()));
+                let _ = cb.call1(&JsValue::NULL, &JsValue::from(payload));
+                Box::pin(async move {})
+            }))
+            .map_err(|e| JsError::new(&e.to_string()))?;
+
+        let unsubscribe_js = Closure::once_into_js(move || {
+            unsubscribe();
+        });
+        Ok(unsubscribe_js.unchecked_into())
+    }
+
+    #[wasm_bindgen(js_name = publish)]
+    pub fn publish(&self, data: &FSObj) -> js_sys::Promise {
+        let chan = self.0.0.clone();
+        let data = data.0.0.clone();
+        let task = async move || {
+            chan.publish(data)
+                .await
+                .map_err(|e| JsError::new(&e.to_string()).into())
+                .map(|()| JsValue::undefined())
+        };
+
+        js_sys::futures::future_to_promise(task())
     }
 }
 

@@ -1,4 +1,3 @@
-local cworks = require("cworks").new(session, env)
 local json = require("json")
 
 io.write("Entering REPL mode. Type 'exit' to leave.\n")
@@ -30,5 +29,4 @@ while true do
   end
 end
 
-
-cworks.exit()
+os.exit()

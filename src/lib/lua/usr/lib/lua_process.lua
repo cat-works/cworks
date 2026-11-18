@@ -24,8 +24,7 @@ function LuaProcessSpawner.new(session, env)
     default_stdout = env.stdout,
     default_stdin = env.stdin,
   }, LuaProcessSpawner)
-  session:subscribe(
-    reply_to,
+  reply_to:subscribe(
     function(data)
       local pid
       if data:type() == "Int" then
@@ -73,7 +72,7 @@ function LuaProcessSpawner:spawn(name, code, cwd, cmd_line, stdout, stdin)
   request:add_child("pid_reply_to", self.reply_to)
 
   self.last_pid = nil
-  self.session:publish(self.request_to, request)
+  self.request_to:publish(request)
 
   while self.last_pid == nil do
     self.session:wait_for_event()

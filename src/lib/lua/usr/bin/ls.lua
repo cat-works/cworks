@@ -70,21 +70,16 @@ local function ls_rec(dir, depth)
       print("Failed to get object for " .. item)
       goto continue
     end
-    local st = obj:stat()
-
-    local kind = st["kind"] ---@type string
-    local item = item
-    if kind == "Channel" then
+    local kind = obj:type()
+    if kind == "Func" then
       print(("  "):rep(depth) .. formatter.Channel(item))
-    elseif kind == "File" then
-      print(("  "):rep(depth) .. formatter.File(item))
-    elseif kind == "Directory" then
+    elseif kind == "CompoundFSObj" then
       print(("  "):rep(depth) .. formatter.Directory(item))
       if recursive then
         ls_rec(obj, depth + 1)
       end
     else
-      print(("  "):rep(depth) .. "Unknown kind: " .. kind .. " for item: " .. item)
+      print(("  "):rep(depth) .. formatter.File(item))
     end
 
     ::continue::

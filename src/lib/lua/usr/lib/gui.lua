@@ -66,7 +66,7 @@ function gui.new(session, env)
   local function signal(widget)
     local msg = root.new_compound()
     msg:create_string("op", "changed")
-    session:publish(widget.obj:get_obj("control"), msg)
+    widget.obj:get_obj("control"):publish(msg)
   end
 
   local Widget = {}
@@ -126,7 +126,7 @@ function gui.new(session, env)
     if not self.subscribed then
       self.subscribed = true
       local widget = self
-      session:subscribe(self.obj:get_obj("event"), function(data)
+      self.obj:get_obj("event"):subscribe(function(data)
         local ev = { event = nil }
         if data:type() == "CompoundFSObj" then
           if data:has_child("event") then
@@ -241,7 +241,7 @@ function gui.new(session, env)
   function Widget:close()
     local msg = root.new_compound()
     msg:create_string("op", "close")
-    session:publish(self.obj:get_obj("control"), msg)
+    self.obj:get_obj("control"):publish(msg)
   end
 
   local api = {}
@@ -275,7 +275,7 @@ function gui.new(session, env)
   function api.signal(obj)
     local msg = root.new_compound()
     msg:create_string("op", "changed")
-    session:publish(obj:get_obj("control"), msg)
+    obj:get_obj("control"):publish(msg)
   end
 
   -- Ask the display server for a new window; the window manager replies with
@@ -287,7 +287,7 @@ function gui.new(session, env)
     opts = opts or {}
     local reply = root.new_func()
     local grid = nil
-    session:subscribe(reply, function(data)
+    reply:subscribe(function(data)
       grid = data
     end)
 
@@ -308,7 +308,7 @@ function gui.new(session, env)
       set_prop(msg, "h", opts.h)
     end
     msg:add_child("reply_to", reply)
-    session:publish(control_ch, msg)
+    control_ch:publish(msg)
 
     while grid == nil do
       session:wait_for_event()

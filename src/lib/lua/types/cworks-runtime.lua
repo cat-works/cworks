@@ -1,211 +1,58 @@
 ---@meta
-
 -- Runtime definitions for the cworks Lua environment.
 --
 -- These globals are injected per process by bootstrap.lua (they are not
 -- require-able modules), so they are declared here for LuaLS completion.
 
 ---@class FSObj
----@field [string] any
-local FSObj = {}
-
--- directory-like methods ------------------------------------------------
-
----@param name string
----@return FSObj
-function FSObj:get_obj(name) end
-
----@return string[]
-function FSObj:list() end
-
----@param name string
----@return boolean
-function FSObj:has_child(name) end
-
----@param name string
----@param obj FSObj
-function FSObj:add_child(name, obj) end
-
----@param name string
-function FSObj:remove_child(name) end
-
--- type inspection -------------------------------------------------------
-
----@return "Int"|"String"|"Boolean"|"Float"|"Double"|"Bytes"|"Null"|"CompoundFSObj"|"Func"
-function FSObj:type() end
-
----@return string
-function FSObj:string() end
-
----@return integer
-function FSObj:int() end
-
----@return boolean
-function FSObj:boolean() end
-
----@return number
-function FSObj:float() end
-
----@return number
-function FSObj:double() end
-
----@return integer[]
-function FSObj:bytes() end
-
--- value constructors (static) -------------------------------------------
-
----@param value integer
----@return FSObj
-function FSObj.new_int(value) end
-
----@param value string
----@return FSObj
-function FSObj.new_string(value) end
-
----@param value boolean
----@return FSObj
-function FSObj.new_boolean(value) end
-
----@param value number
----@return FSObj
-function FSObj.new_float(value) end
-
----@param value number
----@return FSObj
-function FSObj.new_double(value) end
-
----@param value integer[]
----@return FSObj
-function FSObj.new_bytes(value) end
-
----@return FSObj
-function FSObj.new_null() end
-
----@return FSObj
-function FSObj.new_compound() end
-
----@return FSObj
-function FSObj.new_func() end
-
--- child constructors ----------------------------------------------------
-
----@param name string
----@param value integer
----@return FSObj
-function FSObj:create_int(name, value) end
-
----@param name string
----@param value string
----@return FSObj
-function FSObj:create_string(name, value) end
-
----@param name string
----@param value boolean
----@return FSObj
-function FSObj:create_boolean(name, value) end
-
----@param name string
----@param value number
----@return FSObj
-function FSObj:create_float(name, value) end
-
----@param name string
----@param value number
----@return FSObj
-function FSObj:create_double(name, value) end
-
----@param name string
----@param value integer[]
----@return FSObj
-function FSObj:create_bytes(name, value) end
-
----@param name string
----@return FSObj
-function FSObj:create_null(name) end
-
----@param name string
----@return FSObj
-function FSObj:create_compound(name) end
-
----@param name string
----@return FSObj
-function FSObj:create_func(name) end
-
--- child ensure (get-or-create) ------------------------------------------
-
----@param name string
----@param value integer
----@return FSObj
-function FSObj:ensure_int(name, value) end
-
----@param name string
----@param value string
----@return FSObj
-function FSObj:ensure_string(name, value) end
-
----@param name string
----@param value boolean
----@return FSObj
-function FSObj:ensure_boolean(name, value) end
-
----@param name string
----@param value number
----@return FSObj
-function FSObj:ensure_float(name, value) end
-
----@param name string
----@param value number
----@return FSObj
-function FSObj:ensure_double(name, value) end
-
----@param name string
----@param value integer[]
----@return FSObj
-function FSObj:ensure_bytes(name, value) end
-
----@param name string
----@return FSObj
-function FSObj:ensure_null(name) end
-
----@param name string
----@return FSObj
-function FSObj:ensure_compound(name) end
-
----@param name string
----@return FSObj
-function FSObj:ensure_func(name) end
-
--- session ---------------------------------------------------------------
+---@field get_obj fun(self: FSObj, name: string): FSObj
+---@field list fun(self: FSObj): string[]
+---@field has_child fun(self: FSObj, name: string): boolean
+---@field add_child fun(self: FSObj, name: string, obj: FSObj)
+---@field remove_child fun(self: FSObj, name: string)
+---@field type fun(self: FSObj): "Int"|"String"|"Boolean"|"Float"|"Double"|"Bytes"|"Null"|"CompoundFSObj"|"Func"
+---@field int fun(self: FSObj): integer
+---@field string fun(self: FSObj): string
+---@field boolean fun(self: FSObj): boolean
+---@field float fun(self: FSObj): number
+---@field double fun(self: FSObj): number
+---@field bytes fun(self: FSObj): integer[]
+---@field new_int fun(value: integer): FSObj
+---@field new_string fun(value: string): FSObj
+---@field new_boolean fun(value: boolean): FSObj
+---@field new_float fun(value: number): FSObj
+---@field new_double fun(value: number): FSObj
+---@field new_bytes fun(value: integer[]): FSObj
+---@field new_null fun(): FSObj
+---@field new_compound fun(): FSObj
+---@field new_func fun(): FSObj
+---@field create_int fun(self: FSObj, name: string, value: integer): FSObj
+---@field create_string fun(self: FSObj, name: string, value: string): FSObj
+---@field create_boolean fun(self: FSObj, name: string, value: boolean): FSObj
+---@field create_float fun(self: FSObj, name: string, value: number): FSObj
+---@field create_double fun(self: FSObj, name: string, value: number): FSObj
+---@field create_bytes fun(self: FSObj, name: string, value: integer[]): FSObj
+---@field create_null fun(self: FSObj, name: string): FSObj
+---@field create_compound fun(self: FSObj, name: string): FSObj
+---@field create_func fun(self: FSObj, name: string): FSObj
+---@field ensure_int fun(self: FSObj, name: string, value: integer): FSObj
+---@field ensure_string fun(self: FSObj, name: string, value: string): FSObj
+---@field ensure_boolean fun(self: FSObj, name: string, value: boolean): FSObj
+---@field ensure_float fun(self: FSObj, name: string, value: number): FSObj
+---@field ensure_double fun(self: FSObj, name: string, value: number): FSObj
+---@field ensure_bytes fun(self: FSObj, name: string, value: integer[]): FSObj
+---@field ensure_null fun(self: FSObj, name: string): FSObj
+---@field ensure_compound fun(self: FSObj, name: string): FSObj
+---@field ensure_func fun(self: FSObj, name: string): FSObj
+---@field subscribe fun(self: FSObj, callback: fun(data: FSObj))
+---@field publish fun(self: FSObj, data: FSObj)
 
 ---@class LuaSession
-local LuaSession = {}
-
----@param obj FSObj
----@param handler fun(data: FSObj)
-function LuaSession:subscribe(obj, handler) end
-
----@param obj FSObj
-function LuaSession:unsubscribe(obj) end
-
----@param obj FSObj
----@param data FSObj
-function LuaSession:publish(obj, data) end
-
----@param seconds number
-function LuaSession:sleep(seconds) end
-
-function LuaSession:wait_for_event() end
-
----@param pid integer
-function LuaSession:wait_for_process(pid) end
-
----@return integer
-function LuaSession:get_pid() end
-
----@return FSObj
-function LuaSession:fs_root() end
-
--- process environment ---------------------------------------------------
+---@field sleep fun(self: LuaSession, seconds: number)
+---@field wait_for_event fun(self: LuaSession)
+---@field wait_for_process fun(self: LuaSession, pid: integer)
+---@field get_pid fun(self: LuaSession): integer
+---@field fs_root fun(self: LuaSession): FSObj
 
 ---@class Env
 ---@field session LuaSession
@@ -215,8 +62,6 @@ function LuaSession:fs_root() end
 ---@field stdout FSObj|nil
 ---@field stdin FSObj|nil
 ---@field exit fun()
-
--- globals injected per process ------------------------------------------
 
 ---@type LuaSession
 session = nil

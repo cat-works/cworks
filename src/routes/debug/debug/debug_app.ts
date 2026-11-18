@@ -1,5 +1,5 @@
 import type { Process } from "$lib/session";
-import sh_lua from "$lib/lua/usr/bin/sh.lua?raw";
+import edit_lua from "$lib/lua/usr/bin/edit.lua?raw";
 import wm_lua from "$lib/lua/usr/bin/wm.lua?raw";
 import term_lua from "$lib/lua/usr/bin/term.lua?raw";
 import { FSObj } from "../../../../wasm/cworks-wasm/pkg/cworks";
@@ -24,31 +24,35 @@ export async function debug_main(p: Process) {
   }
 
   const execLua = root.ensureCompound("run").ensureCompound("sys").ensureFunc("exec-lua");
-  const debugApp = root.ensureCompound("run").ensureCompound("debug-app");
-  const shellOut = debugApp.ensureFunc("shell-out");
-  const shellIn = debugApp.ensureFunc("shell-in");
 
-  const request = FSObj.newCompound();
-  request.createString("name", "term.lua");
-  request.createString("code", term_lua);
-  request.createString("cmd_line", "sh");
-  request.createString("cwd", "/");
-  request.addChild("stdout", shellOut);
-  request.addChild("stdin", shellIn);
+  {
+    const ns = root.ensureCompound("run").ensureCompound("debug-app");
+    const stdout = ns.ensureFunc("shell-out");
+    const stdin = ns.ensureFunc("shell-in");
+    const req = FSObj.newCompound();
+    req.createString("name", "term.lua");
+    req.createString("code", term_lua);
+    req.createString("cmd_line", "sh");
+    req.createString("cwd", "/");
+    req.addChild("stdout", stdout);
+    req.addChild("stdin", stdin);
 
-  await p.publish(execLua, request);
+    await p.publish(execLua, req);
+  }
 
-  const wmNs = root.ensureCompound("run").ensureCompound("wm");
-  const wmStdout = wmNs.ensureFunc("stdout");
-  const wmStdin = wmNs.ensureFunc("stdin");
+  {
+    const ns = root.ensureCompound("run").ensureCompound("wm");
+    const stdout = ns.ensureFunc("stdout");
+    const stdin = ns.ensureFunc("stdin");
 
-  const wmRequest = FSObj.newCompound();
-  wmRequest.createString("name", "wm.lua");
-  wmRequest.createString("code", wm_lua);
-  wmRequest.createString("cmd_line", "wm");
-  wmRequest.createString("cwd", "/");
-  wmRequest.addChild("stdout", wmStdout);
-  wmRequest.addChild("stdin", wmStdin);
+    const req = FSObj.newCompound();
+    req.createString("name", "wm.lua");
+    req.createString("code", wm_lua);
+    req.createString("cmd_line", "wm");
+    req.createString("cwd", "/");
+    req.addChild("stdout", stdout);
+    req.addChild("stdin", stdin);
 
-  await p.publish(execLua, wmRequest);
+    await p.publish(execLua, req);
+  }
 }

@@ -1,11 +1,26 @@
 {
   "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
   "runtime.version": "Lua 5.4",
-  "runtime.path": ["?.lua", "?/init.lua", "src/lib/lua/usr/lib/?.lua"],
-  "workspace.library": ["src/lib/lua/types"],
+  "runtime.path": [
+    "?.lua",
+    "?/init.lua",
+    "src/lib/lua/usr/lib/?.lua"
+  ],
+  "workspace.library": [
+    "src/lib/lua/types"
+  ],
   "workspace.checkThirdParty": false,
-  "diagnostics.globals": ["session", "env"],
-  "diagnostics.unusedLocalExclude": ["_*"],
+  "diagnostics.globals": [
+    "session",
+    "env"
+  ],
+  "diagnostics.unusedLocalExclude": [
+    "_*"
+  ],
   "completion.autoRequire": true,
-  "telemetry.enable": false
+  "telemetry.enable": false,
+  "format": {
+    "indent_style": "space",
+    "indent_size": 2
+  }
 }

@@ -48,7 +48,7 @@ local function changed(obj)
   end
   local msg = session:fs_root().new_compound()
   msg:create_string("op", "changed")
-  session:publish(obj:get_obj("control"), msg)
+  obj:get_obj("control"):publish(msg)
 end
 
 local function publish_event(grid, event, fields)
@@ -63,7 +63,7 @@ local function publish_event(grid, event, fields)
       end
     end
   end
-  session:publish(grid:get_obj("event"), msg)
+  grid:get_obj("event"):publish(msg)
 end
 
 local function body_of(window)
@@ -139,7 +139,7 @@ local function make_frame(title)
   end)
 
   -- app-initiated close (grid:close())
-  session:subscribe(body.obj:get_obj("control"), function(data)
+  body.obj:get_obj("control"):subscribe(function(data)
     if data:type() == "CompoundFSObj"
         and data:has_child("op")
         and data:get_obj("op"):string() == "close"
@@ -155,7 +155,7 @@ end
 local root = session:fs_root()
 local wm_req = root:get_obj("run"):get_obj("gui"):ensure_func("wm-req")
 local wm_res = root:get_obj("run"):get_obj("gui"):ensure_func("wm-res")
-session:subscribe(wm_req, function(data)
+wm_req:subscribe(function(data)
   if data:type() ~= "CompoundFSObj" then
     return
   end
@@ -169,7 +169,7 @@ session:subscribe(wm_req, function(data)
     changed(display)
     local ready = root.new_compound()
     ready:create_string("op", "ready")
-    session:publish(wm_res, ready)
+    wm_res:publish(ready)
   elseif op == "create" then
     if display == nil then
       return
@@ -185,7 +185,7 @@ session:subscribe(wm_req, function(data)
     next_z = next_z + 1
     display:add_child(name, frame.obj)
     changed(display)
-    session:publish(data:get_obj("reply_to"), body.obj)
+    data:get_obj("reply_to"):publish(body.obj)
   elseif op == "focus" then
     local window = data:get_obj("window")
     gui.set(window, "z", next_z)
@@ -214,7 +214,7 @@ end)
 -- Ask the display server for the Display object.
 local sync = root.new_compound()
 sync:create_string("op", "sync")
-session:publish(wm_res, sync)
+wm_res:publish(sync)
 
 while true do
   session:wait_for_event()

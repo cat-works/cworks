@@ -21,7 +21,11 @@ if args == nil or args == "" then
 end
 
 local src_file = path.join(env.cwd, args)
-local src = session:fs_root():resolve_path(src_file)
+local src = path.resolve_object(session:fs_root(), src_file)
+if not src then
+  io.write("No such file or directory: " .. src_file .. "\n")
+  os.exit()
+end
 if src:type() ~= "String" then
   io.write("File is not a string: " .. src_file .. "\n")
 else

@@ -9,7 +9,7 @@ local ed_lib = {}
 function ed_lib.new(session, load_back_channel, take_channel, push_channel)
   local self = {}
   self.take_buffer = ""
-  session:subscribe(load_back_channel, function(data)
+  load_back_channel:subscribe(function(data)
     if data:type() ~= "String" then
       print("Invalid textarea data: " .. data:type())
       return
@@ -19,7 +19,7 @@ function ed_lib.new(session, load_back_channel, take_channel, push_channel)
   end)
   function self.take()
     self.take_buffer = ""
-    session:publish(take_channel, load_back_channel)
+    take_channel:publish(load_back_channel)
     while self.take_buffer == "" do
       session:wait_for_event()
     end
@@ -30,7 +30,7 @@ function ed_lib.new(session, load_back_channel, take_channel, push_channel)
   end
 
   function self.push(data)
-    session:publish(push_channel, { String = data })
+    push_channel:publish(push_channel.new_string(data))
   end
 
   return self

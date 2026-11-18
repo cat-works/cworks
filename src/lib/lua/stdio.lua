@@ -153,7 +153,7 @@ function stdio.build(env, sess)
     deliver(joined)
   end
 
-  sess:subscribe(inp, function(data)
+  inp:subscribe(function(data)
     if data:type() ~= "String" then
       return
     end

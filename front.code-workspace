@@ -19,6 +19,15 @@
 			"-A",
 			"clippy::missing_errors_doc",
 		],
+		"files.exclude": {
+			"**/.git": true,
+			"**/.svn": true,
+			"**/.hg": true,
+			"**/.jj": true,
+			"**/.DS_Store": true,
+			"**/Thumbs.db": true,
+			"wasm": true
+		},
 		"Lua.completion.autoRequire": true,
 		"Lua.codeLens.enable": true,
 		"Lua.runtime.version": "Lua 5.4",

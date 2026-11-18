@@ -14,5 +14,6 @@ cworks-lua = { path = "../cworks-lua" }
 log = "0.4.17"
 ghs_demangle = { git = "https://github.com/syoch/ghs_demangle" }
 mlua = { version = "0.12", features = ["lua55", "vendored"] }
-wasm-bindgen = "=0.2.121"
+wasm-bindgen = "=0.2.130"
 js-sys = "0.3"
+wasm-bindgen-futures = "0.4.80"
