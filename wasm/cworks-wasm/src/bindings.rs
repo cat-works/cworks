@@ -93,20 +93,6 @@ impl JsProcessHandle {
     pub fn get_pid(&self) {
         self.0.0.set(PollResult::GetPid);
     }
-
-    pub fn subscribe(&self, obj: &FSObj) {
-        self.0.0.set(PollResult::Subscribe(obj.0.0.clone()));
-    }
-
-    pub fn unsubscribe(&self, obj: &FSObj) {
-        self.0.0.set(PollResult::Unsubscribe(obj.0.0.clone()));
-    }
-
-    pub fn publish(&self, obj: &FSObj, data: &FSObj) {
-        self.0
-            .0
-            .set(PollResult::Publish(obj.0.0.clone(), data.0.0.clone()));
-    }
 }
 
 #[wasm_bindgen]
@@ -264,7 +250,7 @@ impl FSObj {
 
     #[wasm_bindgen(js_name = newFunc)]
     pub fn new_func() -> FSObj {
-        FSObj(AssertUnwindSafe(Object::Func { callee_pid: vec![] }.into()))
+        FSObj(AssertUnwindSafe(Object::Func(vec![]).into()))
     }
 
     #[wasm_bindgen(js_name = createInt)]
@@ -304,13 +290,13 @@ impl FSObj {
 
     #[wasm_bindgen(js_name = createCompound)]
     pub fn create_compound(&self, name: &str) -> Result<FSObj, JsError> {
-        let obj = FSObjRef::new_compound(self.0.0.clone());
+        let obj = FSObjRef::new_compound(&self.0.0);
         self.add_child(name, obj)
     }
 
     #[wasm_bindgen(js_name = createFunc)]
     pub fn create_func(&self, name: &str) -> Result<FSObj, JsError> {
-        self.add_child(name, Object::Func { callee_pid: vec![] }.into())
+        self.add_child(name, Object::Func(vec![]).into())
     }
 
     #[wasm_bindgen(js_name = ensureInt)]

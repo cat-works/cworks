@@ -1,5 +1,3 @@
-use crate::obj_tree::FSObjRef;
-
 #[derive(Clone, Debug, Default)]
 pub enum PollResult {
     WaitForEvent,
@@ -9,8 +7,5 @@ pub enum PollResult {
     Sleep(f32),
     WaitForProcess(u64),
     Root,
-    Subscribe(FSObjRef),
-    Unsubscribe(FSObjRef),
-    Publish(FSObjRef, FSObjRef),
     GetPid,
 }

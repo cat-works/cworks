@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use kernel::Process;
 use kernel::ProcessSession;
 use kernel::RustProcess;
@@ -29,19 +27,16 @@ impl LuaFSObj {
 #[mlua::userdata_impl]
 impl LuaFSObj {
     fn get_obj(&self, name: &str) -> Result<LuaFSObj, mlua::Error> {
-        let obj = self
-            .0
+        self.0
             .get_obj(name)
-            .map_err(|_| mlua::Error::external("get_obj failed"))?;
-        Ok(LuaFSObj(obj))
+            .map_err(|_| mlua::Error::external("get_obj failed"))
+            .map(LuaFSObj)
     }
 
     fn list(&self) -> Result<Vec<String>, mlua::Error> {
-        let list = self
-            .0
+        self.0
             .list()
-            .map_err(|_| mlua::Error::external("list failed"))?;
-        Ok(list)
+            .map_err(|_| mlua::Error::external("list failed"))
     }
 
     #[allow(clippy::unnecessary_wraps)]
@@ -107,7 +102,7 @@ impl LuaFSObj {
     }
     #[allow(clippy::unnecessary_wraps)]
     fn new_func() -> Result<LuaFSObj, mlua::Error> {
-        let obj = FSObjRef::from(Object::Func { callee_pid: vec![] });
+        let obj = FSObjRef::from(Object::Func(vec![]));
         Ok(LuaFSObj(obj))
     }
 
@@ -148,12 +143,12 @@ impl LuaFSObj {
     }
 
     fn create_compound(&self, name: &str) -> Result<LuaFSObj, mlua::Error> {
-        let obj = FSObjRef::new_compound(self.0.clone());
+        let obj = FSObjRef::new_compound(&self.0);
         self.add_child(name, &obj).map(LuaFSObj)
     }
 
     fn create_func(&self, name: &str) -> Result<LuaFSObj, mlua::Error> {
-        let obj = FSObjRef::from(Object::Func { callee_pid: vec![] });
+        let obj = FSObjRef::from(Object::Func(vec![]));
         self.add_child(name, &obj).map(LuaFSObj)
     }
 
@@ -163,15 +158,14 @@ impl LuaFSObj {
         let child = obj.borrow::<LuaFSObj>()?.0.clone();
         self.0
             .add_child(name, &child)
-            .map_err(|_| mlua::Error::external("add_child failed"))?;
-        Ok(())
+            .map_err(|_| mlua::Error::external("add_child failed"))
     }
 
     fn remove_child(&self, name: &str) -> Result<(), mlua::Error> {
         self.0
             .remove_child(name)
-            .map_err(|_| mlua::Error::external("remove_child failed"))?;
-        Ok(())
+            .map(|_| ())
+            .map_err(|_| mlua::Error::external("remove_child failed"))
     }
 
     fn has_child(&self, name: &str) -> Result<bool, mlua::Error> {
@@ -282,6 +276,47 @@ impl LuaFSObj {
             _ => Err(mlua::Error::external("not a bytes object")),
         }
     }
+
+    fn subscribe(
+        &self,
+        lua: &Lua,
+        callback: mlua::Function,
+    ) -> Result<mlua::Function, mlua::Error> {
+        let unsubscribe = self
+            .0
+            .subscribe(Box::new(move |data: &FSObjRef| {
+                let callback = callback.clone();
+                let data = data.clone();
+                Box::pin(async move {
+                    let lua_data = LuaFSObj(data.clone());
+                    if let Err(e) = callback.call_async::<()>(lua_data).await {
+                        log::error!("Error in Lua callback: {e}");
+                    }
+                })
+            }))
+            .map_err(|_| mlua::Error::external("subscribe failed"))?;
+
+        // 1. FnOnce を Fn の中で安全に1度だけ実行できるように Option で包む
+        let unsubscribe = std::sync::Mutex::new(Some(unsubscribe));
+
+        // 2. Lua 側の関数を作成
+        lua.create_function(move |_, ()| {
+            if let Ok(mut lock) = unsubscribe.lock() {
+                if let Some(unsub) = lock.take() {
+                    unsub(); // ここで1回だけ安全に実行される
+                }
+            }
+            Ok(())
+        })
+    }
+
+    async fn publish(&self, data: LuaAnyUserData) -> Result<(), mlua::Error> {
+        let data = data.borrow::<LuaFSObj>()?.0.clone();
+        self.0
+            .publish(data)
+            .await
+            .map_err(|_| mlua::Error::external("publish failed"))
+    }
 }
 
 #[derive(UserData)]
@@ -299,8 +334,7 @@ impl LuaSession {
             .clone()
             .wait_for_process(pid)
             .await
-            .map_err(|_| mlua::Error::external("wait_for_process failed"))?;
-        Ok(())
+            .map_err(|_| mlua::Error::external("wait_for_process failed"))
     }
 
     async fn sleep(&self, sleep_duration: f32) -> Result<(), mlua::Error> {
@@ -316,53 +350,6 @@ impl LuaSession {
     async fn fs_root(&self) -> Result<LuaFSObj, mlua::Error> {
         let root = self.0.clone().fs_root().await.expect("fs_root failed");
         Ok(LuaFSObj(root))
-    }
-
-    async fn subscribe(
-        &self,
-        obj: LuaAnyUserData,
-        handler: mlua::Function,
-    ) -> Result<(), mlua::Error> {
-        let obj_ref = obj.borrow::<LuaFSObj>()?.0.clone();
-
-        self.0
-            .clone()
-            .subscribe(
-                obj_ref,
-                Rc::new(Box::new(move |data| {
-                    let handler = handler.clone();
-                    Box::pin(async move {
-                        handler
-                            .call_async::<()>(LuaFSObj(data))
-                            .await
-                            .expect("handler call failed");
-                    })
-                })),
-            )
-            .await
-            .map_err(|_| mlua::Error::external("subscribe failed"))?;
-        Ok(())
-    }
-
-    async fn unsubscribe(&self, obj: LuaAnyUserData) -> Result<(), mlua::Error> {
-        let obj_ref = obj.borrow::<LuaFSObj>()?.0.clone();
-        self.0
-            .clone()
-            .unsubscribe(obj_ref)
-            .await
-            .map_err(|_| mlua::Error::external("unsubscribe failed"))?;
-        Ok(())
-    }
-
-    async fn publish(&self, obj: LuaAnyUserData, data: LuaAnyUserData) -> Result<(), mlua::Error> {
-        let obj_ref = obj.borrow::<LuaFSObj>()?.0.clone();
-        let data_ref = data.borrow::<LuaFSObj>()?.0.clone();
-        self.0
-            .clone()
-            .publish(obj_ref, data_ref)
-            .await
-            .map_err(|_| mlua::Error::external("publish failed"))?;
-        Ok(())
     }
 }
 

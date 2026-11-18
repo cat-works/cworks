@@ -66,34 +66,6 @@ impl ProcessSession {
         self.do_syscall(PollResult::Sleep(seconds)).await;
     }
 
-    pub async fn subscribe(
-        &mut self,
-        obj: FSObjRef,
-        handler: DataHandler,
-    ) -> Result<(), SyscallError> {
-        self.borrow_mut()
-            .data_handlers
-            .insert(obj.as_ptr(), handler);
-        match self.do_syscall(PollResult::Subscribe(obj)).await {
-            SyscallData::Fail(ref e) => Err(e.clone()),
-            _ => Ok(()),
-        }
-    }
-
-    pub async fn unsubscribe(&mut self, obj: FSObjRef) -> Result<(), SyscallError> {
-        match self.do_syscall(PollResult::Unsubscribe(obj)).await {
-            SyscallData::Fail(ref e) => Err(e.clone()),
-            _ => Ok(()),
-        }
-    }
-
-    pub async fn publish(&mut self, obj: FSObjRef, data: FSObjRef) -> Result<(), SyscallError> {
-        match self.do_syscall(PollResult::Publish(obj, data)).await {
-            SyscallData::Fail(ref e) => Err(e.clone()),
-            _ => Ok(()),
-        }
-    }
-
     pub async fn fs_root(&mut self) -> Result<FSObjRef, SyscallError> {
         match self.do_syscall(PollResult::Root).await {
             SyscallData::Fail(ref e) => Err(e.clone()),

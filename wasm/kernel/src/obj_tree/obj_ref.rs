@@ -5,7 +5,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-use crate::SyscallError;
+use crate::{obj_tree::object::FSCallbackResult, SyscallError};
 
 use super::Object;
 
@@ -14,7 +14,7 @@ pub struct FSObjRef(Rc<RefCell<Box<Object>>>);
 
 impl FSObjRef {
     #[must_use]
-    pub fn new_compound(parent: Self) -> Self {
+    pub fn new_compound(parent: &Self) -> Self {
         let obj = Object::CompoundFSObj {
             parent: Some(Rc::downgrade(&parent.0)),
             children: std::collections::HashMap::new(),
@@ -163,6 +163,51 @@ impl FSObjRef {
 
         Ok(current)
     }
+
+    pub fn subscribe(
+        &self,
+        callback: Box<dyn Fn(&FSObjRef) -> FSCallbackResult>,
+    ) -> Result<impl FnOnce() + 'static, SyscallError> {
+        let Object::Func(ref mut callbacks) = **self
+            .0
+            .try_borrow_mut()
+            .map_err(|_| SyscallError::ResourceIsBusy)?
+        else {
+            return Err(SyscallError::UnsupportedMethod);
+        };
+
+        callbacks.push(callback);
+
+        let obj = self.clone();
+
+        let callback_ptr = callbacks
+            .last()
+            .map(|x| std::ptr::from_ref(x))
+            .ok_or(SyscallError::UnreachableEntry)?;
+
+        Ok(move || {
+            let Object::Func(ref mut callbacks) = **obj.0.borrow_mut() else {
+                return;
+            };
+            callbacks.retain(|x| std::ptr::eq(std::ptr::from_ref(x), callback_ptr));
+        })
+    }
+
+    pub async fn publish(&self, data: FSObjRef) -> Result<(), SyscallError> {
+        let Object::Func(ref callbacks) = **self
+            .0
+            .try_borrow()
+            .map_err(|_| SyscallError::ResourceIsBusy)?
+        else {
+            return Err(SyscallError::UnsupportedMethod);
+        };
+
+        for callback in callbacks {
+            callback(&data).await;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -172,7 +217,7 @@ mod tests {
     #[test]
     fn add_child_sets_parent_and_remove_child_clears_it() {
         let root = FSObjRef::empty_compound();
-        let child = FSObjRef::new_compound(root.clone());
+        let child = FSObjRef::new_compound(&root);
         root.add_child("a", &child).unwrap();
 
         assert!(root.has_child("a").unwrap());

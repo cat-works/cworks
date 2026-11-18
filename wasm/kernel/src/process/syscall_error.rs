@@ -6,9 +6,7 @@ pub enum SyscallError {
     NotImplemented,
 
     UnreachableEntry,
-
     ResourceIsBusy,
-
     UnsupportedMethod,
     InvalidRequest,
 }

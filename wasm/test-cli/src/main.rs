@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use kernel::{
     ProcessSession, RustProcess, SyscallError,
     obj_tree::{FSObjRef, Object},
@@ -27,43 +25,31 @@ fn get_obj(
 
 async fn eval_mock(mut session: ProcessSession, _arg: u32) {
     let root = session.fs_root().await.expect("fs_root failed");
-    let srv = get_obj(&root, "srv", || FSObjRef::new_compound(root.clone()))
+    let srv = get_obj(&root, "srv", || FSObjRef::new_compound(&root))
         .expect("srv namespace creation failed");
-    let eval_ns = get_obj(&srv, "eval", || FSObjRef::new_compound(srv.clone()))
+    let eval_ns = get_obj(&srv, "eval", || FSObjRef::new_compound(&srv))
         .expect("eval namespace creation failed");
-    let request_channel = get_obj(&eval_ns, "req", || {
-        FSObjRef::from(Object::Func { callee_pid: vec![] })
-    })
-    .expect("req channel creation failed");
+    let request_channel = get_obj(&eval_ns, "req", || FSObjRef::from(Object::Func(vec![])))
+        .expect("req channel creation failed");
 
-    let value = session.clone();
-    session
-        .subscribe(
-            request_channel,
-            Rc::new(Box::new(move |data| {
-                let eval_ns = eval_ns.clone();
-                let mut session = value.clone();
-                Box::pin(async move {
-                    let string = if let Object::String(ref s) = **data.borrow() {
-                        s.clone()
-                    } else {
-                        log::warn!("eval_mock: invalid data type: {data:?}");
-                        return;
-                    };
-                    session
-                        .publish(
-                            get_obj(&eval_ns, "res", || {
-                                FSObjRef::from(Object::Func { callee_pid: vec![] })
-                            })
-                            .expect("res channel creation failed"),
-                            Object::String(format!("eval reply: {string}")).into(),
-                        )
-                        .await
-                        .expect("publish failed");
-                })
-            })),
-        )
-        .await
+    request_channel
+        .subscribe(Box::new(move |data: &FSObjRef| {
+            let eval_ns = eval_ns.clone();
+
+            let Object::String(ref string) = **data.borrow() else {
+                log::warn!("eval_mock: invalid data type: {data:?}");
+                return Box::pin(async {});
+            };
+            let string = string.clone();
+
+            Box::pin(async move {
+                get_obj(&eval_ns, "res", || FSObjRef::from(Object::Func(vec![])))
+                    .expect("res channel creation failed")
+                    .publish(Object::String(format!("eval reply: {string}")).into())
+                    .await
+                    .expect("publish failed");
+            })
+        }))
         .expect("subscribe failed");
 
     loop {
@@ -73,37 +59,29 @@ async fn eval_mock(mut session: ProcessSession, _arg: u32) {
 
 async fn eval_client(mut session: ProcessSession, _arg: u32) {
     let root = session.fs_root().await.expect("fs_root failed");
-    let srv = get_obj(&root, "srv", || FSObjRef::new_compound(root.clone()))
+    let srv = get_obj(&root, "srv", || FSObjRef::new_compound(&root))
         .expect("srv namespace creation failed");
-    let eval_ns = get_obj(&srv, "eval", || FSObjRef::new_compound(srv.clone()))
+    let eval_ns = get_obj(&srv, "eval", || FSObjRef::new_compound(&srv))
         .expect("eval namespace creation failed");
 
     session.sleep(0.2).await;
     let request_ch = eval_ns.get_obj("req").expect("req channel not found");
-    let response_ch = get_obj(&eval_ns, "res", || {
-        FSObjRef::from(Object::Func { callee_pid: vec![] })
-    })
-    .expect("res channel creation failed");
+    let response_ch = get_obj(&eval_ns, "res", || FSObjRef::from(Object::Func(vec![])))
+        .expect("res channel creation failed");
 
-    session
-        .subscribe(
-            response_ch,
-            Rc::new(Box::new(|data| {
-                Box::pin(async move {
-                    log::info!("eval_client: eval reply ====> {data:?}");
-                })
-            })),
-        )
-        .await
+    response_ch
+        .subscribe(Box::new(|data: &FSObjRef| {
+            let s = format!("{data:?}");
+            Box::pin(async move {
+                log::info!("eval_client: eval reply ====> {s}");
+            })
+        }))
         .expect("subscribe failed");
 
     session.sleep(0.2).await;
 
     let expr = Object::String("2+3*4".to_string()).into();
-    session
-        .publish(request_ch, expr)
-        .await
-        .expect("publish failed");
+    request_ch.publish(expr).await.expect("publish failed");
 
     loop {
         session.wait_for_event().await.expect("wait failed");
@@ -135,7 +113,7 @@ fn lua_test(kernel: &mut Kernel, lua: &Lua) {
                     :ensure_compound("eval")
                     :create_func("req")
 
-                sess:subscribe(req, function(data)
+                req:subscribe(function(data)
                     local type = data:type()
                     if type ~= "String" then
                         print("eval request: [" .. data:type() .. "]")
@@ -149,7 +127,7 @@ fn lua_test(kernel: &mut Kernel, lua: &Lua) {
                         :ensure_func("res")
                     local res_v = root.new_string("12");
                     print("<=============================================>")
-                    sess:publish(res_ch, res_v)
+                    res_ch:publish(res_v)
 
 
                     ::continue::

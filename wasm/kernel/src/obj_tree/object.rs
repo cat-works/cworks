@@ -7,6 +7,9 @@ use std::{
 
 use crate::obj_tree::FSObjRef;
 
+pub type FSCallbackResult = std::pin::Pin<Box<dyn std::future::Future<Output = ()>>>;
+pub type FSCallback = Box<dyn Fn(&FSObjRef) -> FSCallbackResult>;
+
 pub enum Object {
     Int(i128),
     String(String),
@@ -19,9 +22,7 @@ pub enum Object {
         parent: Option<Weak<RefCell<Box<Object>>>>,
         children: HashMap<String, FSObjRef>,
     },
-    Func {
-        callee_pid: Vec<u64>,
-    },
+    Func(Vec<FSCallback>),
 }
 
 impl Debug for Object {
@@ -49,10 +50,7 @@ impl Debug for Object {
                     "CompoundFSObj {{ parent: {parent_ptr:?}, children: {children} }}"
                 )
             }
-            Self::Func { callee_pid } => f
-                .debug_struct("Func")
-                .field("callee_pid", callee_pid)
-                .finish(),
+            Self::Func(_) => f.debug_struct("Func").finish(),
         }
     }
 }
@@ -82,8 +80,8 @@ impl Display for Object {
                     "CompoundFSObj {{ parent: {parent_ptr:?}, children: {children} }}"
                 )
             }
-            Self::Func { callee_pid } => {
-                write!(f, "Func(owned by {callee_pid:?})")
+            Self::Func(callbacks) => {
+                write!(f, "Func(owned by {:?})", callbacks.len())
             }
         }
     }
