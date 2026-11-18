@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::panic::AssertUnwindSafe;
 use std::rc::Rc;
 
-use js_sys::Promise;
 use kernel::obj_tree::{FSObjRef, Object};
 use kernel::{Kernel, PollResult, Process, SyscallData};
 use wasm_bindgen::prelude::*;
@@ -385,10 +384,16 @@ impl FSObj {
             }))
             .map_err(|e| JsError::new(&e.to_string()))?;
 
-        let unsubscribe_js = Closure::once_into_js(move || {
-            unsubscribe();
-        });
-        Ok(unsubscribe_js.unchecked_into())
+        // The unsubscribe closure captures FSObjRef (Rc<RefCell<Box<Object>>>),
+        // which is !RefUnwindSafe. `once_assert_unwind_safe` skips the
+        // UnwindSafe bound while still catching panics at the JS boundary.
+        // A panic here would only unwind through `borrow_mut()` guards, and
+        // RefCell has no poisoning, so the assertion is sound.
+        let unsubscribe_js: Closure<dyn FnMut()> =
+            Closure::once_assert_unwind_safe(move || {
+                unsubscribe();
+            });
+        Ok(unsubscribe_js.into_js_value().unchecked_into())
     }
 
     #[wasm_bindgen(js_name = publish)]
@@ -402,7 +407,11 @@ impl FSObj {
                 .map(|()| JsValue::undefined())
         };
 
-        js_sys::futures::future_to_promise(task())
+        // `FSObjRef::publish` holds a `Ref` guard and `Box<dyn Fn ...>` callbacks
+        // across `.await`, so the future is !UnwindSafe. AssertUnwindSafe is sound
+        // here: a panic unwinds out of the state machine, dropping the `Ref` guard
+        // on the way (RefCell has no poisoning).
+        js_sys::futures::future_to_promise(AssertUnwindSafe(task()))
     }
 }
 
